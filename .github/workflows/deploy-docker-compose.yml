@@ -1,0 +1,122 @@
+name: Build and Deploy with Docker Compose
+
+on:
+  push:
+    branches:
+      - deployment
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: kdext_manual_anaylizer
+  IMAGE_TAG: latest
+  TAR_FILE: kdext_manual_anaylizer.tar
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
+
+      - name: Save Docker image as tar file
+        run: |
+          docker save ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -o ${{ env.TAR_FILE }}
+          gzip -f ${{ env.TAR_FILE }}
+          ls -lh ${{ env.TAR_FILE }}.gz
+
+      - name: Upload Docker image to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          source: "${{ env.TAR_FILE }}.gz"
+          target: "${{ secrets.SERVER_DEPLOY_PATH || '/opt/kdext' }}"
+          timeout: 600s
+
+      - name: Upload docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          source: "docker-compose.yml"
+          target: "${{ secrets.SERVER_DEPLOY_PATH || '/opt/kdext' }}"
+
+      - name: Deploy with Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          timeout: 600s
+          envs: AWS_ACCESS_KEY_ID,AWS_SECRET_ACCESS_KEY,AWS_BUCKET_NAME,AWS_REGION,DATABASE_URL
+          script: |
+            set -e
+            cd ${{ secrets.SERVER_DEPLOY_PATH || '/opt/kdext' }}
+
+            echo "Writing environment variables..."
+            cat > .env <<'ENVEOF'
+            DATABASE_URL=${{ secrets.DATABASE_URL }}
+            PORT=3002
+            AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+            AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
+            ENVEOF
+
+            echo "Decompressing Docker image..."
+            gunzip -f ${{ env.TAR_FILE }}.gz
+            
+            echo "Loading Docker image..."
+            docker load -i ${{ env.TAR_FILE }}
+            
+            echo "Stopping existing containers..."
+            docker-compose down || true
+            
+            echo "Starting containers with docker-compose..."
+            docker-compose up -d
+            
+            echo "Waiting for container to be healthy..."
+            sleep 10
+            
+            echo "Deployment complete!"
+            docker-compose ps
+            
+            echo "Cleaning up tar file..."
+            rm -f ${{ env.TAR_FILE }}
+
+      - name: Verify deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            cd ${{ secrets.SERVER_DEPLOY_PATH || '/opt/kdext' }}
+            echo "Container status:"
+            docker-compose ps
+            echo -e "\nContainer logs:"
+            docker-compose logs --tail 50
+
+      - name: Deployment summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" == "success" ]; then
+            echo "✅ Docker Compose deployment successful!"
+            echo "🚀 Application is running on http://${{ secrets.SERVER_HOST }}:3002"
+          else
+            echo "❌ Deployment failed! Check the logs above."
+          fi

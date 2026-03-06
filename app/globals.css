@@ -1,26 +1,112 @@
 @import "tailwindcss";
 
+/* Enable dark mode via .dark class on <html> */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* ─── Light theme ─── */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background:    #f1f5f9;
+  --foreground:    #0f172a;
+  --panel-bg:      #ffffff;
+  --panel-border:  #e2e8f0;
+  --sidebar-bg:    #ffffff;
+  --header-bg:     #ffffff;
+  --text-muted:    #64748b;
+  --accent:        #2563eb;
+  --accent-hover:  #1d4ed8;
+  --input-bg:      #f8fafc;
+  --input-border:  #cbd5e1;
+  --tag-bg:        #eff6ff;
+  --tag-color:     #2563eb;
+  --active-row:    #eff6ff;
+  --active-border: #bfdbfe;
+  --scrollbar:     #cbd5e1;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-md:     0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -1px rgba(0,0,0,0.04);
+  --code-bg:         #f8fafc;
+  --tag-green-bg:    #dcfce7;
+  --tag-green-color: #15803d;
+  --tag-amber-bg:    #fef9c3;
+  --tag-amber-color: #b45309;
+  --tag-purple-bg:   #f3e8ff;
+  --tag-purple-color: #7c3aed;
+  --section-title:   #94a3b8;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+/* ─── Dark theme ─── */
+.dark {
+  --background:    #0c1120;
+  --foreground:    #e2e8f0;
+  --panel-bg:      #141c2e;
+  --panel-border:  #1e2d45;
+  --sidebar-bg:    #141c2e;
+  --header-bg:     #0f1829;
+  --text-muted:    #64748b;
+  --accent:        #3b82f6;
+  --accent-hover:  #60a5fa;
+  --input-bg:      #0c1120;
+  --input-border:  #1e2d45;
+  --tag-bg:        #1e3a5f;
+  --tag-color:     #93c5fd;
+  --active-row:    #1a2e4a;
+  --active-border: #2563eb;
+  --scrollbar:     #5b7fb5;
+  --shadow-sm:     0 1px 3px rgba(0,0,0,0.3);
+  --shadow-md:     0 4px 12px rgba(0,0,0,0.4);
+  --code-bg:         #0d1117;
+  --tag-green-bg:    #052e16;
+  --tag-green-color: #4ade80;
+  --tag-amber-bg:    #431407;
+  --tag-amber-color: #fbbf24;
+  --tag-purple-bg:   #2e1065;
+  --tag-purple-color: #c084fc;
+  --section-title:   #475569;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* ─── Base ─── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-body {
+html, body {
+  height: 100%;
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI",
+    Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  transition: background 0.2s ease, color 0.2s ease;
 }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 12px; height: 12px; }
+::-webkit-scrollbar-track { background: var(--panel-border); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 6px; border: 2px solid var(--panel-border); min-height: 48px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* Right data panel scrollbar — always visible */
+.data-scroll { scrollbar-gutter: stable; overflow-y: scroll; }
+
+/* ─── Skeleton ─── */
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--panel-border) 25%,
+    var(--input-bg)     50%,
+    var(--panel-border) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s ease-in-out infinite;
+  border-radius: 6px;
+}
+
+/* ─── Focus ring ─── */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
