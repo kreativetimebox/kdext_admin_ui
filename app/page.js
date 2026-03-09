@@ -1,267 +1,300 @@
 "use client";
 
-import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
-import toast from "react-hot-toast";
-import { Sun, Moon, Database } from "lucide-react";
-import { useDocumentStore, useThemeStore } from "@/lib/store";
-import SidebarList from "@/components/Sidebar/SidebarList";
-import FileViewer from "@/components/Viewer/FileViewer";
-import EditableFields from "@/components/Forms/EditableFields";
-import TextractResults from "@/components/Results/TextractResults";
-import OCRResults from "@/components/Results/OCRResults";
-import RawResults from "@/components/Results/RawResults";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Database,
+  FileSearch,
+  ShieldCheck,
+  Layers,
+  ArrowRight,
+  Activity,
+  Zap,
+  Lock,
+} from "lucide-react";
+import { useThemeStore } from "@/lib/store";
+import Navbar from "@/components/Navbar/Navbar";
 
-/* ── Reusable section card ────────────────────────────────── */
-function Card({ title, badge, children }) {
+/* ── Feature card ────────────────────────────────────────── */
+function FeatureCard({ icon: Icon, title, description, color, delay = 0 }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <div
-      className="rounded-xl overflow-hidden"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       style={{
+        background: hovered
+          ? `linear-gradient(135deg, var(--panel-bg) 0%, ${color}0d 100%)`
+          : "var(--panel-bg)",
+        border: hovered ? `1px solid ${color}55` : "1px solid var(--panel-border)",
+        boxShadow: hovered
+          ? `0 8px 32px ${color}22, var(--shadow-sm)`
+          : "var(--shadow-sm)",
+        borderRadius: 20,
+        padding: "28px 24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        transition: "all 0.25s ease",
+        cursor: "default",
+        animationDelay: `${delay}ms`,
+      }}
+    >
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 14,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: `linear-gradient(135deg, ${color}22 0%, ${color}11 100%)`,
+          border: `1px solid ${color}33`,
+          transition: "transform 0.2s ease",
+          transform: hovered ? "scale(1.08)" : "scale(1)",
+        }}
+      >
+        <Icon size={20} style={{ color }} />
+      </div>
+      <div>
+        <p style={{ fontSize: 14, fontWeight: 600, marginBottom: 6, color: "var(--foreground)" }}>
+          {title}
+        </p>
+        <p style={{ fontSize: 12.5, lineHeight: 1.7, color: "var(--text-muted)" }}>
+          {description}
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/* ── Stat pill ────────────────────────────────────────────── */
+function StatPill({ label, value, icon: Icon, color }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "14px 20px",
+        borderRadius: 16,
         background: "var(--panel-bg)",
         border: "1px solid var(--panel-border)",
         boxShadow: "var(--shadow-sm)",
+        minWidth: 150,
       }}
     >
-      {title && (
-        <div
-          className="flex items-center justify-between px-5 py-3.5 border-b"
-          style={{ borderColor: "var(--panel-border)" }}
-        >
-          <h2 className="text-[13px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-            {title}
-          </h2>
-          {badge && (
-            <span
-              className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-              style={{ background: "var(--tag-bg)", color: "var(--tag-color)" }}
-            >
-              {badge}
-            </span>
-          )}
-        </div>
-      )}
-      {children}
+      <div
+        style={{
+          width: 36,
+          height: 36,
+          borderRadius: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: `${color}18`,
+          border: `1px solid ${color}30`,
+          flexShrink: 0,
+        }}
+      >
+        <Icon size={16} style={{ color }} />
+      </div>
+      <div>
+        <p style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)", lineHeight: 1.2 }}>
+          {value}
+        </p>
+        <p style={{ fontSize: 10.5, color: "var(--text-muted)", marginTop: 1, textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          {label}
+        </p>
+      </div>
     </div>
   );
 }
 
-/* ── Skeleton loader ──────────────────────────────────────── */
-function DocumentSkeleton() {
-  return (
-    <div className="flex flex-col gap-4">
-      <Card>
-        <div className="p-4 space-y-3">
-          <div className="skeleton h-3 w-28 rounded" />
-          <div className="skeleton h-52 w-full rounded-lg" />
-        </div>
-      </Card>
-      <Card>
-        <div className="p-4 space-y-3">
-          <div className="skeleton h-3 w-36 rounded" />
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div key={i} className="flex gap-4">
-              <div className="skeleton h-4 w-28 rounded" />
-              <div className="skeleton h-9 flex-1 rounded-lg" />
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-/* ── Main page ────────────────────────────────────────────── */
+/* ── Home page ────────────────────────────────────────────── */
 export default function HomePage() {
-  const { activeId, setDocument } = useDocumentStore();
-  const { isDark, toggleTheme, initTheme } = useThemeStore();
+  const { initTheme } = useThemeStore();
+  const router = useRouter();
+  const [ctaHovered, setCtaHovered] = useState(false);
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
-  const { data: doc, isLoading } = useQuery({
-    queryKey: ["document", activeId],
-    queryFn: async () => {
-      const res = await axios.get(`/api/document/${activeId}`);
-      return res.data;
-    },
-    enabled: !!activeId,
-    staleTime: 5 * 60 * 1000,
-    onSuccess: (data) => setDocument(data),
-    onError: () => toast.error("Failed to load document"),
-  });
-
   return (
-    <div className="flex flex-col h-screen overflow-hidden" style={{ background: "var(--background)" }}>
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)", position: "relative", overflow: "hidden" }}>
+
+      {/* ── Ambient background blobs ── */}
+      <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
+        <div style={{
+          position: "absolute", top: "-10%", left: "15%",
+          width: 600, height: 600, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(37,99,235,0.07) 0%, transparent 70%)",
+          filter: "blur(40px)",
+        }} />
+        <div style={{
+          position: "absolute", top: "30%", right: "-5%",
+          width: 500, height: 500, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(99,102,241,0.06) 0%, transparent 70%)",
+          filter: "blur(40px)",
+        }} />
+        <div style={{
+          position: "absolute", bottom: "5%", left: "5%",
+          width: 400, height: 400, borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(5,150,105,0.05) 0%, transparent 70%)",
+          filter: "blur(40px)",
+        }} />
+      </div>
 
       {/* ── Header ── */}
-      <header
-        className="flex items-center justify-between px-6 shrink-0 z-20 relative"
-        style={{
-          height: 56,
-          background: "var(--header-bg)",
-          borderBottom: "1px solid var(--panel-border)",
-          boxShadow: "0 1px 0 var(--panel-border), 0 2px 8px rgba(0,0,0,0.04)",
-        }}
-      >
-        {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div
-            className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0"
-            style={
-              { background: "linear-gradient(135deg, var(--accent) 0%, #6366f1 100%)",
-                boxShadow: "0 2px 8px rgba(37,99,235,0.35)" }
-            }
-          >
-            <Database size={15} color="#fff" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-sm font-bold tracking-tight leading-none" style={{ color: "var(--foreground)" }}>
-              kdext_manual_analyzer
-            </span>
-            <span className="text-[10px] leading-tight" style={{ color: "var(--text-muted)" }}>
-              OCR &amp; Textract
-            </span>
+      <Navbar />
+
+      {/* ── Hero ── */}
+      <section style={{
+        position: "relative", zIndex: 1,
+        display: "flex", flexDirection: "column", alignItems: "center",
+        textAlign: "center", padding: "72px 24px 56px",
+        gap: 28,
+      }}>
+        {/* Glow ring + icon */}
+        <div style={{ position: "relative", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+          {/* outer glow ring */}
+          <div style={{
+            position: "absolute",
+            width: 110, height: 110, borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(37,99,235,0.18) 0%, transparent 70%)",
+            filter: "blur(8px)",
+          }} />
+          {/* icon box */}
+          <div style={{
+            width: 80, height: 80, borderRadius: 24,
+            background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+            boxShadow: "0 12px 40px rgba(37,99,235,0.45), 0 0 0 1px rgba(99,102,241,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            position: "relative",
+          }}>
+            <Database size={34} color="#fff" />
           </div>
         </div>
 
-        {/* Theme toggle */}
-        <div
-          className="flex items-center gap-2 px-3 py-1.5 rounded-full cursor-pointer select-none"
-          style={{
-            background: "var(--input-bg)",
-            border: "1px solid var(--panel-border)",
-          }}
-          onClick={toggleTheme}
-        >
-          <Sun size={12} className="text-amber-400" />
-          <div
-            className="relative w-8 h-4 rounded-full"
+        {/* Labels + title */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, alignItems: "center" }}>
+          <span style={{
+            fontSize: 10.5, fontWeight: 700, letterSpacing: "0.18em",
+            textTransform: "uppercase", padding: "4px 14px", borderRadius: 99,
+            background: "linear-gradient(90deg, var(--tag-bg), var(--active-row))",
+            color: "var(--tag-color)",
+            border: "1px solid var(--active-border)",
+          }}>
+            Admin Application
+          </span>
+
+          <h1 style={{
+            fontSize: "clamp(2rem, 5vw, 3.2rem)",
+            fontWeight: 800,
+            letterSpacing: "-0.03em",
+            lineHeight: 1.1,
+            margin: 0,
+            background: "linear-gradient(135deg, var(--foreground) 30%, #6366f1 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text",
+          }}>
+            kdext_doc_parser
+          </h1>
+
+          <p style={{
+            fontSize: 15, lineHeight: 1.7, maxWidth: 520,
+            color: "var(--text-muted)", margin: 0,
+          }}>
+            Internal admin portal for reviewing, correcting, and managing
+            document parsing results from OCR and AWS Textract pipelines.
+          </p>
+        </div>
+
+        {/* CTA */}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <button
+            onClick={() => router.push("/analyzer")}
+            onMouseEnter={() => setCtaHovered(true)}
+            onMouseLeave={() => setCtaHovered(false)}
             style={{
-              background: isDark ? "var(--accent)" : "var(--input-border)",
-              transition: "background 0.3s",
+              display: "flex", alignItems: "center", gap: 8,
+              padding: "12px 24px", borderRadius: 14, border: "none",
+              fontSize: 14, fontWeight: 600, color: "#fff", cursor: "pointer",
+              background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+              boxShadow: ctaHovered
+                ? "0 8px 28px rgba(37,99,235,0.55), 0 0 0 1px rgba(99,102,241,0.4)"
+                : "0 4px 16px rgba(37,99,235,0.4)",
+              transform: ctaHovered ? "translateY(-1px)" : "translateY(0)",
+              transition: "all 0.2s ease",
             }}
           >
-            <span
-              className="absolute top-0.5 left-0.5 w-3 h-3 bg-white rounded-full shadow"
-              style={{
-                transform: isDark ? "translateX(16px)" : "translateX(0)",
-                transition: "transform 0.3s",
-              }}
-            />
-          </div>
-          <Moon size={12} style={{ color: "var(--text-muted)" }} />
+            <Zap size={15} />
+            Open Manual Analyzer
+            <ArrowRight size={14} style={{ transition: "transform 0.2s", transform: ctaHovered ? "translateX(3px)" : "translateX(0)" }} />
+          </button>
         </div>
-      </header>
+      </section>
 
-      {/* ── Body ── */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      {/* ── Stats row ── */}
+      <section style={{
+        position: "relative", zIndex: 1,
+        display: "flex", justifyContent: "center", flexWrap: "wrap",
+        gap: 12, padding: "0 24px 56px",
+      }}>
+        <StatPill label="OCR Engine"  value="Azure"      icon={Activity}    color="#2563eb" />
+        <StatPill label="Extraction"  value="Textract"   icon={Layers}      color="#7c3aed" />
+        <StatPill label="Storage"     value="PostgreSQL" icon={Database}    color="#0891b2" />
+        <StatPill label="Access"      value="Admin Only" icon={Lock}        color="#059669" />
+      </section>
 
-        {/* Sidebar */}
-        <aside
-          className="w-72 shrink-0 flex flex-col overflow-hidden"
-          style={{
-            background: "var(--sidebar-bg)",
-            borderRight: "1px solid var(--panel-border)",
-          }}
-        >
-          <SidebarList />
-        </aside>
-
-        {/* Right panel */}
-        <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
-          {isLoading && activeId ? (
-            <div className="flex-1 min-h-0 overflow-y-scroll p-5"><DocumentSkeleton /></div>
-          ) : !activeId ? (
-            /* ── Empty / welcome state ── */
-            <div className="flex-1 flex flex-col items-center justify-center gap-4 pb-16">
-              <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center"
-                style={{
-                  background: "linear-gradient(135deg, var(--tag-bg) 0%, var(--active-row) 100%)",
-                  border: "1px solid var(--panel-border)",
-                }}
-              >
-                <Database size={28} style={{ color: "var(--accent)" }} />
-              </div>
-              <div className="text-center">
-                <p className="text-base font-semibold" style={{ color: "var(--foreground)" }}>Select a document</p>
-                <p className="text-sm mt-1" style={{ color: "var(--text-muted)" }}>
-                  Click any row in the sidebar to view its OCR and Textract results
-                </p>
-              </div>
-            </div>
-          ) : (
-            <div className="flex flex-1 min-h-0 overflow-hidden">
-
-              {/* ── Left: File Viewer panel ── */}
-              <div
-                className="w-[800px] shrink-0 flex flex-col overflow-hidden border-r"
-                style={{ borderColor: "var(--panel-border)", background: "var(--panel-bg)" }}
-              >
-                {/* panel header */}
-                <div
-                  className="flex items-center justify-between px-4 py-2.5 shrink-0 border-b"
-                  style={{ borderColor: "var(--panel-border)" }}
-                >
-                  <h2 className="text-xs font-semibold uppercase tracking-widest text-[var(--text-muted)]">
-                    File Viewer
-                  </h2>
-                  {doc?.ocr_document_type && (
-                    <span
-                      className="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                      style={{ background: "var(--tag-bg)", color: "var(--tag-color)" }}
-                    >
-                      {doc.ocr_document_type}
-                    </span>
-                  )}
-                </div>
-                {/* scrollable file content */}
-                <div className="flex-1 min-h-0 overflow-y-auto">
-                  <FileViewer document={doc} isLoading={isLoading} />
-                </div>
-              </div>
-
-              {/* ── Right: Data panel ── */}
-              <div
-                className="flex-1 min-h-0"
-                style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
-              >
-                <div className="p-8 flex flex-col gap-8">
-
-                {/* Edit Fields */}
-                <Card title="Edit Fields" accent="var(--accent)">
-                  <EditableFields document={doc} isLoading={isLoading} />
-                </Card>
-
-                {/* Parsed Results */}
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
-                    Parsed Results
-                  </p>
-                  <div className="grid grid-cols-2 gap-5">
-                    <TextractResults data={doc?.textract_results} />
-                    <OCRResults data={doc?.ocr_ui_results} />
-                  </div>
-                </div>
-
-                {/* Raw Results */}
-                <div className="flex flex-col gap-3">
-                  <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
-                    Raw Results
-                  </p>
-                  <RawResults
-                    textractRaw={doc?.textract_raw_results}
-                    ocrRaw={doc?.ocr_raw_results}
-                  />
-                </div>
-
-                </div>
-              </div>
-            </div>
-          )}
-        </main>
+      {/* ── Divider ── */}
+      <div style={{
+        position: "relative", zIndex: 1,
+        maxWidth: 800, margin: "0 auto 48px", width: "100%", padding: "0 24px",
+        display: "flex", alignItems: "center", gap: 16,
+      }}>
+        <div style={{ flex: 1, height: 1, background: "var(--panel-border)" }} />
+        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.15em", textTransform: "uppercase", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+          What's inside
+        </span>
+        <div style={{ flex: 1, height: 1, background: "var(--panel-border)" }} />
       </div>
+
+      {/* ── Feature cards ── */}
+      <section style={{
+        position: "relative", zIndex: 1,
+        maxWidth: 960, margin: "0 auto", width: "100%",
+        padding: "0 24px 80px",
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+        gap: 16,
+      }}>
+        <FeatureCard delay={0}   icon={FileSearch}  color="#2563eb" title="Document Review"     description="Browse all parsed documents from the kdext_doc_parser pipeline and inspect raw OCR and Textract extraction results side-by-side." />
+        <FeatureCard delay={60}  icon={Layers}      color="#7c3aed" title="Result Correction"   description="Manually edit and override extracted field values, approve or reject parsed data, and push corrections back to the database." />
+        <FeatureCard delay={120} icon={Activity}    color="#059669" title="Pipeline Monitoring" description="Track document processing status, identify parsing failures, and monitor confidence scores across OCR and Textract models." />
+        <FeatureCard delay={180} icon={ShieldCheck} color="#d97706" title="Admin Controls"      description="Restricted to authorised admin users only. All actions are logged for audit purposes within the kdext_doc_parser platform." />
+        <FeatureCard delay={240} icon={Database}    color="#0891b2" title="Raw Data Access"     description="Access raw JSON payloads from both the OCR engine and AWS Textract directly from the admin interface for debugging." />
+        <FeatureCard delay={300} icon={Lock}        color="#e11d48" title="Multi-format Support" description="Handles a variety of document types including invoices, receipts, IDs, and contracts processed by the parser pipeline." />
+      </section>
+
+      {/* ── Footer ── */}
+      <footer style={{
+        position: "relative", zIndex: 1,
+        marginTop: "auto", padding: "20px 24px",
+        borderTop: "1px solid var(--panel-border)",
+        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
+      }}>
+        <div style={{
+          width: 18, height: 18, borderRadius: 5,
+          background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }}>
+          <Database size={10} color="#fff" />
+        </div>
+        <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+          kdext_doc_parser &nbsp;·&nbsp; Admin Portal &nbsp;·&nbsp; Internal Use Only
+        </span>
+      </footer>
     </div>
   );
 }
