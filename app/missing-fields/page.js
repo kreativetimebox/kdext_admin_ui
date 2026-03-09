@@ -18,6 +18,19 @@ import {
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 
+function getMissingFieldKeys(ocrUiResults) {
+  if (!ocrUiResults || typeof ocrUiResults !== "object") return [];
+
+  return Object.entries(ocrUiResults)
+    .filter(([_, val]) => {
+      if (val === null || val === "null") return true;
+      if (typeof val === "string" && val.trim() === "") return true;
+      if (Array.isArray(val) && val.length === 0) return true;
+      return false;
+    })
+    .map(([key]) => key);
+}
+
 /* ── Filter dropdown ──────────────────────────────────────── */
 function FilterDropdown({ label, value, options, onChange, onClear }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -114,14 +127,7 @@ function MissingFieldRow({ doc, onView }) {
   const [hovered, setHovered] = useState(false);
 
   // Count null fields and empty string fields in ocr_ui_results
-  const nullFields = doc.ocr_ui_results
-    ? Object.entries(doc.ocr_ui_results).filter(([_, val]) => {
-        if (val === null || val === "null") return true;
-        if (typeof val === "string" && val.trim() === "") return true;
-        if (Array.isArray(val) && val.length === 0) return true;
-        return false;
-      }).map(([key]) => key)
-    : [];
+  const nullFields = getMissingFieldKeys(doc.ocr_ui_results);
 
   return (
     <div
@@ -250,6 +256,7 @@ export default function MissingFieldsPage() {
   // Extract unique doc types and environments for filters
   const docTypes = data ? [...new Set(data.map(d => d.ocr_document_type).filter(Boolean))] : [];
   const environments = data ? [...new Set(data.map(d => d.environment).filter(Boolean))] : [];
+  const visibleDocuments = (data || []).filter((doc) => getMissingFieldKeys(doc?.ocr_ui_results).length > 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
@@ -446,7 +453,7 @@ export default function MissingFieldsPage() {
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load documents</p>
               </div>
-            ) : !data || data.length === 0 ? (
+            ) : visibleDocuments.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center" }}>
                 <FileWarning size={40} style={{ color: "var(--text-muted)", marginBottom: 12 }} />
                 <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>
@@ -461,14 +468,14 @@ export default function MissingFieldsPage() {
                 </p>
               </div>
             ) : (
-              data.map(doc => (
+              visibleDocuments.map(doc => (
                 <MissingFieldRow key={doc.id} doc={doc} onView={handleView} />
               ))
             )}
           </div>
 
           {/* Footer */}
-          {data && data.length > 0 && (
+          {visibleDocuments.length > 0 && (
             <div
               style={{
                 padding: "12px 20px",
@@ -479,7 +486,7 @@ export default function MissingFieldsPage() {
                 textAlign: "center",
               }}
             >
-              Showing {data.length} document{data.length !== 1 ? "s" : ""} 
+              Showing {visibleDocuments.length} document{visibleDocuments.length !== 1 ? "s" : ""} 
               {!showAll && " with missing fields"}
             </div>
           )}

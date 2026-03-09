@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -75,7 +75,7 @@ function DocumentSkeleton() {
 }
 
 /* ── Main page ────────────────────────────────────────────── */
-export default function HomePage() {
+function AnalyzerContent() {
   const { activeId, setDocument } = useDocumentStore();
   const { initTheme } = useThemeStore();
   const searchParams = useSearchParams();
@@ -210,5 +210,20 @@ export default function HomePage() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="flex flex-col h-screen overflow-hidden"
+          style={{ background: "var(--background)" }}
+        />
+      }
+    >
+      <AnalyzerContent />
+    </Suspense>
   );
 }
