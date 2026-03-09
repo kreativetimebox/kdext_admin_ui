@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -77,6 +78,8 @@ function DocumentSkeleton() {
 export default function HomePage() {
   const { activeId, setDocument } = useDocumentStore();
   const { initTheme } = useThemeStore();
+  const searchParams = useSearchParams();
+  const focusId = searchParams.get("focusId");
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
@@ -109,7 +112,7 @@ export default function HomePage() {
             borderRight: "1px solid var(--panel-border)",
           }}
         >
-          <SidebarList />
+          <SidebarList onlyId={focusId} />
         </aside>
 
         {/* Right panel */}

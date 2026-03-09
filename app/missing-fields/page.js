@@ -244,7 +244,7 @@ export default function MissingFieldsPage() {
 
   const handleView = (docId) => {
     setActiveId(docId);
-    router.push("/analyzer");
+    router.push(`/analyzer?focusId=${docId}`);
   };
 
   // Extract unique doc types and environments for filters

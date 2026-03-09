@@ -18,7 +18,7 @@ function SkeletonItem() {
   );
 }
 
-export default function SidebarList() {
+export default function SidebarList({ onlyId = null }) {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["documents"],
     queryFn: async () => {
@@ -32,15 +32,19 @@ export default function SidebarList() {
   const documents = data || [];
 
   const [search, setSearch] = useState("");
-  const filtered = useMemo(() => {
-    if (!search.trim()) return documents;
+  const visibleDocuments = useMemo(() => {
+    const scopedDocs = onlyId
+      ? documents.filter((d) => String(d.id) === String(onlyId))
+      : documents;
+
+    if (!search.trim()) return scopedDocs;
     const q = search.toLowerCase();
-    return documents.filter(
+    return scopedDocs.filter(
       (d) =>
         String(d.id).includes(q) ||
         (d.ocr_document_type || "").toLowerCase().includes(q)
     );
-  }, [documents, search]);
+  }, [documents, search, onlyId]);
 
   if (isError) {
     return (
@@ -77,12 +81,12 @@ export default function SidebarList() {
           >
             Documents
           </span>
-          {!isLoading && documents.length > 0 && (
+          {!isLoading && visibleDocuments.length > 0 && (
             <span
               className="text-[10px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: "var(--accent)", color: "#fff" }}
             >
-              {documents.length}
+              {visibleDocuments.length}
             </span>
           )}
         </div>
@@ -120,7 +124,7 @@ export default function SidebarList() {
       <div className="flex-1 overflow-y-auto">
         {isLoading ? (
           Array.from({ length: 14 }).map((_, i) => <SkeletonItem key={i} />)
-        ) : filtered.length === 0 ? (
+        ) : visibleDocuments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 gap-1">
             <FileText size={20} style={{ color: "var(--text-muted)", opacity: 0.4 }} />
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
@@ -128,7 +132,7 @@ export default function SidebarList() {
             </p>
           </div>
         ) : (
-          filtered.map((doc) => (
+          visibleDocuments.map((doc) => (
             <SidebarItem key={doc.id} id={doc.id} ocr_document_type={doc.ocr_document_type} />
           ))
         )}
