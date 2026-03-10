@@ -136,6 +136,8 @@ function getMandatoryKeySet(docType = "") {
 
   if (type.isBankStatement) {
     return new Set([
+      "documentid",
+      "document_id",
       "bankname",
       "bank_name",
       "accountholdername",
@@ -359,18 +361,19 @@ function EditableFields({ document, isLoading }) {
 
   const keys = Object.keys(fields);
   const docType = document?.ocr_document_type || "";
+  const mandatoryKeys = keys.filter((key) => isMandatoryFieldKey(key, docType));
 
   return (
     <div className="flex flex-col">
-      {keys.length === 0 ? (
+      {mandatoryKeys.length === 0 ? (
         <div className="px-5 py-6 text-center">
-          <p className="text-sm text-[var(--text-muted)] italic">No editable fields available for this document.</p>
+          <p className="text-sm text-[var(--text-muted)] italic">No mandatory editable fields available for this document.</p>
         </div>
       ) : (
         <>
           {/* Fields area */}
           <div>
-            {groupFields(keys).map((group, gi) => (
+            {groupFields(mandatoryKeys).map((group, gi) => (
               <div
                 key={group.label}
                 className={gi > 0 ? "border-t" : ""}

@@ -19,9 +19,13 @@ import { useThemeStore, useDocumentStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 
 function isMissingValue(val) {
-  if (val === null || val === undefined || val === "null") return true;
-  if (typeof val === "string" && val.trim() === "") return true;
-  if (Array.isArray(val) && val.length === 0) return true;
+  if (val === null || val === undefined) return true;
+  if (typeof val === "string") {
+    const normalized = val.trim().toLowerCase();
+    if (normalized === "" || normalized === "null" || normalized === "na" || normalized === "n/a") {
+      return true;
+    }
+  }
   return false;
 }
 
@@ -78,6 +82,7 @@ function getMissingFieldKeys(ocrUiResults, docType = "") {
   if (!ocrUiResults || typeof ocrUiResults !== "object") {
     if (isBankStatementDoc) {
       return [
+        "documentId",
         "bankName",
         "accountHolderName",
         "openingDate",
@@ -117,6 +122,9 @@ function getMissingFieldKeys(ocrUiResults, docType = "") {
   }
 
   if (isBankStatementDoc) {
+    if (isMissingByPaths(ocrUiResults, ["documentId", "document_id"])) {
+      missing.push("documentId");
+    }
     if (isMissingByPaths(ocrUiResults, ["bankName", "bank_name"])) {
       missing.push("bankName");
     }
@@ -140,31 +148,8 @@ function getMissingFieldKeys(ocrUiResults, docType = "") {
     }
 
     const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "table_items", "items"]);
-    if (!Array.isArray(items) || items.length === 0) {
+    if (isMissingValue(items)) {
       missing.push("tableItems");
-    } else {
-      items.forEach((item, index) => {
-        if (!item || typeof item !== "object") {
-          missing.push(`tableItems[${index}]`);
-          return;
-        }
-
-        if (isMissingByPaths(item, ["description", "Payment type and details", "payment_type_and_details", "details"])) {
-          missing.push(`tableItems[${index}].description`);
-        }
-        if (isMissingByPaths(item, ["date", "Date"])) {
-          missing.push(`tableItems[${index}].date`);
-        }
-        if (isMissingByPaths(item, ["debitAmount", "debit_amount", "Paid out", "paid_out"])) {
-          missing.push(`tableItems[${index}].debitAmount`);
-        }
-        if (isMissingByPaths(item, ["creditAmount", "credit_amount", "Paid in", "paid_in"])) {
-          missing.push(`tableItems[${index}].creditAmount`);
-        }
-        if (isMissingByPaths(item, ["balanceAmount", "balance_amount", "Balance", "balance"])) {
-          missing.push(`tableItems[${index}].balanceAmount`);
-        }
-      });
     }
 
     return missing;
@@ -197,25 +182,8 @@ function getMissingFieldKeys(ocrUiResults, docType = "") {
     }
 
     const items = getFirstValueByAliases(ocrUiResults, ["items", "tableItems"]);
-    if (!Array.isArray(items) || items.length === 0) {
+    if (isMissingValue(items)) {
       missing.push("items");
-    } else {
-      items.forEach((item, index) => {
-        if (!item || typeof item !== "object") {
-          missing.push(`items[${index}]`);
-          return;
-        }
-
-        if (isMissingByAliases(item, ["item_name", "description"])) {
-          missing.push(`items[${index}].item_name`);
-        }
-        if (isMissingByAliases(item, ["quantity"])) {
-          missing.push(`items[${index}].quantity`);
-        }
-        if (isMissingByAliases(item, ["price", "unitPrice"])) {
-          missing.push(`items[${index}].price`);
-        }
-      });
     }
 
     return missing;
@@ -257,37 +225,8 @@ function getMissingFieldKeys(ocrUiResults, docType = "") {
     }
 
     const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "items"]);
-    if (!Array.isArray(items) || items.length === 0) {
+    if (isMissingValue(items)) {
       missing.push("tableItems");
-    } else {
-      items.forEach((item, index) => {
-        if (!item || typeof item !== "object") {
-          missing.push(`tableItems[${index}]`);
-          return;
-        }
-
-        if (isMissingByPaths(item, ["description", "item_name", "Product", "product"])) {
-          missing.push(`tableItems[${index}].description`);
-        }
-        if (isMissingByPaths(item, ["quantity", "Qty", "qty"])) {
-          missing.push(`tableItems[${index}].quantity`);
-        }
-        if (isMissingByPaths(item, ["unitPrice", "price", "Price"])) {
-          missing.push(`tableItems[${index}].unitPrice`);
-        }
-        if (isMissingByPaths(item, ["totalAmount", "total_amount", "Subtotal", "subtotal"])) {
-          missing.push(`tableItems[${index}].totalAmount`);
-        }
-        if (isMissingByPaths(item, ["netAmount", "net_amount", "Subtotal", "subtotal"])) {
-          missing.push(`tableItems[${index}].netAmount`);
-        }
-        if (isMissingByPaths(item, ["taxAmount", "tax_amount", "vat_amount", "VAT", "vat"])) {
-          missing.push(`tableItems[${index}].taxAmount`);
-        }
-        if (isMissingByPaths(item, ["discountAmount", "discount"])) {
-          missing.push(`tableItems[${index}].discountAmount`);
-        }
-      });
     }
 
     return missing;
@@ -318,45 +257,8 @@ function getMissingFieldKeys(ocrUiResults, docType = "") {
   }
 
   const tableItems = getFirstValueByAliases(ocrUiResults, ["tableItems", "items"]);
-  const itemMandatory = [
-    "description",
-    "quantity",
-    "unitPrice",
-    "totalAmount",
-    "netAmount",
-    "taxAmount",
-    "discountAmount",
-  ];
-
-  if (!Array.isArray(tableItems) || tableItems.length === 0) {
+  if (isMissingValue(tableItems)) {
     missing.push("tableItems");
-  } else {
-    tableItems.forEach((item, index) => {
-      if (!item || typeof item !== "object") {
-        missing.push(`tableItems[${index}]`);
-        return;
-      }
-
-      for (const field of itemMandatory) {
-        if (field === "description") {
-          if (isMissingByAliases(item, ["description", "item_name"])) {
-            missing.push(`tableItems[${index}].${field}`);
-          }
-          continue;
-        }
-
-        if (field === "unitPrice") {
-          if (isMissingByAliases(item, ["unitPrice", "price"])) {
-            missing.push(`tableItems[${index}].${field}`);
-          }
-          continue;
-        }
-
-        if (isMissingByAliases(item, [field])) {
-          missing.push(`tableItems[${index}].${field}`);
-        }
-      }
-    });
   }
 
   return missing;
