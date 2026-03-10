@@ -18,17 +18,348 @@ import {
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 
-function getMissingFieldKeys(ocrUiResults) {
-  if (!ocrUiResults || typeof ocrUiResults !== "object") return [];
+function isMissingValue(val) {
+  if (val === null || val === undefined || val === "null") return true;
+  if (typeof val === "string" && val.trim() === "") return true;
+  if (Array.isArray(val) && val.length === 0) return true;
+  return false;
+}
 
-  return Object.entries(ocrUiResults)
-    .filter(([_, val]) => {
-      if (val === null || val === "null") return true;
-      if (typeof val === "string" && val.trim() === "") return true;
-      if (Array.isArray(val) && val.length === 0) return true;
-      return false;
-    })
-    .map(([key]) => key);
+function getFirstValueByAliases(obj, aliases = []) {
+  if (!obj || typeof obj !== "object") return undefined;
+  for (const key of aliases) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      return obj[key];
+    }
+  }
+  return undefined;
+}
+
+function isMissingByAliases(obj, aliases = []) {
+  const value = getFirstValueByAliases(obj, aliases);
+  return isMissingValue(value);
+}
+
+function getValueByPath(obj, path) {
+  if (!obj || typeof obj !== "object") return undefined;
+  const parts = String(path).split(".");
+  let current = obj;
+  for (const part of parts) {
+    if (!current || typeof current !== "object" || !(part in current)) {
+      return undefined;
+    }
+    current = current[part];
+  }
+  return current;
+}
+
+function getFirstValueByPaths(obj, paths = []) {
+  for (const path of paths) {
+    const value = getValueByPath(obj, path);
+    if (value !== undefined) return value;
+  }
+  return undefined;
+}
+
+function isMissingByPaths(obj, paths = []) {
+  return isMissingValue(getFirstValueByPaths(obj, paths));
+}
+
+function getMissingFieldKeys(ocrUiResults, docType = "") {
+  const missing = [];
+  const normalizedDocType = String(docType || "").toLowerCase();
+  const compactDocType = normalizedDocType.replace(/[^a-z]/g, "");
+  const isBankStatementDoc = normalizedDocType.includes("bank statement") || compactDocType.includes("bankstatement");
+  const isReceiptDoc = normalizedDocType.includes("receipt");
+  const isInvoiceDoc = normalizedDocType.includes("invoice");
+  const isSaleDoc = normalizedDocType.includes("sale");
+  const isPurchaseDoc = normalizedDocType.includes("purchase");
+
+  if (!ocrUiResults || typeof ocrUiResults !== "object") {
+    if (isBankStatementDoc) {
+      return [
+        "bankName",
+        "accountHolderName",
+        "openingDate",
+        "closingDate",
+        "openingBalance",
+        "closingBalance",
+        "currencyCode",
+        "tableItems",
+      ];
+    }
+
+    if (isReceiptDoc) {
+      return [
+        "document_id",
+        "supplier_name",
+        "receipt_date",
+        "currency",
+        "total_amount",
+        "net_amount",
+        "vat_amount",
+        "discount",
+        "items",
+      ];
+    }
+
+    return [
+      "documentId",
+      "date",
+      "dueDate",
+      "currencyCode",
+      "totalAmount",
+      "netAmount",
+      "taxAmount",
+      "discountAmount",
+      "tableItems",
+    ];
+  }
+
+  if (isBankStatementDoc) {
+    if (isMissingByPaths(ocrUiResults, ["bankName", "bank_name"])) {
+      missing.push("bankName");
+    }
+    if (isMissingByPaths(ocrUiResults, ["accountHolderName", "account_holder_name"])) {
+      missing.push("accountHolderName");
+    }
+    if (isMissingByPaths(ocrUiResults, ["openingDate", "opening_date"])) {
+      missing.push("openingDate");
+    }
+    if (isMissingByPaths(ocrUiResults, ["closingDate", "closing_date"])) {
+      missing.push("closingDate");
+    }
+    if (isMissingByPaths(ocrUiResults, ["openingBalance", "opening_balance"])) {
+      missing.push("openingBalance");
+    }
+    if (isMissingByPaths(ocrUiResults, ["closingBalance", "closing_balance"])) {
+      missing.push("closingBalance");
+    }
+    if (isMissingByPaths(ocrUiResults, ["currencyCode", "currency"])) {
+      missing.push("currencyCode");
+    }
+
+    const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "table_items", "items"]);
+    if (!Array.isArray(items) || items.length === 0) {
+      missing.push("tableItems");
+    } else {
+      items.forEach((item, index) => {
+        if (!item || typeof item !== "object") {
+          missing.push(`tableItems[${index}]`);
+          return;
+        }
+
+        if (isMissingByPaths(item, ["description", "Payment type and details", "payment_type_and_details", "details"])) {
+          missing.push(`tableItems[${index}].description`);
+        }
+        if (isMissingByPaths(item, ["date", "Date"])) {
+          missing.push(`tableItems[${index}].date`);
+        }
+        if (isMissingByPaths(item, ["debitAmount", "debit_amount", "Paid out", "paid_out"])) {
+          missing.push(`tableItems[${index}].debitAmount`);
+        }
+        if (isMissingByPaths(item, ["creditAmount", "credit_amount", "Paid in", "paid_in"])) {
+          missing.push(`tableItems[${index}].creditAmount`);
+        }
+        if (isMissingByPaths(item, ["balanceAmount", "balance_amount", "Balance", "balance"])) {
+          missing.push(`tableItems[${index}].balanceAmount`);
+        }
+      });
+    }
+
+    return missing;
+  }
+
+  if (isReceiptDoc) {
+    if (isMissingByAliases(ocrUiResults, ["document_id", "documentId"])) {
+      missing.push("document_id");
+    }
+    if (isMissingByAliases(ocrUiResults, ["supplier_name", "supplierName"])) {
+      missing.push("supplier_name");
+    }
+    if (isMissingByAliases(ocrUiResults, ["receipt_date", "date"])) {
+      missing.push("receipt_date");
+    }
+    if (isMissingByAliases(ocrUiResults, ["currency", "currencyCode"])) {
+      missing.push("currency");
+    }
+    if (isMissingByAliases(ocrUiResults, ["total_amount", "totalAmount"])) {
+      missing.push("total_amount");
+    }
+    if (isMissingByAliases(ocrUiResults, ["net_amount", "netAmount"])) {
+      missing.push("net_amount");
+    }
+    if (isMissingByAliases(ocrUiResults, ["vat_amount", "taxAmount"])) {
+      missing.push("vat_amount");
+    }
+    if (isMissingByAliases(ocrUiResults, ["discount", "discountAmount"])) {
+      missing.push("discount");
+    }
+
+    const items = getFirstValueByAliases(ocrUiResults, ["items", "tableItems"]);
+    if (!Array.isArray(items) || items.length === 0) {
+      missing.push("items");
+    } else {
+      items.forEach((item, index) => {
+        if (!item || typeof item !== "object") {
+          missing.push(`items[${index}]`);
+          return;
+        }
+
+        if (isMissingByAliases(item, ["item_name", "description"])) {
+          missing.push(`items[${index}].item_name`);
+        }
+        if (isMissingByAliases(item, ["quantity"])) {
+          missing.push(`items[${index}].quantity`);
+        }
+        if (isMissingByAliases(item, ["price", "unitPrice"])) {
+          missing.push(`items[${index}].price`);
+        }
+      });
+    }
+
+    return missing;
+  }
+
+  if (isInvoiceDoc) {
+    if (isMissingByPaths(ocrUiResults, ["documentId", "document_id", "invoice_number"])) {
+      missing.push("documentId");
+    }
+
+    if ((isPurchaseDoc || !isSaleDoc) && isMissingByPaths(ocrUiResults, ["supplierName", "supplier_name"])) {
+      missing.push("supplierName");
+    }
+
+    if (isMissingByPaths(ocrUiResults, ["customerName", "customer_name"])) {
+      missing.push("customerName");
+    }
+
+    if (isMissingByPaths(ocrUiResults, ["date", "invoice_date"])) {
+      missing.push("date");
+    }
+    if (isMissingByPaths(ocrUiResults, ["dueDate", "due_date"])) {
+      missing.push("dueDate");
+    }
+    if (isMissingByPaths(ocrUiResults, ["currencyCode", "currency"])) {
+      missing.push("currencyCode");
+    }
+    if (isMissingByPaths(ocrUiResults, ["totalAmount", "total_amount", "amounts.Grand Total", "amounts.total", "amounts.grand_total"])) {
+      missing.push("totalAmount");
+    }
+    if (isMissingByPaths(ocrUiResults, ["netAmount", "net_amount", "subtotal", "amounts.Subtotal", "amounts.subtotal"])) {
+      missing.push("netAmount");
+    }
+    if (isMissingByPaths(ocrUiResults, ["taxAmount", "vat_amount", "amounts.VAT", "amounts.vat"])) {
+      missing.push("taxAmount");
+    }
+    if (isMissingByPaths(ocrUiResults, ["discountAmount", "discount"])) {
+      missing.push("discountAmount");
+    }
+
+    const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "items"]);
+    if (!Array.isArray(items) || items.length === 0) {
+      missing.push("tableItems");
+    } else {
+      items.forEach((item, index) => {
+        if (!item || typeof item !== "object") {
+          missing.push(`tableItems[${index}]`);
+          return;
+        }
+
+        if (isMissingByPaths(item, ["description", "item_name", "Product", "product"])) {
+          missing.push(`tableItems[${index}].description`);
+        }
+        if (isMissingByPaths(item, ["quantity", "Qty", "qty"])) {
+          missing.push(`tableItems[${index}].quantity`);
+        }
+        if (isMissingByPaths(item, ["unitPrice", "price", "Price"])) {
+          missing.push(`tableItems[${index}].unitPrice`);
+        }
+        if (isMissingByPaths(item, ["totalAmount", "total_amount", "Subtotal", "subtotal"])) {
+          missing.push(`tableItems[${index}].totalAmount`);
+        }
+        if (isMissingByPaths(item, ["netAmount", "net_amount", "Subtotal", "subtotal"])) {
+          missing.push(`tableItems[${index}].netAmount`);
+        }
+        if (isMissingByPaths(item, ["taxAmount", "tax_amount", "vat_amount", "VAT", "vat"])) {
+          missing.push(`tableItems[${index}].taxAmount`);
+        }
+        if (isMissingByPaths(item, ["discountAmount", "discount"])) {
+          missing.push(`tableItems[${index}].discountAmount`);
+        }
+      });
+    }
+
+    return missing;
+  }
+
+  const topLevelMandatory = [
+    "documentId",
+    "date",
+    "dueDate",
+    "currencyCode",
+    "totalAmount",
+    "netAmount",
+    "taxAmount",
+    "discountAmount",
+  ];
+
+  for (const field of topLevelMandatory) {
+    if (isMissingByAliases(ocrUiResults, [field])) {
+      missing.push(field);
+    }
+  }
+
+  if (isSaleDoc && isMissingByAliases(ocrUiResults, ["customerName", "customer_name"])) {
+    missing.push("customerName");
+  }
+  if (isPurchaseDoc && isMissingByAliases(ocrUiResults, ["supplierName", "supplier_name"])) {
+    missing.push("supplierName");
+  }
+
+  const tableItems = getFirstValueByAliases(ocrUiResults, ["tableItems", "items"]);
+  const itemMandatory = [
+    "description",
+    "quantity",
+    "unitPrice",
+    "totalAmount",
+    "netAmount",
+    "taxAmount",
+    "discountAmount",
+  ];
+
+  if (!Array.isArray(tableItems) || tableItems.length === 0) {
+    missing.push("tableItems");
+  } else {
+    tableItems.forEach((item, index) => {
+      if (!item || typeof item !== "object") {
+        missing.push(`tableItems[${index}]`);
+        return;
+      }
+
+      for (const field of itemMandatory) {
+        if (field === "description") {
+          if (isMissingByAliases(item, ["description", "item_name"])) {
+            missing.push(`tableItems[${index}].${field}`);
+          }
+          continue;
+        }
+
+        if (field === "unitPrice") {
+          if (isMissingByAliases(item, ["unitPrice", "price"])) {
+            missing.push(`tableItems[${index}].${field}`);
+          }
+          continue;
+        }
+
+        if (isMissingByAliases(item, [field])) {
+          missing.push(`tableItems[${index}].${field}`);
+        }
+      }
+    });
+  }
+
+  return missing;
 }
 
 /* ── Filter dropdown ──────────────────────────────────────── */
@@ -126,8 +457,8 @@ function FilterDropdown({ label, value, options, onChange, onClear }) {
 function MissingFieldRow({ doc, onView }) {
   const [hovered, setHovered] = useState(false);
 
-  // Count null fields and empty string fields in ocr_ui_results
-  const nullFields = getMissingFieldKeys(doc.ocr_ui_results);
+  // Count missing mandatory fields in ocr_ui_results
+  const nullFields = getMissingFieldKeys(doc.ocr_ui_results, doc.ocr_document_type);
 
   return (
     <div
@@ -256,7 +587,9 @@ export default function MissingFieldsPage() {
   // Extract unique doc types and environments for filters
   const docTypes = data ? [...new Set(data.map(d => d.ocr_document_type).filter(Boolean))] : [];
   const environments = data ? [...new Set(data.map(d => d.environment).filter(Boolean))] : [];
-  const visibleDocuments = (data || []).filter((doc) => getMissingFieldKeys(doc?.ocr_ui_results).length > 0);
+  const visibleDocuments = showAll
+    ? (data || [])
+    : (data || []).filter((doc) => getMissingFieldKeys(doc?.ocr_ui_results, doc?.ocr_document_type).length > 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>

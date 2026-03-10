@@ -118,8 +118,129 @@ function toLabel(key) {
   return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
+function normalizeDocType(docType = "") {
+  const raw = String(docType || "").toLowerCase();
+  return {
+    raw,
+    compact: raw.replace(/[^a-z]/g, ""),
+    isReceipt: raw.includes("receipt"),
+    isInvoice: raw.includes("invoice"),
+    isSale: raw.includes("sale"),
+    isPurchase: raw.includes("purchase"),
+    isBankStatement: raw.includes("bank statement") || raw.replace(/[^a-z]/g, "").includes("bankstatement"),
+  };
+}
+
+function getMandatoryKeySet(docType = "") {
+  const type = normalizeDocType(docType);
+
+  if (type.isBankStatement) {
+    return new Set([
+      "bankname",
+      "bank_name",
+      "accountholdername",
+      "account_holder_name",
+      "openingdate",
+      "opening_date",
+      "closingdate",
+      "closing_date",
+      "openingbalance",
+      "opening_balance",
+      "closingbalance",
+      "closing_balance",
+      "currencycode",
+      "currency",
+      "tableitems",
+      "table_items",
+      "items",
+    ]);
+  }
+
+  if (type.isReceipt) {
+    return new Set([
+      "document_id",
+      "documentid",
+      "supplier_name",
+      "suppliername",
+      "receipt_date",
+      "date",
+      "currency",
+      "currencycode",
+      "total_amount",
+      "totalamount",
+      "net_amount",
+      "netamount",
+      "vat_amount",
+      "taxamount",
+      "discount",
+      "discountamount",
+      "items",
+      "tableitems",
+    ]);
+  }
+
+  if (type.isInvoice) {
+    const keys = new Set([
+      "documentid",
+      "document_id",
+      "invoice_number",
+      "date",
+      "invoice_date",
+      "duedate",
+      "due_date",
+      "currencycode",
+      "currency",
+      "totalamount",
+      "total_amount",
+      "netamount",
+      "net_amount",
+      "subtotal",
+      "taxamount",
+      "vat_amount",
+      "discountamount",
+      "discount",
+      "tableitems",
+      "items",
+    ]);
+    keys.add("customername");
+    keys.add("customer_name");
+    if (!type.isSale) {
+      keys.add("suppliername");
+      keys.add("supplier_name");
+    }
+    return keys;
+  }
+
+  const keys = new Set([
+    "documentid",
+    "date",
+    "duedate",
+    "currencycode",
+    "totalamount",
+    "netamount",
+    "taxamount",
+    "discountamount",
+    "tableitems",
+    "items",
+  ]);
+
+  if (type.isSale) keys.add("customername");
+  if (type.isPurchase) keys.add("suppliername");
+
+  return keys;
+}
+
+function isMandatoryFieldKey(fieldKey, docType = "") {
+  const normalized = String(fieldKey || "").toLowerCase();
+  const compact = normalized.replace(/[^a-z0-9_]/g, "").replace(/_/g, "");
+  const mandatory = getMandatoryKeySet(docType);
+  if (mandatory.has(normalized)) return true;
+  if (mandatory.has(compact)) return true;
+  return false;
+}
+
 /* ── Single field ── */
-function FieldInput({ fieldKey, value, onChange }) {
+function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
   const isObj = typeof value === "object" && value !== null;
   const isLong = !isObj && String(value ?? "").length > 100;
   const useLargeTa = isLargeTextareaField(fieldKey);
@@ -129,6 +250,7 @@ function FieldInput({ fieldKey, value, onChange }) {
       <div className="flex flex-col gap-2.5">
         <label className="text-[13px] font-semibold uppercase tracking-wider pl-1" style={{ color: "var(--text-muted)" }}>
           {toLabel(fieldKey)}
+          {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
         </label>
         <textarea
           value={isObj ? JSON.stringify(value, null, 2) : String(value ?? "")}
@@ -154,6 +276,7 @@ function FieldInput({ fieldKey, value, onChange }) {
     <div className="flex flex-col gap-2.5">
       <label className="text-[13px] font-semibold uppercase tracking-wider pl-1" style={{ color: "var(--text-muted)" }}>
         {toLabel(fieldKey)}
+        {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
       </label>
       <input
         type="text"
@@ -231,6 +354,7 @@ function EditableFields({ document, isLoading }) {
   if (isLoading) return <EditableFieldSkeleton />;
 
   const keys = Object.keys(fields);
+  const docType = document?.ocr_document_type || "";
 
   return (
     <div className="flex flex-col">
@@ -255,12 +379,32 @@ function EditableFields({ document, isLoading }) {
                       const partnerKey = getPairEnd(key, group.keys);
                       return (
                         <div key={key} className="grid grid-cols-2 gap-4">
-                          <FieldInput fieldKey={key} value={fields[key]} onChange={handleChange} />
-                          {partnerKey && <FieldInput fieldKey={partnerKey} value={fields[partnerKey]} onChange={handleChange} />}
+                          <FieldInput
+                            fieldKey={key}
+                            value={fields[key]}
+                            onChange={handleChange}
+                            isMandatory={isMandatoryFieldKey(key, docType)}
+                          />
+                          {partnerKey && (
+                            <FieldInput
+                              fieldKey={partnerKey}
+                              value={fields[partnerKey]}
+                              onChange={handleChange}
+                              isMandatory={isMandatoryFieldKey(partnerKey, docType)}
+                            />
+                          )}
                         </div>
                       );
                     }
-                    return <FieldInput key={key} fieldKey={key} value={fields[key]} onChange={handleChange} />;
+                    return (
+                      <FieldInput
+                        key={key}
+                        fieldKey={key}
+                        value={fields[key]}
+                        onChange={handleChange}
+                        isMandatory={isMandatoryFieldKey(key, docType)}
+                      />
+                    );
                   })}
                 </div>
               </div>
