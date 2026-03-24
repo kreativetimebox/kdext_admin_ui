@@ -1,25 +1,33 @@
 "use client";
 
 import { useState, useEffect, memo, useCallback } from "react";
-import { Save, Loader2, RotateCcw } from "lucide-react";
+import { Save, Loader2, RotateCcw, Plus, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axios from "axios";
 
-/* ── Items & VAT keys (get taller textarea) ── */
-const LARGE_TEXTAREA_KEYS = ["items", "vat_information", "vat_info", "line_items", "products"];
+/* ── Keys rendered as a structured table (any array-of-objects) ── */
+function isArrayOfObjects(val) {
+  return Array.isArray(val) && val.length > 0 && typeof val[0] === "object" && val[0] !== null;
+}
 
-function isLargeTextareaField(key) {
-  const k = key.toLowerCase();
-  return LARGE_TEXTAREA_KEYS.some((lk) => k.includes(lk));
+/* ── Normalise string "null" / null / undefined → "" for display ── */
+function displayValue(val) {
+  if (val === null || val === undefined) return "";
+  if (typeof val === "string") {
+    const t = val.trim().toLowerCase();
+    if (t === "null" || t === "n/a" || t === "na") return "";
+  }
+  if (typeof val === "object") return JSON.stringify(val, null, 2);
+  return String(val);
 }
 
 /* ── Field section grouping ── */
 const FIELD_GROUPS = [
-  { label: "Supplier Info", keys: ["supplier", "vendor", "customer", "vat_number", "website", "email", "phone"] },
-  { label: "Transaction",   keys: ["receipt_number", "invoice_number", "order_number", "invoice_id", "date", "due_date", "payment", "card", "currency"] },
-  { label: "Amounts",       keys: ["subtotal", "total_amount", "total", "net", "tax", "gross", "discount", "amount"] },
-  { label: "Items & VAT",   keys: ["items", "vat_information", "vat_info", "vat_amount", "vat_rate", "vat_code", "line_items", "products"] },
+  { label: "Supplier Info", keys: ["supplier", "vendor", "customer", "vat_number", "vatnumber", "email", "phone", "website", "address"] },
+  { label: "Transaction", keys: ["receipt_number", "invoice_number", "order_number", "ordernumber", "invoice_id", "documentid", "document_id", "date", "due_date", "duedate", "payment", "card", "currency"] },
+  { label: "Amounts", keys: ["subtotal", "total_amount", "totalamount", "total", "net", "tax", "gross", "discount", "amount", "amounts"] },
+  { label: "VAT & Items", keys: ["vat_information", "vat_info", "vat_amount", "vat_rate", "vat_code", "tableitems", "table_items", "items", "line_items"] },
 ];
 
 const PAIR_KEYS = [
@@ -70,10 +78,8 @@ function isPairEndKey(key, allKeys) {
 /* ── Coerce edited string values back to their original types ── */
 function coerceToOriginalType(newVal, originalVal) {
   if (typeof newVal !== "string") return newVal;
-
   const trimmed = newVal.trim();
 
-  // JSON objects / arrays
   if (
     (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
     (trimmed.startsWith("[") && trimmed.endsWith("]"))
@@ -81,17 +87,18 @@ function coerceToOriginalType(newVal, originalVal) {
     try { return JSON.parse(trimmed); } catch { /* keep as string */ }
   }
 
-  // Null — restore null if original was null/undefined
-  if (trimmed === "" && (originalVal === null || originalVal === undefined)) return null;
+  if (trimmed === "") {
+    const origWasNull = originalVal === null || originalVal === undefined;
+    const origWasNullStr = typeof originalVal === "string" && originalVal.trim().toLowerCase() === "null";
+    if (origWasNull || origWasNullStr) return null;
+  }
   if (trimmed.toLowerCase() === "null") return null;
 
-  // Number — only coerce back if the original was a number
   if (typeof originalVal === "number" && trimmed !== "") {
     const num = Number(trimmed);
     if (!isNaN(num) && isFinite(num)) return num;
   }
 
-  // Boolean — only coerce back if the original was a boolean
   if (typeof originalVal === "boolean") {
     if (trimmed.toLowerCase() === "true") return true;
     if (trimmed.toLowerCase() === "false") return false;
@@ -136,103 +143,68 @@ function getMandatoryKeySet(docType = "") {
 
   if (type.isBankStatement) {
     return new Set([
-      "documentid",
-      "document_id",
-      "bankname",
-      "bank_name",
-      "accountholdername",
-      "account_holder_name",
-      "openingdate",
-      "opening_date",
-      "closingdate",
-      "closing_date",
-      "openingbalance",
-      "opening_balance",
-      "closingbalance",
-      "closing_balance",
-      "currencycode",
-      "currency",
-      "tableitems",
-      "table_items",
-      "items",
+      "documentid", "document_id",
+      "bankname", "bank_name",
+      "accountholdername", "account_holder_name",
+      "openingdate", "opening_date",
+      "closingdate", "closing_date",
+      "openingbalance", "opening_balance",
+      "closingbalance", "closing_balance",
+      "currencycode", "currency",
+      "tableitems", "table_items", "items",
     ]);
   }
 
   if (type.isReceipt) {
     return new Set([
-      "document_id",
-      "documentid",
-      "supplier_name",
-      "suppliername",
-      "receipt_date",
-      "date",
-      "currency",
-      "currencycode",
-      "total_amount",
-      "totalamount",
-      "net_amount",
-      "netamount",
-      "vat_amount",
-      "taxamount",
-      "discount",
-      "discountamount",
-      "items",
-      "tableitems",
+      // Identity
+      "document_id", "documentid",
+      // Parties
+      "supplier_name", "suppliername",
+      "customer_name", "customername",
+      // Date
+      "receipt_date", "date",
+      // Currency
+      "currency", "currencycode",
+      // Amounts
+      "total_amount", "totalamount",
+      "net_amount", "netamount",
+      "tax_amount", "taxamount",
+      "discount_amount", "discountamount",
+      // Line items
+      "items", "tableitems", "table_items",
     ]);
   }
 
   if (type.isInvoice) {
-    const keys = new Set([
-      "documentid",
-      "document_id",
-      "invoice_number",
-      "date",
-      "invoice_date",
-      "duedate",
-      "due_date",
-      "currencycode",
-      "currency",
-      "totalamount",
-      "total_amount",
-      "amounts",
-      "grandtotal",
-      "grand_total",
-      "netamount",
-      "net_amount",
-      "subtotal",
-      "taxamount",
-      "vat_amount",
-      "vat",
-      "discountamount",
-      "discount",
-      "tableitems",
-      "items",
+    return new Set([
+      // Identity
+      "documentid", "document_id",
+      // Parties
+      "suppliername", "supplier_name",
+      "customername", "customer_name",
+      // Dates
+      "date", "invoice_date",
+      "duedate", "due_date",
+      // Currency
+      "currencycode", "currency",
+      // Amounts
+      "totalamount", "total_amount",
+      "taxamount", "tax_amount",
+      "netamount", "net_amount",
+      "discountamount", "discount_amount",
+      // Line items
+      "tableitems", "table_items", "items",
     ]);
-    keys.add("customername");
-    keys.add("customer_name");
-    if (!type.isSale) {
-      keys.add("suppliername");
-      keys.add("supplier_name");
-    }
-    return keys;
   }
 
   const keys = new Set([
-    "documentid",
-    "date",
-    "duedate",
-    "currencycode",
-    "totalamount",
-    "netamount",
-    "taxamount",
-    "discountamount",
-    "tableitems",
-    "items",
+    "documentid", "date", "duedate", "currencycode",
+    "totalamount", "netamount", "taxamount", "discountamount",
+    "tableitems", "items",
   ]);
-
   if (type.isSale) keys.add("customername");
   if (type.isPurchase) keys.add("suppliername");
-
   return keys;
 }
 
@@ -245,13 +217,185 @@ function isMandatoryFieldKey(fieldKey, docType = "") {
   return false;
 }
 
-/* ── Single field ── */
-function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
-  const isObj = typeof value === "object" && value !== null;
-  const isLong = !isObj && String(value ?? "").length > 100;
-  const useLargeTa = isLargeTextareaField(fieldKey);
+/* ── Generic Array-of-Objects Table Editor ─────────────────── */
+function discoverColumns(rows) {
+  const seen = new Set();
+  const cols = [];
+  for (const row of rows) {
+    for (const k of Object.keys(row || {})) {
+      if (!seen.has(k)) { seen.add(k); cols.push(k); }
+    }
+  }
+  return cols;
+}
 
-  if (isObj || isLong || useLargeTa) {
+function normalizeRows(rawRows) {
+  if (Array.isArray(rawRows)) return rawRows;
+  if (typeof rawRows === "string") {
+    try { return JSON.parse(rawRows); } catch { return []; }
+  }
+  return [];
+}
+
+function ArrayTableEditor({ fieldKey, items, onChange, isMandatory }) {
+  const rows = normalizeRows(items);
+  const columns = discoverColumns(rows);
+
+  function updateCell(rowIdx, colKey, val) {
+    const updated = rows.map((r, i) =>
+      i === rowIdx ? { ...r, [colKey]: val } : r
+    );
+    onChange(fieldKey, updated);
+  }
+
+  function addRow() {
+    const empty = {};
+    columns.forEach((c) => { empty[c] = ""; });
+    onChange(fieldKey, [...rows, empty]);
+  }
+
+  function removeRow(rowIdx) {
+    onChange(fieldKey, rows.filter((_, i) => i !== rowIdx));
+  }
+
+  const colCount = columns.length;
+  const gridCols = colCount > 0
+    ? `repeat(${colCount}, minmax(0, 1fr)) 36px`
+    : "1fr";
+
+  const inputStyle = {
+    width: "100%",
+    padding: "6px 8px",
+    fontSize: 13,
+    borderRadius: 6,
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
+    color: "var(--foreground)",
+    outline: "none",
+    minWidth: 0,
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <label
+        className="text-[13px] font-semibold uppercase tracking-wider pl-1"
+        style={{ color: "var(--text-muted)" }}
+      >
+        {toLabel(fieldKey)}
+        {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
+      </label>
+
+      <div style={{ border: "1px solid var(--panel-border)", borderRadius: 10, overflow: "hidden" }}>
+        {/* Header */}
+        {columns.length > 0 && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: gridCols,
+              gap: 6,
+              padding: "8px 10px",
+              background: "var(--input-bg)",
+              borderBottom: "1px solid var(--panel-border)",
+            }}
+          >
+            {columns.map((c) => (
+              <span
+                key={c}
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.06em",
+                  color: "var(--text-muted)",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {toLabel(c)}
+              </span>
+            ))}
+            <span />
+          </div>
+        )}
+
+        {/* Rows */}
+        {rows.length === 0 ? (
+          <div style={{ padding: "18px 12px", textAlign: "center", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+            No items — click + Add Row
+          </div>
+        ) : (
+          rows.map((row, rowIdx) => (
+            <div
+              key={rowIdx}
+              style={{
+                display: "grid",
+                gridTemplateColumns: gridCols,
+                gap: 6,
+                padding: "6px 10px",
+                borderBottom: rowIdx < rows.length - 1 ? "1px solid var(--panel-border)" : "none",
+                alignItems: "center",
+              }}
+            >
+              {columns.map((col) => (
+                <input
+                  key={col}
+                  type="text"
+                  value={displayValue(row[col])}
+                  placeholder={toLabel(col)}
+                  onChange={(e) => updateCell(rowIdx, col, e.target.value)}
+                  style={inputStyle}
+                  onFocus={(e) => { e.target.style.borderColor = "var(--accent)"; }}
+                  onBlur={(e) => { e.target.style.borderColor = "var(--input-border)"; }}
+                />
+              ))}
+              <button
+                type="button"
+                onClick={() => removeRow(rowIdx)}
+                title="Remove row"
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 28, height: 28, borderRadius: 6, border: "none",
+                  background: "transparent", color: "#ef4444", cursor: "pointer", flexShrink: 0,
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))
+        )}
+
+        {/* Add row footer */}
+        <button
+          type="button"
+          onClick={addRow}
+          style={{
+            display: "flex", alignItems: "center", gap: 6, width: "100%",
+            padding: "8px 12px", fontSize: 12, fontWeight: 600,
+            color: "var(--accent)", background: "transparent", border: "none",
+            borderTop: rows.length > 0 ? "1px dashed var(--panel-border)" : "none",
+            cursor: "pointer",
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+        >
+          <Plus size={13} />
+          Add Row
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ── Single flat field ── */
+function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
+  const isObj = typeof value === "object" && value !== null && !Array.isArray(value);
+  const rawStr = displayValue(value);
+  const isLong = !isObj && rawStr.length > 100;
+
+  if (isObj || isLong) {
     return (
       <div className="flex flex-col gap-2.5">
         <label className="text-[13px] font-semibold uppercase tracking-wider pl-1" style={{ color: "var(--text-muted)" }}>
@@ -259,16 +403,15 @@ function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
           {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
         </label>
         <textarea
-          value={isObj ? JSON.stringify(value, null, 2) : String(value ?? "")}
+          value={rawStr}
           onChange={(e) => onChange(fieldKey, e.target.value)}
-          rows={useLargeTa ? 14 : 4}
+          rows={4}
           className="w-full px-5 py-4 text-[14px] rounded-lg border transition-all resize-y font-mono overflow-y-auto"
           style={{
             background: "var(--input-bg)",
             borderColor: "var(--input-border)",
             color: "var(--foreground)",
-            minHeight: useLargeTa ? "20rem" : "5rem",
-            maxHeight: useLargeTa ? "40rem" : "10rem",
+            minHeight: "5rem", maxHeight: "14rem",
             outline: "none",
           }}
           onFocus={(e) => { e.target.style.borderColor = "var(--accent)"; }}
@@ -286,7 +429,7 @@ function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
       </label>
       <input
         type="text"
-        value={String(value ?? "")}
+        value={rawStr}
         onChange={(e) => onChange(fieldKey, e.target.value)}
         className="w-full h-12 px-5 text-[15px] rounded-lg border transition-all"
         style={{
@@ -309,15 +452,30 @@ function EditableFields({ document, isLoading }) {
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (document?.ocr_ui_results && typeof document.ocr_ui_results === "object") {
-      setFields(document.ocr_ui_results);
-    } else if (document?.ocr_results && typeof document.ocr_results === "object") {
-      const keys = Object.keys(document.ocr_results);
-      if (keys.length > 0) setFields(document.ocr_results);
-      else setFields({});
-    } else {
-      setFields({});
+    // Helper: pick the flat fields object from however the result is stored.
+    // New pipeline wraps results as { status, formatted_result: { ... } }.
+    // Old pipeline stores the flat object directly.
+    function extractFields(src) {
+      if (!src || typeof src !== "object") return null;
+      if (src.formatted_result && typeof src.formatted_result === "object") {
+        return src.formatted_result;
+      }
+      return src;
     }
+
+    const uiSrc = extractFields(document?.ocr_ui_results);
+    if (uiSrc && Object.keys(uiSrc).length > 0) {
+      setFields(uiSrc);
+      return;
+    }
+
+    const ocrSrc = extractFields(document?.ocr_results);
+    if (ocrSrc && Object.keys(ocrSrc).length > 0) {
+      setFields(ocrSrc);
+      return;
+    }
+
+    setFields({});
   }, [document]);
 
   const handleChange = useCallback((key, value) => {
@@ -328,29 +486,48 @@ function EditableFields({ document, isLoading }) {
     if (!document?.id) return;
     setIsSaving(true);
     try {
-      const original = document?.ocr_ui_results ?? document?.ocr_results ?? {};
+      // Resolve the original flat fields for type-coercion hints
+      const rawUi = document?.ocr_ui_results ?? document?.ocr_results ?? {};
+      const original = (rawUi.formatted_result && typeof rawUi.formatted_result === "object")
+        ? rawUi.formatted_result
+        : rawUi;
 
-      // Coerce every field value back to its proper type before saving
       const parsed = {};
       for (const [key, val] of Object.entries(fields)) {
-        parsed[key] = coerceToOriginalType(val, original[key]);
+        if (isArrayOfObjects(val)) {
+          const origRows = Array.isArray(original[key]) ? original[key] : [];
+          parsed[key] = val.map((row, ri) => {
+            const origRow = origRows[ri] ?? {};
+            const coercedRow = {};
+            for (const [ck, cv] of Object.entries(row)) {
+              coercedRow[ck] = coerceToOriginalType(cv, origRow[ck]);
+            }
+            return coercedRow;
+          });
+        } else {
+          parsed[key] = coerceToOriginalType(val, original[key]);
+        }
       }
 
       const { data } = await axios.post(`/api/document/${document.id}/update`, parsed);
 
-      // Sync local state with the properly-typed data returned from the DB
-      if (data?.ocr_ui_results && typeof data.ocr_ui_results === "object") {
-        setFields(data.ocr_ui_results);
+      // Unwrap the returned data the same way
+      const returnedUi = data?.ocr_ui_results;
+      const returnedFields = (returnedUi?.formatted_result && typeof returnedUi.formatted_result === "object")
+        ? returnedUi.formatted_result
+        : (typeof returnedUi === "object" && returnedUi ? returnedUi : null);
+
+      if (returnedFields && Object.keys(returnedFields).length > 0) {
+        setFields(returnedFields);
       } else {
         setFields(parsed);
       }
 
-      // Invalidate the react-query cache so navigating away & back shows fresh data
       queryClient.invalidateQueries({ queryKey: ["document", document.id] });
-
       toast.success("Saved successfully");
     } catch (err) {
       console.error("Save error:", err);
+
       toast.error(err?.response?.data?.error || "Failed to save");
     } finally {
       setIsSaving(false);
@@ -359,66 +536,94 @@ function EditableFields({ document, isLoading }) {
 
   if (isLoading) return <EditableFieldSkeleton />;
 
-  const keys = Object.keys(fields);
   const docType = document?.ocr_document_type || "";
-  const mandatoryKeys = keys.filter((key) => isMandatoryFieldKey(key, docType));
+  const allKeys = Object.keys(fields);
+  const mandatoryKeys = allKeys.filter((key) => isMandatoryFieldKey(key, docType));
+
+  // Split: array-of-objects → table editor; everything else → flat input
+  const tableKeys = mandatoryKeys.filter((k) => isArrayOfObjects(fields[k]));
+  const flatKeys = mandatoryKeys.filter((k) => !isArrayOfObjects(fields[k]));
 
   return (
     <div className="flex flex-col">
       {mandatoryKeys.length === 0 ? (
         <div className="px-5 py-6 text-center">
-          <p className="text-sm text-[var(--text-muted)] italic">No mandatory editable fields available for this document.</p>
+          <p className="text-sm text-[var(--text-muted)] italic">
+            No mandatory editable fields available for this document.
+          </p>
         </div>
       ) : (
         <>
-          {/* Fields area */}
-          <div>
-            {groupFields(mandatoryKeys).map((group, gi) => (
-              <div
-                key={group.label}
-                className={gi > 0 ? "border-t" : ""}
-                style={{ borderColor: "var(--panel-border)" }}
-              >
-                <div className="flex flex-col gap-6 px-8 py-6">
-                  {group.keys.map((key) => {
-                    if (isPairEndKey(key, group.keys)) return null;
-                    if (isPairStart(key, group.keys)) {
-                      const partnerKey = getPairEnd(key, group.keys);
-                      return (
-                        <div key={key} className="grid grid-cols-2 gap-4">
-                          <FieldInput
-                            fieldKey={key}
-                            value={fields[key]}
-                            onChange={handleChange}
-                            isMandatory={isMandatoryFieldKey(key, docType)}
-                          />
-                          {partnerKey && (
+          {/* Flat fields */}
+          {flatKeys.length > 0 && (
+            <div>
+              {groupFields(flatKeys).map((group, gi) => (
+                <div
+                  key={group.label}
+                  className={gi > 0 ? "border-t" : ""}
+                  style={{ borderColor: "var(--panel-border)" }}
+                >
+                  <div className="flex flex-col gap-6 px-8 py-6">
+                    {group.keys.map((key) => {
+                      if (isPairEndKey(key, group.keys)) return null;
+                      if (isPairStart(key, group.keys)) {
+                        const partnerKey = getPairEnd(key, group.keys);
+                        return (
+                          <div key={key} className="grid grid-cols-2 gap-4">
                             <FieldInput
-                              fieldKey={partnerKey}
-                              value={fields[partnerKey]}
+                              fieldKey={key}
+                              value={fields[key]}
                               onChange={handleChange}
-                              isMandatory={isMandatoryFieldKey(partnerKey, docType)}
+                              isMandatory={isMandatoryFieldKey(key, docType)}
                             />
-                          )}
-                        </div>
+                            {partnerKey && (
+                              <FieldInput
+                                fieldKey={partnerKey}
+                                value={fields[partnerKey]}
+                                onChange={handleChange}
+                                isMandatory={isMandatoryFieldKey(partnerKey, docType)}
+                              />
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <FieldInput
+                          key={key}
+                          fieldKey={key}
+                          value={fields[key]}
+                          onChange={handleChange}
+                          isMandatory={isMandatoryFieldKey(key, docType)}
+                        />
                       );
-                    }
-                    return (
-                      <FieldInput
-                        key={key}
-                        fieldKey={key}
-                        value={fields[key]}
-                        onChange={handleChange}
-                        isMandatory={isMandatoryFieldKey(key, docType)}
-                      />
-                    );
-                  })}
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
 
-          {/* Buttons — always visible, outside the scroll */}
+          {/* Array-of-objects table editors */}
+          {tableKeys.length > 0 && (
+            <div
+              className={flatKeys.length > 0 ? "border-t" : ""}
+              style={{ borderColor: "var(--panel-border)" }}
+            >
+              <div className="flex flex-col gap-8 px-8 py-6">
+                {tableKeys.map((key) => (
+                  <ArrayTableEditor
+                    key={key}
+                    fieldKey={key}
+                    items={fields[key]}
+                    onChange={handleChange}
+                    isMandatory={isMandatoryFieldKey(key, docType)}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Save / Reset buttons */}
           <div
             className="flex items-center justify-center gap-5 px-8 py-6 border-t"
             style={{ borderColor: "var(--panel-border)", background: "var(--panel-bg)" }}
@@ -426,8 +631,14 @@ function EditableFields({ document, isLoading }) {
             <button
               type="button"
               className="flex items-center justify-center gap-3 rounded-xl text-lg font-medium transition-colors"
-              style={{ background: "var(--input-bg)", color: "var(--text-muted)", border: "1px solid var(--panel-border)", minWidth: "160px", minHeight: "52px", padding: "14px 32px" }}
-              onClick={() => { if (document?.ocr_ui_results) setFields(document.ocr_ui_results); }}
+              style={{
+                background: "var(--input-bg)", color: "var(--text-muted)",
+                border: "1px solid var(--panel-border)", minWidth: "160px", minHeight: "52px", padding: "14px 32px",
+              }}
+              onClick={() => {
+                const src = document?.ocr_ui_results ?? document?.ocr_results;
+                if (src) setFields(src);
+              }}
             >
               <RotateCcw size={18} />
               Reset
@@ -436,7 +647,10 @@ function EditableFields({ document, isLoading }) {
               onClick={handleSave}
               disabled={isSaving || !document?.id}
               className="flex items-center justify-center gap-3 rounded-xl text-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{ background: isSaving ? "var(--text-muted)" : "var(--accent)", minWidth: "180px", minHeight: "52px", padding: "14px 36px" }}
+              style={{
+                background: isSaving ? "var(--text-muted)" : "var(--accent)",
+                minWidth: "180px", minHeight: "52px", padding: "14px 36px",
+              }}
             >
               {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               {isSaving ? "Saving…" : "Save"}
