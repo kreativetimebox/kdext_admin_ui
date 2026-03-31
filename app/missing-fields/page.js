@@ -69,7 +69,12 @@ function isMissingByPaths(obj, paths = []) {
   return isMissingValue(getFirstValueByPaths(obj, paths));
 }
 
-function getMissingFieldKeys(ocrUiResults, docType = "") {
+function getMissingFieldKeys(rawOcrUiResults, docType = "") {
+  // Unwrap formatted_result wrapper if present
+  const ocrUiResults = (rawOcrUiResults?.formatted_result && typeof rawOcrUiResults.formatted_result === "object")
+    ? rawOcrUiResults.formatted_result
+    : rawOcrUiResults;
+
   const missing = [];
   const normalizedDocType = String(docType || "").toLowerCase();
   const compactDocType = normalizedDocType.replace(/[^a-z]/g, "");

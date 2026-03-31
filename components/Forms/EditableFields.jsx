@@ -122,7 +122,10 @@ function EditableFieldSkeleton() {
 }
 
 function toLabel(key) {
-  return key.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  return key
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
 function normalizeDocType(docType = "") {
