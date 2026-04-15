@@ -197,6 +197,7 @@ jobs:
               docker rm -f \${APP} 2>/dev/null || true
 
               docker run -d \
+                --gpus all \
                 --name \${APP} \
                 -p \${PROD_PORT}:3004 \
                 --restart always \
