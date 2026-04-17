@@ -3,7 +3,8 @@ name: Build and Deploy Docker Image (SCP, Zero Downtime)
 on:
   push:
     branches:
-      - [main, master]
+      - main
+      - master
   workflow_dispatch:
 
 env:
