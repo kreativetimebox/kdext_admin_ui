@@ -88,7 +88,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p $PORT \
             -o BatchMode=yes \
             -o StrictHostKeyChecking=no \
-            "balabantaray-user@${HOST}" bash <<EOF
+            "root@${HOST}" bash <<EOF
               set -euo pipefail
 
               APP=kdext_manual_anaylizer
@@ -114,7 +114,6 @@ jobs:
               docker rm -f \${APP}_new 2>/dev/null || true
 
               docker run -d \
-                --gpus all \
                 --name \${APP}_new \
                 -p \${TEMP_PORT}:3004 \
                 --restart always \
@@ -144,7 +143,7 @@ jobs:
                   continue
                 fi
 
-                # Try health endpoint first, then fallback to balabantaray-user
+                # Try health endpoint first, then fallback to root
                 if command -v curl >/dev/null 2>&1; then
                   if curl -fs http://127.0.0.1:\${TEMP_PORT}/api/health >/dev/null 2>&1; then
                     check_ok=true
@@ -152,7 +151,7 @@ jobs:
                     break
                   elif curl -fs http://127.0.0.1:\${TEMP_PORT} >/dev/null 2>&1; then
                     check_ok=true
-                    echo "✅ Health check passed via balabantaray-user endpoint (curl)"
+                    echo "✅ Health check passed via root endpoint (curl)"
                     break
                   fi
                 elif command -v wget >/dev/null 2>&1; then
@@ -162,7 +161,7 @@ jobs:
                     break
                   elif wget -qO- --timeout=5 http://127.0.0.1:\${TEMP_PORT} >/dev/null 2>&1; then
                     check_ok=true
-                    echo "✅ Health check passed via balabantaray-user endpoint (wget)"
+                    echo "✅ Health check passed via root endpoint (wget)"
                     break
                   fi
                 else
