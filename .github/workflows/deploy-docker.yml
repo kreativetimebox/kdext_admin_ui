@@ -137,7 +137,7 @@ jobs:
                 -e HOSTNAME=0.0.0.0 \
                 -e DEXAI_DB_URL=${{ secrets.DEXAI_DB_URL }} \
                 -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY} \
+                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
                 -e AWS_REGION=${{ secrets.AWS_REGION }} \
                 ${IMAGE}:latest
@@ -174,7 +174,7 @@ jobs:
                 -e HOSTNAME=0.0.0.0 \
                 -e DEXAI_DB_URL=${{ secrets.DEXAI_DB_URL }} \
                 -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY} \
+                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
                 -e AWS_REGION=${{ secrets.AWS_REGION }} \
                 ${IMAGE}:latest
