@@ -29,6 +29,12 @@ function isMissingValue(val) {
   return false;
 }
 
+function isMissingItemsArray(val) {
+  if (isMissingValue(val)) return true;
+  if (!Array.isArray(val)) return true;
+  return val.length === 0;
+}
+
 function getFirstValueByAliases(obj, aliases = []) {
   if (!obj || typeof obj !== "object") return undefined;
   for (const key of aliases) {
@@ -153,7 +159,7 @@ function getMissingFieldKeys(rawOcrUiResults, docType = "") {
     }
 
     const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "table_items", "items"]);
-    if (isMissingValue(items)) {
+    if (isMissingItemsArray(items)) {
       missing.push("tableItems");
     }
 
@@ -187,7 +193,7 @@ function getMissingFieldKeys(rawOcrUiResults, docType = "") {
     }
 
     const items = getFirstValueByAliases(ocrUiResults, ["items", "tableItems"]);
-    if (isMissingValue(items)) {
+    if (isMissingItemsArray(items)) {
       missing.push("items");
     }
 
@@ -230,7 +236,7 @@ function getMissingFieldKeys(rawOcrUiResults, docType = "") {
     }
 
     const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "items"]);
-    if (isMissingValue(items)) {
+    if (isMissingItemsArray(items)) {
       missing.push("tableItems");
     }
 
@@ -262,7 +268,7 @@ function getMissingFieldKeys(rawOcrUiResults, docType = "") {
   }
 
   const tableItems = getFirstValueByAliases(ocrUiResults, ["tableItems", "items"]);
-  if (isMissingValue(tableItems)) {
+  if (isMissingItemsArray(tableItems)) {
     missing.push("tableItems");
   }
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, memo, useCallback } from "react";
-import { Save, Loader2, RotateCcw, Plus, Trash2 } from "lucide-react";
+import { Save, Loader2, RotateCcw, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import toast from "react-hot-toast";
 import axios from "axios";
@@ -448,42 +448,70 @@ function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
   );
 }
 
+/* ── Helper: pick the flat fields object from however the result is stored.
+   New pipeline wraps results as { status, formatted_result: { ... } }.
+   Old pipeline stores the flat object directly. */
+function extractFields(src) {
+  if (!src || typeof src !== "object") return null;
+  if (src.formatted_result && typeof src.formatted_result === "object") {
+    return src.formatted_result;
+  }
+  return src;
+}
+
+function isMultiReceipt(fields) {
+  const arr = fields?.multiple_receipts;
+  return Array.isArray(arr) && arr.length > 0 && arr.every((r) => r && typeof r === "object" && !Array.isArray(r));
+}
+
 /* ── Main component ── */
 function EditableFields({ document, isLoading }) {
   const [fields, setFields] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [currentPage, setCurrentPage] = useState(0);
   const queryClient = useQueryClient();
 
   useEffect(() => {
-    // Helper: pick the flat fields object from however the result is stored.
-    // New pipeline wraps results as { status, formatted_result: { ... } }.
-    // Old pipeline stores the flat object directly.
-    function extractFields(src) {
-      if (!src || typeof src !== "object") return null;
-      if (src.formatted_result && typeof src.formatted_result === "object") {
-        return src.formatted_result;
-      }
-      return src;
-    }
-
     const uiSrc = extractFields(document?.ocr_ui_results);
     if (uiSrc && Object.keys(uiSrc).length > 0) {
       setFields(uiSrc);
+      setCurrentPage(0);
       return;
     }
 
     const ocrSrc = extractFields(document?.ocr_results);
     if (ocrSrc && Object.keys(ocrSrc).length > 0) {
       setFields(ocrSrc);
+      setCurrentPage(0);
       return;
     }
 
     setFields({});
+    setCurrentPage(0);
   }, [document]);
 
+  const multiMode = isMultiReceipt(fields);
+  const totalPages = multiMode ? fields.multiple_receipts.length : 1;
+  const safePage = Math.min(Math.max(0, currentPage), Math.max(0, totalPages - 1));
+
+  useEffect(() => {
+    if (currentPage !== safePage) setCurrentPage(safePage);
+  }, [currentPage, safePage]);
+
+  const viewFields = multiMode ? (fields.multiple_receipts[safePage] || {}) : fields;
+
   const handleChange = useCallback((key, value) => {
-    setFields((prev) => ({ ...prev, [key]: value }));
-  }, []);
+    setFields((prev) => {
+      if (isMultiReceipt(prev)) {
+        const idx = Math.min(Math.max(0, currentPage), prev.multiple_receipts.length - 1);
+        const nextArr = prev.multiple_receipts.map((r, i) =>
+          i === idx ? { ...r, [key]: value } : r
+        );
+        return { ...prev, multiple_receipts: nextArr };
+      }
+      return { ...prev, [key]: value };
+    });
+  }, [currentPage]);
 
   const handleSave = async () => {
     if (!document?.id) return;
@@ -540,19 +568,99 @@ function EditableFields({ document, isLoading }) {
   if (isLoading) return <EditableFieldSkeleton />;
 
   const docType = document?.ocr_document_type || "";
-  const allKeys = Object.keys(fields);
+  const allKeys = Object.keys(viewFields);
   const mandatoryKeys = allKeys.filter((key) => isMandatoryFieldKey(key, docType));
 
   // Split: array-of-objects → table editor; everything else → flat input
-  const tableKeys = mandatoryKeys.filter((k) => isArrayOfObjects(fields[k]));
-  const flatKeys = mandatoryKeys.filter((k) => !isArrayOfObjects(fields[k]));
+  const tableKeys = mandatoryKeys.filter((k) => isArrayOfObjects(viewFields[k]));
+  const flatKeys = mandatoryKeys.filter((k) => !isArrayOfObjects(viewFields[k]));
+
+  const receiptId = multiMode ? viewFields.receipt_id : null;
 
   return (
     <div className="flex flex-col">
+      {multiMode && (
+        <div
+          className="flex items-center justify-between gap-3 px-8 py-4 border-b"
+          style={{ borderColor: "var(--panel-border)", background: "var(--panel-bg)" }}
+        >
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.max(0, p - 1))}
+            disabled={safePage === 0}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: "var(--input-bg)",
+              color: "var(--foreground)",
+              border: "1px solid var(--panel-border)",
+            }}
+          >
+            <ChevronLeft size={16} />
+            Previous
+          </button>
+
+          <div className="flex flex-col items-center gap-0.5">
+            <span className="text-sm font-semibold" style={{ color: "var(--foreground)" }}>
+              Receipt {safePage + 1} of {totalPages}
+            </span>
+            {receiptId && (
+              <span
+                className="text-[11px] font-mono"
+                style={{ color: "var(--text-muted)" }}
+                title={receiptId}
+              >
+                {receiptId}
+              </span>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={safePage >= totalPages - 1}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            style={{
+              background: "var(--input-bg)",
+              color: "var(--foreground)",
+              border: "1px solid var(--panel-border)",
+            }}
+          >
+            Next
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      )}
+
+      {multiMode && totalPages > 1 && (
+        <div
+          className="flex flex-wrap items-center gap-1.5 px-8 py-3 border-b"
+          style={{ borderColor: "var(--panel-border)" }}
+        >
+          {Array.from({ length: totalPages }).map((_, i) => {
+            const isActive = i === safePage;
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => setCurrentPage(i)}
+                className="min-w-8 h-8 px-2 rounded-md text-[12px] font-semibold transition-colors"
+                style={{
+                  background: isActive ? "var(--accent)" : "var(--input-bg)",
+                  color: isActive ? "#fff" : "var(--text-muted)",
+                  border: "1px solid var(--panel-border)",
+                }}
+              >
+                {i + 1}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       {mandatoryKeys.length === 0 ? (
         <div className="px-5 py-6 text-center">
           <p className="text-sm text-[var(--text-muted)] italic">
-            No mandatory editable fields available for this document.
+            No mandatory editable fields available for this {multiMode ? "receipt" : "document"}.
           </p>
         </div>
       ) : (
@@ -575,14 +683,14 @@ function EditableFields({ document, isLoading }) {
                           <div key={key} className="grid grid-cols-2 gap-4">
                             <FieldInput
                               fieldKey={key}
-                              value={fields[key]}
+                              value={viewFields[key]}
                               onChange={handleChange}
                               isMandatory={isMandatoryFieldKey(key, docType)}
                             />
                             {partnerKey && (
                               <FieldInput
                                 fieldKey={partnerKey}
-                                value={fields[partnerKey]}
+                                value={viewFields[partnerKey]}
                                 onChange={handleChange}
                                 isMandatory={isMandatoryFieldKey(partnerKey, docType)}
                               />
@@ -594,7 +702,7 @@ function EditableFields({ document, isLoading }) {
                         <FieldInput
                           key={key}
                           fieldKey={key}
-                          value={fields[key]}
+                          value={viewFields[key]}
                           onChange={handleChange}
                           isMandatory={isMandatoryFieldKey(key, docType)}
                         />
@@ -617,7 +725,7 @@ function EditableFields({ document, isLoading }) {
                   <ArrayTableEditor
                     key={key}
                     fieldKey={key}
-                    items={fields[key]}
+                    items={viewFields[key]}
                     onChange={handleChange}
                     isMandatory={isMandatoryFieldKey(key, docType)}
                   />
@@ -639,7 +747,7 @@ function EditableFields({ document, isLoading }) {
                 border: "1px solid var(--panel-border)", minWidth: "160px", minHeight: "52px", padding: "14px 32px",
               }}
               onClick={() => {
-                const src = document?.ocr_ui_results ?? document?.ocr_results;
+                const src = extractFields(document?.ocr_ui_results) ?? extractFields(document?.ocr_results);
                 if (src) setFields(src);
               }}
             >
