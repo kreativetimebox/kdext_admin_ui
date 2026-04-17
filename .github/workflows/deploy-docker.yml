@@ -12,11 +12,12 @@ env:
   APP_NAME: kdext_manual_anaylizer
   PROD_PORT: 3004
   TEMP_PORT: 3005
-  DEPLOY_DIR: /opt/kdext
+  DEPLOY_DIR: /home/balabantaray-user/kdext   # ✅ FIXED (no /opt)
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
 
     steps:
       # --------------------------------------------------
@@ -26,215 +27,175 @@ jobs:
         uses: actions/checkout@v4
 
       # --------------------------------------------------
-      # 2. Docker setup
+      # 2. FREE DISK (IMPORTANT)
+      # --------------------------------------------------
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet
+          sudo rm -rf /opt/ghc
+          sudo rm -rf /usr/local/lib/android
+          docker system prune -af --volumes
+          df -h
+
+      # --------------------------------------------------
+      # 3. Docker setup
       # --------------------------------------------------
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
       # --------------------------------------------------
-      # 3. Build Docker image
+      # 4. Build image
       # --------------------------------------------------
       - name: Build Docker image
         run: |
           docker build -t $IMAGE_NAME:$IMAGE_TAG .
+          docker builder prune -f
 
       # --------------------------------------------------
-      # 4. Setup SSH (newline-safe)
+      # 5. Setup SSH
       # --------------------------------------------------
       - name: Setup SSH key
         run: |
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
-          cat > ~/.ssh/deploy_key << 'EOF'
-          ${{ secrets.SERVER_SSH_KEY }}
-          EOF
+
+          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+
+          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
+          PORT=${{ secrets.SERVER_PORT }}
+          [ -z "$PORT" ] && PORT=22
+
+          ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts
 
       # --------------------------------------------------
-      # 6. Save and upload Docker image
+      # 6. Save image (LOCAL FILE ONLY)
       # --------------------------------------------------
-      - name: Save Docker image to tar
+      - name: Save Docker image
         run: |
-          docker save $IMAGE_NAME:$IMAGE_TAG -o /tmp/docker-image.tar
+          docker save $IMAGE_NAME:$IMAGE_TAG -o image.tar
+          ls -lh image.tar
 
-      - name: Upload image to server
+      # --------------------------------------------------
+      # 7. Upload (HOME DIR ONLY)
+      # --------------------------------------------------
+      - name: Upload image
         run: |
           PORT=${{ secrets.SERVER_PORT }}
           [ -z "$PORT" ] && PORT=22
-          
-          # Trim whitespace/newlines from HOST
+
           HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-          
-          echo "Connecting to host: [$HOST]"
 
           scp -i ~/.ssh/deploy_key -P "$PORT" \
-            -o BatchMode=yes \
             -o StrictHostKeyChecking=no \
-            /tmp/docker-image.tar \
-            balabantaray-user@"$HOST":/tmp/docker-image.tar
+            image.tar \
+            balabantaray-user@"$HOST":~/image.tar
 
       # --------------------------------------------------
-      # 7. Deploy with zero downtime
+      # 8. Deploy (NO sudo, SAFE)
       # --------------------------------------------------
-      - name: Deploy with zero downtime
+      - name: Deploy
         run: |
           PORT=${{ secrets.SERVER_PORT }}
           [ -z "$PORT" ] && PORT=22
-          
-          # Trim whitespace/newlines from HOST
+
           HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
 
-          ssh -i ~/.ssh/deploy_key -p $PORT \
-            -o BatchMode=yes \
+          ssh -i ~/.ssh/deploy_key -p "$PORT" \
             -o StrictHostKeyChecking=no \
-            "root@${HOST}" bash <<EOF
-              set -euo pipefail
+            balabantaray-user@"$HOST" << 'EOF'
+
+              set -e
 
               APP=kdext_manual_anaylizer
               IMAGE=kdext_manual_anaylizer
-              DEPLOY_DIR=/opt/kdext
+              DEPLOY_DIR=/home/balabantaray-user/kdext
               PROD_PORT=3004
               TEMP_PORT=3005
 
-              # Create deploy directory
-              mkdir -p "\$DEPLOY_DIR"
-              cd "\$DEPLOY_DIR"
+              mkdir -p $DEPLOY_DIR
+              cd $DEPLOY_DIR
 
-              echo "Loading Docker image..."
-              docker load < /tmp/docker-image.tar
-              rm -f /tmp/docker-image.tar
+              echo "📦 Loading image..."
+              docker load < ~/image.tar
+              rm -f ~/image.tar
 
-              echo "Tagging previous image..."
-              if docker image inspect \${IMAGE}:latest >/dev/null 2>&1; then
-                docker tag \${IMAGE}:latest \${IMAGE}:previous
+              echo "🏷 Backup old image..."
+              if docker image inspect ${IMAGE}:latest >/dev/null 2>&1; then
+                docker tag ${IMAGE}:latest ${IMAGE}:previous
               fi
 
-              echo "Starting new container on temp port..."
-              docker rm -f \${APP}_new 2>/dev/null || true
+              echo "🚀 Start TEMP container..."
+              docker rm -f ${APP}_new 2>/dev/null || true
 
               docker run -d \
-                --name \${APP}_new \
-                -p \${TEMP_PORT}:3004 \
-                --restart always \
-                --memory="2g" \
-                --cpus="2.0" \
-                --log-driver json-file \
-                --log-opt max-size=10m \
-                --log-opt max-file=3 \
+                --name ${APP}_new \
+                -p ${TEMP_PORT}:3004 \
+                --restart unless-stopped \
                 -e NODE_ENV=production \
                 -e PORT=3004 \
                 -e HOSTNAME=0.0.0.0 \
-                -e DEXAI_DB_URL='${{ secrets.DEXAI_DB_URL }}' \
-                -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
-                -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
-                -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                \${IMAGE}:latest
+                -e DEXAI_DB_URL='${DEXAI_DB_URL}' \
+                -e AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' \
+                -e AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' \
+                -e AWS_BUCKET_NAME='${AWS_BUCKET_NAME}' \
+                -e AWS_REGION='${AWS_REGION}' \
+                ${IMAGE}:latest
 
-              echo "Health check (using new /api/health endpoint)..."
-
-              check_ok=false
+              echo "⏳ Waiting for health..."
+              ok=false
               for i in {1..30}; do
-                # First wait a bit for container to fully start
-                if [ \$i -le 5 ]; then
-                  echo "Waiting for container to initialize... (\$i/30)"
-                  sleep 3
-                  continue
+                if curl -fs http://127.0.0.1:${TEMP_PORT}/api/health >/dev/null 2>&1 || \
+                   curl -fs http://127.0.0.1:${TEMP_PORT} >/dev/null 2>&1; then
+                  ok=true
+                  echo "✅ Healthy"
+                  break
                 fi
-
-                # Try health endpoint first, then fallback to root
-                if command -v curl >/dev/null 2>&1; then
-                  if curl -fs http://127.0.0.1:\${TEMP_PORT}/api/health >/dev/null 2>&1; then
-                    check_ok=true
-                    echo "✅ Health check passed via /api/health (curl)"
-                    break
-                  elif curl -fs http://127.0.0.1:\${TEMP_PORT} >/dev/null 2>&1; then
-                    check_ok=true
-                    echo "✅ Health check passed via root endpoint (curl)"
-                    break
-                  fi
-                elif command -v wget >/dev/null 2>&1; then
-                  if wget -qO- --timeout=5 http://127.0.0.1:\${TEMP_PORT}/api/health >/dev/null 2>&1; then
-                    check_ok=true
-                    echo "✅ Health check passed via /api/health (wget)"
-                    break
-                  elif wget -qO- --timeout=5 http://127.0.0.1:\${TEMP_PORT} >/dev/null 2>&1; then
-                    check_ok=true
-                    echo "✅ Health check passed via root endpoint (wget)"
-                    break
-                  fi
-                else
-                  echo "⚠️  Warning: neither curl nor wget is installed on the server. Trying netcat..."
-                  if command -v nc >/dev/null 2>&1; then
-                    if nc -zv 127.0.0.1 \${TEMP_PORT} >/dev/null 2>&1; then
-                      check_ok=true
-                      echo "✅ Health check passed (nc)"
-                      break
-                    fi
-                  fi
-                fi
-
-                echo "Attempt \$i/30 - waiting..."
-                sleep 2
+                sleep 3
               done
 
-              if [ "\${check_ok}" != "true" ]; then
-                echo "❌ Health check failed — rollback"
-                echo "📋 Container logs:"
-                docker logs \${APP}_new --tail 100 || true
-                echo "📊 Container stats:"
-                docker stats \${APP}_new --no-stream || true
-                echo "🔍 Container inspect:"
-                docker inspect \${APP}_new | grep -A 10 "State" || true
-                docker rm -f \${APP}_new || true
-                docker tag \${IMAGE}:previous \${IMAGE}:latest || true
+              if [ "$ok" != "true" ]; then
+                echo "❌ Failed"
+                docker logs ${APP}_new
+                docker rm -f ${APP}_new
+                docker tag ${IMAGE}:previous ${IMAGE}:latest || true
                 exit 1
               fi
 
-              echo "Promoting new container..."
-              docker rm -f \${APP} 2>/dev/null || true
+              echo "🔁 Switch to PROD..."
+              docker rm -f ${APP} 2>/dev/null || true
 
               docker run -d \
-                --name \${APP} \
-                -p \${PROD_PORT}:3004 \
-                --restart always \
-                --memory="2g" \
-                --cpus="2.0" \
-                --log-driver json-file \
-                --log-opt max-size=10m \
-                --log-opt max-file=3 \
+                --name ${APP} \
+                -p ${PROD_PORT}:3004 \
+                --restart unless-stopped \
                 -e NODE_ENV=production \
                 -e PORT=3004 \
                 -e HOSTNAME=0.0.0.0 \
-                -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
-                -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
-                -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                -e DEXAI_DB_URL='${{ secrets.DEXAI_DB_URL}}' \
-                \${IMAGE}:latest
+                -e DEXAI_DB_URL='${DEXAI_DB_URL}' \
+                -e AWS_ACCESS_KEY_ID='${AWS_ACCESS_KEY_ID}' \
+                -e AWS_SECRET_ACCESS_KEY='${AWS_SECRET_ACCESS_KEY}' \
+                -e AWS_BUCKET_NAME='${AWS_BUCKET_NAME}' \
+                -e AWS_REGION='${AWS_REGION}' \
+                ${IMAGE}:latest
 
-              docker rm -f \${APP}_new || true
+              docker rm -f ${APP}_new || true
 
-              echo "✅ Deployment successful"
-              echo "📊 Container status:"
-              docker ps | grep \${APP}
-              echo "🏥 Health check:"
-              sleep 3
-              curl -s http://127.0.0.1:\${PROD_PORT}/api/health | head -20 || echo "Health endpoint not ready yet"
+              echo "✅ Deployment done"
+
           EOF
 
       # --------------------------------------------------
-      # 8. Verify deployment
+      # 9. Verify
       # --------------------------------------------------
-      - name: Verify deployment
+      - name: Verify
         run: |
           PORT=${{ secrets.SERVER_PORT }}
           [ -z "$PORT" ] && PORT=22
-          
-          # Trim whitespace/newlines from HOST
+
           HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
 
-          ssh -i ~/.ssh/deploy_key -p $PORT \
-            "balabantaray-user@${HOST}" \
-            "docker ps --filter name=kdext_manual_anaylizer"
+          ssh -i ~/.ssh/deploy_key -p "$PORT" \
+            -o StrictHostKeyChecking=no \
+            balabantaray-user@"$HOST" \
+            "docker ps | grep kdext_manual_anaylizer"
