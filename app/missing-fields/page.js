@@ -93,7 +93,6 @@ function getMissingFieldKeys(rawOcrUiResults, docType = "") {
   if (!ocrUiResults || typeof ocrUiResults !== "object") {
     if (isBankStatementDoc) {
       return [
-        "documentId",
         "bankName",
         "accountHolderName",
         "openingDate",
