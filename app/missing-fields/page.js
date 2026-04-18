@@ -132,9 +132,6 @@ function getMissingFieldKeys(rawOcrUiResults, docType = "") {
   }
 
   if (isBankStatementDoc) {
-    if (isMissingByPaths(ocrUiResults, ["documentId", "document_id"])) {
-      missing.push("documentId");
-    }
     if (isMissingByPaths(ocrUiResults, ["bankName", "bank_name"])) {
       missing.push("bankName");
     }
