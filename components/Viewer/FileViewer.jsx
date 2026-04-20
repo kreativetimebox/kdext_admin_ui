@@ -97,8 +97,15 @@ function FileViewer({ document, isLoading }) {
             <div className="flex flex-col items-center justify-center h-full gap-2 p-4 text-center">
               <AlertCircle size={28} className="text-amber-400" />
               <p className="text-sm text-[var(--text-muted)]">
-                File unavailable or no source file set
+                {sourceFile
+                  ? "File not found in storage"
+                  : "No source file set for this document"}
               </p>
+              {sourceFile && (
+                <p className="text-xs text-[var(--text-muted)] font-mono break-all max-w-md">
+                  {sourceFile}
+                </p>
+              )}
             </div>
           ) : isImage ? (
             <div className="flex items-center justify-center p-2 min-h-48">
