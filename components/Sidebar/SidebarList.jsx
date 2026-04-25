@@ -68,7 +68,7 @@ export default function SidebarList({ onlyId = null }) {
   }
 
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col h-full w-30 overflow-hidden">
       {/* Header */}
       <div
         className="shrink-0 px-4 py-3 border-b"

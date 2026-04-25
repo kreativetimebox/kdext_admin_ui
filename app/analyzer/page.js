@@ -106,7 +106,7 @@ function AnalyzerContent() {
 
         {/* Sidebar */}
         <aside
-          className="w-72 shrink-0 flex flex-col overflow-hidden"
+          className="w-30 shrink-0 flex flex-col overflow-hidden"
           style={{
             background: "var(--sidebar-bg)",
             borderRight: "1px solid var(--panel-border)",
