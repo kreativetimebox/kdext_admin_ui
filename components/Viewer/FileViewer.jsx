@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, memo } from "react";
-import { Eye, EyeOff, FileText, AlertCircle, ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
+import { Eye, EyeOff, FileText, AlertCircle, ZoomIn, ZoomOut, RotateCcw, Download } from "lucide-react";
 import { useDocumentStore } from "@/lib/store";
 
 const ZOOM_STEP = 0.15;
@@ -25,6 +25,7 @@ function FileViewer({ document, isLoading }) {
   const zoomIn    = () => setZoom((z) => Math.min(+(z + ZOOM_STEP).toFixed(2), ZOOM_MAX));
   const zoomOut   = () => setZoom((z) => Math.max(+(z - ZOOM_STEP).toFixed(2), ZOOM_MIN));
   const zoomReset = () => setZoom(1);
+
 
   if (!activeId) {
     return (
@@ -81,14 +82,28 @@ function FileViewer({ document, isLoading }) {
           </div>
         )}
 
-        {/* hide/show */}
-        <button
-          onClick={() => setIsVisible((v) => !v)}
-          className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--panel-border)] transition-colors shrink-0"
-        >
-          {isVisible ? <EyeOff size={12} /> : <Eye size={12} />}
-          {isVisible ? "Hide" : "Show"}
-        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          {/* download */}
+          {signedUrl && (
+            <a
+              href={`/api/document/${activeId}/download`}
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--panel-border)] transition-colors"
+              title="Download file"
+            >
+              <Download size={12} />
+              Download
+            </a>
+          )}
+
+          {/* hide/show */}
+          <button
+            onClick={() => setIsVisible((v) => !v)}
+            className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--panel-border)] transition-colors"
+          >
+            {isVisible ? <EyeOff size={12} /> : <Eye size={12} />}
+            {isVisible ? "Hide" : "Show"}
+          </button>
+        </div>
       </div>
 
       {isVisible && (
