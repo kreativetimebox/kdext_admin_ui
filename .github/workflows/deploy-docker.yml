@@ -90,7 +90,7 @@ jobs:
           scp -i ~/.ssh/deploy_key -P "$PORT" \
             -o StrictHostKeyChecking=no \
             image.tar \
-            balabantaray-user@"$HOST":~/image.tar
+            user@"$HOST":~/image.tar
 
       # --------------------------------------------------
       # 8. Deploy (NO sudo, SAFE)
@@ -104,7 +104,7 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -p "$PORT" \
             -o StrictHostKeyChecking=no \
-            balabantaray-user@"$HOST" << 'EOF'
+            user@"$HOST" << 'EOF'
 
               set -e
 
@@ -198,5 +198,5 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -p "$PORT" \
             -o StrictHostKeyChecking=no \
-            balabantaray-user@"$HOST" \
+            user@"$HOST" \
             "docker ps | grep kdext_manual_anaylizer"
