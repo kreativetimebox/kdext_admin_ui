@@ -13,7 +13,7 @@ env:
   APP_NAME: kdext_manual_anaylizer
   PROD_PORT: 3004
   TEMP_PORT: 3005
-  DEPLOY_DIR: /home/balabantaray-user/kdext   # ✅ FIXED (no /opt)
+  DEPLOY_DIR: /home/user/kdext   # ✅ FIXED (no /opt)
 
 jobs:
   build-and-deploy:
@@ -110,7 +110,7 @@ jobs:
 
               APP=kdext_manual_anaylizer
               IMAGE=kdext_manual_anaylizer
-              DEPLOY_DIR=/home/balabantaray-user/kdext
+              DEPLOY_DIR=/home/user/kdext
               PROD_PORT=3004
               TEMP_PORT=3005
 
