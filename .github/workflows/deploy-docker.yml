@@ -13,7 +13,7 @@ env:
   APP_NAME: kdext_manual_anaylizer
   PROD_PORT: 3004
   TEMP_PORT: 3005
-  DEPLOY_DIR: /home/user/kdext   # ✅ FIXED (no /opt)
+  DEPLOY_DIR: /home/balabantaray-user/kdext   # ✅ FIXED (no /opt)
 
 jobs:
   build-and-deploy:
@@ -90,7 +90,7 @@ jobs:
           scp -i ~/.ssh/deploy_key -P "$PORT" \
             -o StrictHostKeyChecking=no \
             image.tar \
-            user@"$HOST":~/image.tar
+            balabantaray-user@"$HOST":~/image.tar
 
       # --------------------------------------------------
       # 8. Deploy (NO sudo, SAFE)
@@ -104,13 +104,13 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -p "$PORT" \
             -o StrictHostKeyChecking=no \
-            user@"$HOST" << 'EOF'
+            balabantaray-user@"$HOST" << 'EOF'
 
               set -e
 
               APP=kdext_manual_anaylizer
               IMAGE=kdext_manual_anaylizer
-              DEPLOY_DIR=/home/user/kdext
+              DEPLOY_DIR=/home/balabantaray-user/kdext
               PROD_PORT=3004
               TEMP_PORT=3005
 
@@ -198,5 +198,5 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -p "$PORT" \
             -o StrictHostKeyChecking=no \
-            user@"$HOST" \
+            balabantaray-user@"$HOST" \
             "docker ps | grep kdext_manual_anaylizer"
