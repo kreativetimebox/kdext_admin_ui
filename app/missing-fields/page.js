@@ -366,8 +366,8 @@ function FilterDropdown({ label, value, options, onChange, onClear }) {
 function MissingFieldRow({ doc, onView }) {
   const [hovered, setHovered] = useState(false);
 
-  // Count missing mandatory fields in ocr_ui_results
-  const nullFields = getMissingFieldKeys(doc.ocr_ui_results, doc.ocr_document_type);
+  // Count missing mandatory fields in ocr_results (the actual DB column)
+  const nullFields = getMissingFieldKeys(doc.ocr_results, doc.ocr_document_type);
 
   return (
     <div
@@ -498,7 +498,7 @@ export default function MissingFieldsPage() {
   const environments = data ? [...new Set(data.map(d => d.environment).filter(Boolean))] : [];
   const visibleDocuments = showAll
     ? (data || [])
-    : (data || []).filter((doc) => getMissingFieldKeys(doc?.ocr_ui_results, doc?.ocr_document_type).length > 0);
+    : (data || []).filter((doc) => getMissingFieldKeys(doc?.ocr_results, doc?.ocr_document_type).length > 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>

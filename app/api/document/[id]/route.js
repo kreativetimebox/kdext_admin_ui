@@ -31,10 +31,12 @@ export async function GET(request, { params }) {
         source_file: doc.source_file,
         signed_url: signedUrl,
         textract_results: doc.textract_results ?? {},
+        // ocr_results is the actual DB column; expose it under both names so
+        // EditableFields (ocr_ui_results) and raw viewers (ocr_results) both work.
         ocr_results: doc.ocr_results ?? {},
+        ocr_ui_results: doc.ocr_results ?? {},
         textract_raw_results: doc.textract_raw_results ?? {},
-        ocr_raw_results: doc.ocr_results ?? {}, // ocr_raw_results maps to ocr_results column
-        ocr_ui_results: doc.ocr_ui_results ?? {},
+        ocr_raw_results: doc.ocr_results ?? {},
       },
       { status: 200 }
     );

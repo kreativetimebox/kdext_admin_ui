@@ -23,7 +23,9 @@ export async function POST(request, { params }) {
     }
 
     return NextResponse.json(
-      { success: true, id: updated.id, ocr_ui_results: updated.ocr_ui_results },
+      // The DB column is ocr_results; expose it as ocr_ui_results so the
+      // frontend (EditableFields) can read the saved data back consistently.
+      { success: true, id: updated.id, ocr_ui_results: updated.ocr_results },
       { status: 200 }
     );
   } catch (error) {

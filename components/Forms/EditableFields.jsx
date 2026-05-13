@@ -555,6 +555,9 @@ function EditableFields({ document, isLoading }) {
       }
 
       queryClient.invalidateQueries({ queryKey: ["document", document.id] });
+      // Also clear the missing-fields cache so the Missing Fields page
+      // no longer shows this document once its fields have been filled.
+      queryClient.invalidateQueries({ queryKey: ["missing-fields"] });
       toast.success("Saved successfully");
     } catch (err) {
       console.error("Save error:", err);
