@@ -8,6 +8,22 @@ const ZOOM_STEP = 0.15;
 const ZOOM_MIN  = 0.3;
 const ZOOM_MAX  = 3;
 
+/* source_file may be a bare key, an s3:// URI, or a full presigned HTTPS URL
+   with query params. Pull the pathname so extension checks work either way. */
+function getPathPart(src) {
+  if (!src) return "";
+  try {
+    return new URL(src).pathname;
+  } catch {
+    return String(src).split("?")[0];
+  }
+}
+
+function getDisplayName(src) {
+  const path = getPathPart(src);
+  return decodeURIComponent(path.split("/").filter(Boolean).pop() || src || "");
+}
+
 function FileViewerSkeleton() {
   return (
     <div className="flex flex-col gap-3 p-4 h-full">
@@ -45,9 +61,11 @@ function FileViewer({ document, isLoading }) {
 
   const signedUrl  = document?.signed_url;
   const sourceFile = document?.source_file;
+  const pathOnly   = getPathPart(sourceFile);
+  const displayName = getDisplayName(sourceFile);
 
-  const isImage = sourceFile && /\.(png|jpg|jpeg|gif|webp|bmp|tiff?)$/i.test(sourceFile);
-  const isPdf   = sourceFile && /\.pdf$/i.test(sourceFile);
+  const isImage = pathOnly && /\.(png|jpg|jpeg|gif|webp|bmp|tiff?)$/i.test(pathOnly);
+  const isPdf   = pathOnly && /\.pdf$/i.test(pathOnly);
 
   const btnCls = "flex items-center justify-center w-7 h-7 rounded-md transition-colors text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--panel-border)]";
 
@@ -62,7 +80,7 @@ function FileViewer({ document, isLoading }) {
         <div className="flex items-center gap-2 min-w-0">
           <FileText size={13} className="text-[var(--text-muted)] shrink-0" />
           <span className="text-xs text-[var(--text-muted)] truncate font-mono" title={sourceFile}>
-            {sourceFile || "No source file"}
+            {displayName || "No source file"}
           </span>
         </div>
 

@@ -375,7 +375,7 @@ function MissingFieldRow({ doc, onView }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "100px 180px 120px 1fr 100px",
+        gridTemplateColumns: "minmax(200px, 1.2fr) 200px 1fr 100px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -385,8 +385,19 @@ function MissingFieldRow({ doc, onView }) {
       }}
     >
       {/* ID */}
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--accent)" }}>
-        #{doc.id}
+      <span
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: "var(--accent)",
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={doc.id}
+      >
+        {doc.id}
       </span>
 
       {/* Document Type */}
@@ -402,21 +413,6 @@ function MissingFieldRow({ doc, onView }) {
         }}
       >
         {doc.ocr_document_type || "Unknown"}
-      </span>
-
-      {/* Environment */}
-      <span
-        style={{
-          fontSize: 12,
-          fontWeight: 500,
-          padding: "4px 10px",
-          borderRadius: 6,
-          background: "var(--tag-amber-bg)",
-          color: "var(--tag-amber-color)",
-          textAlign: "center",
-        }}
-      >
-        {doc.environment || "N/A"}
       </span>
 
       {/* Missing Fields */}
@@ -467,20 +463,18 @@ export default function MissingFieldsPage() {
 
   const [search, setSearch] = useState("");
   const [docType, setDocType] = useState("");
-  const [environment, setEnvironment] = useState("");
   const [showAll, setShowAll] = useState(true);
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["missing-fields", search, docType, environment, showAll],
+    queryKey: ["missing-fields", search, docType, showAll],
     queryFn: async () => {
       const params = new URLSearchParams();
       if (search) params.append("search", search);
       if (docType) params.append("docType", docType);
-      if (environment) params.append("environment", environment);
       params.append("showAll", showAll.toString());
-      
+
       const res = await axios.get(`/api/missing-fields?${params.toString()}`);
       return res.data.documents || [];
     },
@@ -490,12 +484,11 @@ export default function MissingFieldsPage() {
 
   const handleView = (docId) => {
     setActiveId(docId);
-    router.push(`/analyzer?focusId=${docId}`);
+    router.push(`/analyzer?focusId=${encodeURIComponent(docId)}`);
   };
 
-  // Extract unique doc types and environments for filters
+  // Extract unique doc types for the filter
   const docTypes = data ? [...new Set(data.map(d => d.ocr_document_type).filter(Boolean))] : [];
-  const environments = data ? [...new Set(data.map(d => d.environment).filter(Boolean))] : [];
   const visibleDocuments = showAll
     ? (data || [])
     : (data || []).filter((doc) => getMissingFieldKeys(doc?.ocr_results, doc?.ocr_document_type).length > 0);
@@ -585,7 +578,7 @@ export default function MissingFieldsPage() {
             />
             <input
               type="text"
-              placeholder="Search by ID, document type, or environment..."
+              placeholder="Search by request ID or document type..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -608,20 +601,13 @@ export default function MissingFieldsPage() {
             options={docTypes}
             onChange={setDocType}
           />
-          <FilterDropdown
-            label="Environment"
-            value={environment}
-            options={environments}
-            onChange={setEnvironment}
-          />
 
           {/* Clear all */}
-          {(search || docType || environment) && (
+          {(search || docType) && (
             <button
               onClick={() => {
                 setSearch("");
                 setDocType("");
-                setEnvironment("");
               }}
               style={{
                 display: "flex",
@@ -660,7 +646,7 @@ export default function MissingFieldsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "100px 180px 120px 1fr 100px",
+              gridTemplateColumns: "minmax(200px, 1.2fr) 200px 1fr 100px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -668,13 +654,10 @@ export default function MissingFieldsPage() {
             }}
           >
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              ID
+              Request ID
             </span>
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
               Document Type
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              Environment
             </span>
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
               Missing Fields
@@ -702,7 +685,7 @@ export default function MissingFieldsPage() {
                   No documents found
                 </p>
                 <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                  {search || docType || environment
+                  {search || docType
                     ? "Try adjusting your filters"
                     : showAll 
                       ? "No documents available" 

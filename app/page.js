@@ -206,7 +206,7 @@ export default function HomePage() {
             color: "var(--text-muted)", margin: 0,
           }}>
             Internal admin portal for reviewing, correcting, and managing
-            document parsing results from OCR and AWS Textract pipelines.
+            document parsing results from the OCR pipeline.
           </p>
         </div>
 
@@ -242,7 +242,7 @@ export default function HomePage() {
         gap: 12, padding: "0 24px 56px",
       }}>
         <StatPill label="OCR Engine"  value="Azure"      icon={Activity}    color="#2563eb" />
-        <StatPill label="Extraction"  value="Textract"   icon={Layers}      color="#7c3aed" />
+        <StatPill label="Extraction"  value="VLM"        icon={Layers}      color="#7c3aed" />
         <StatPill label="Storage"     value="PostgreSQL" icon={Database}    color="#0891b2" />
         <StatPill label="Access"      value="Admin Only" icon={Lock}        color="#059669" />
       </section>
@@ -269,11 +269,11 @@ export default function HomePage() {
         gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
         gap: 16,
       }}>
-        <FeatureCard delay={0}   icon={FileSearch}  color="#2563eb" title="Document Review"     description="Browse all parsed documents from the kdext_doc_parser pipeline and inspect raw OCR and Textract extraction results side-by-side." />
+        <FeatureCard delay={0}   icon={FileSearch}  color="#2563eb" title="Document Review"     description="Browse all parsed documents from the kdext_doc_parser pipeline and inspect formatted and raw OCR results side-by-side." />
         <FeatureCard delay={60}  icon={Layers}      color="#7c3aed" title="Result Correction"   description="Manually edit and override extracted field values, approve or reject parsed data, and push corrections back to the database." />
-        <FeatureCard delay={120} icon={Activity}    color="#059669" title="Pipeline Monitoring" description="Track document processing status, identify parsing failures, and monitor confidence scores across OCR and Textract models." />
+        <FeatureCard delay={120} icon={Activity}    color="#059669" title="Pipeline Monitoring" description="Track document processing status, identify parsing failures, and monitor extraction quality across the OCR pipeline." />
         <FeatureCard delay={180} icon={ShieldCheck} color="#d97706" title="Admin Controls"      description="Restricted to authorised admin users only. All actions are logged for audit purposes within the kdext_doc_parser platform." />
-        <FeatureCard delay={240} icon={Database}    color="#0891b2" title="Raw Data Access"     description="Access raw JSON payloads from both the OCR engine and AWS Textract directly from the admin interface for debugging." />
+        <FeatureCard delay={240} icon={Database}    color="#0891b2" title="Raw Data Access"     description="Access raw JSON payloads from the OCR engine directly from the admin interface for debugging." />
         <FeatureCard delay={300} icon={Lock}        color="#e11d48" title="Multi-format Support" description="Handles a variety of document types including invoices, receipts, IDs, and contracts processed by the parser pipeline." />
       </section>
 

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDocumentById } from "@/lib/queries";
 import { getSignedFileUrl } from "@/lib/aws";
 
-export async function GET(request, { params }) {
+export async function GET(_request, { params }) {
   try {
     const { id } = await params;
     const doc = await getDocumentById(id);
@@ -14,7 +14,6 @@ export async function GET(request, { params }) {
       );
     }
 
-    // Generate S3 signed URL server-side — credentials never leave the server
     let signedUrl = null;
     if (doc.source_file) {
       try {
@@ -30,13 +29,13 @@ export async function GET(request, { params }) {
         ocr_document_type: doc.ocr_document_type,
         source_file: doc.source_file,
         signed_url: signedUrl,
-        textract_results: doc.textract_results ?? {},
-        // ocr_results is the actual DB column; expose it under both names so
-        // EditableFields (ocr_ui_results) and raw viewers (ocr_results) both work.
+        // formatted_result is the editable extraction, mapped onto the names
+        // the frontend already speaks.
         ocr_results: doc.ocr_results ?? {},
         ocr_ui_results: doc.ocr_results ?? {},
-        textract_raw_results: doc.textract_raw_results ?? {},
-        ocr_raw_results: doc.ocr_results ?? {},
+        // processing_result is the raw worker payload — exposed as the "raw"
+        // counterpart so existing viewers keep working.
+        ocr_raw_results: doc.processing_result ?? {},
       },
       { status: 200 }
     );

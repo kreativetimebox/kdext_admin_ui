@@ -6,10 +6,9 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const docType = searchParams.get("docType") || "";
-    const environment = searchParams.get("environment") || "";
     const showAll = searchParams.get("showAll") === "true";
 
-    const documents = await getDocumentsWithMissingFields({ search, docType, environment, showAll });
+    const documents = await getDocumentsWithMissingFields({ search, docType, showAll });
     return NextResponse.json({ documents }, { status: 200 });
   } catch (error) {
     console.error("GET /api/missing-fields error:", error);

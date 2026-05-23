@@ -11,7 +11,6 @@ import Navbar from "@/components/Navbar/Navbar";
 import SidebarList from "@/components/Sidebar/SidebarList";
 import FileViewer from "@/components/Viewer/FileViewer";
 import EditableFields from "@/components/Forms/EditableFields";
-import TextractResults from "@/components/Results/TextractResults";
 import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
 
@@ -186,10 +185,7 @@ function AnalyzerContent() {
                   <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
                     Parsed Results
                   </p>
-                  <div className="grid grid-cols-2 gap-5">
-                    <TextractResults data={doc?.textract_results} />
-                    <OCRResults data={doc?.ocr_ui_results} />
-                  </div>
+                  <OCRResults data={doc?.ocr_ui_results} />
                 </div>
 
                 {/* Raw Results */}
@@ -197,10 +193,7 @@ function AnalyzerContent() {
                   <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
                     Raw Results
                   </p>
-                  <RawResults
-                    textractRaw={doc?.textract_raw_results}
-                    ocrRaw={doc?.ocr_raw_results}
-                  />
+                  <RawResults ocrRaw={doc?.ocr_raw_results} />
                 </div>
 
                 </div>
