@@ -269,7 +269,7 @@ function MetaRow({ label, children, mono }) {
 }
 
 export default function TransactionDetailPage({ params }) {
-  const { requestId } = use(params);
+  const { resultId } = use(params);
   const { initTheme } = useThemeStore();
   const router = useRouter();
 
@@ -278,12 +278,12 @@ export default function TransactionDetailPage({ params }) {
   }, [initTheme]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["transaction", requestId],
+    queryKey: ["transaction", resultId],
     queryFn: async () => {
-      const res = await axios.get(`/api/transactions/${encodeURIComponent(requestId)}`);
+      const res = await axios.get(`/api/transactions/${encodeURIComponent(resultId)}`);
       return res.data;
     },
-    enabled: !!requestId,
+    enabled: !!resultId,
     staleTime: 2 * 60 * 1000,
     onError: () => toast.error("Failed to load transaction"),
   });
@@ -349,11 +349,11 @@ export default function TransactionDetailPage({ params }) {
                     wordBreak: "break-all",
                   }}
                 >
-                  {data?.transaction_id || requestId}
+                  {data?.result_id || resultId}
                 </span>
               </h1>
               <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                Detailed view of processing request and formatted result.
+                Detailed view of processing result and formatted output.
               </p>
             </div>
             {data?.status && <StatusBadge status={data.status} />}
@@ -468,6 +468,10 @@ export default function TransactionDetailPage({ params }) {
                   Metadata
                 </h3>
 
+                <MetaRow label="Result ID" mono>
+                  <span>{data.result_id}</span>
+                  <CopyButton value={data.result_id} label="result_id" />
+                </MetaRow>
                 <MetaRow label="Transaction ID" mono>
                   <span>{data.transaction_id}</span>
                   <CopyButton value={data.transaction_id} label="transaction_id" />

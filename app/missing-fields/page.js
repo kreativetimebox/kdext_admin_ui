@@ -578,7 +578,7 @@ export default function MissingFieldsPage() {
             />
             <input
               type="text"
-              placeholder="Search by request ID or document type..."
+              placeholder="Search by result ID or document type..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               style={{
@@ -654,7 +654,7 @@ export default function MissingFieldsPage() {
             }}
           >
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              Request ID
+              Result ID
             </span>
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
               Document Type

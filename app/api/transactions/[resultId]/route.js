@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { getTransactionByRequestId } from "@/lib/transactions";
+import { getTransactionByResultId } from "@/lib/transactions";
 import { getSignedFileUrl } from "@/lib/aws";
 
 export async function GET(_request, { params }) {
   try {
-    const { requestId } = await params;
-    const row = await getTransactionByRequestId(requestId);
+    const { resultId } = await params;
+    const row = await getTransactionByResultId(resultId);
 
     if (!row) {
       return NextResponse.json(
@@ -20,7 +20,7 @@ export async function GET(_request, { params }) {
         signedUrl = await getSignedFileUrl(row.document_path);
       } catch (err) {
         console.warn(
-          `Failed to sign URL for ${row.request_id}:`,
+          `Failed to sign URL for ${row.result_id}:`,
           err.message
         );
       }
@@ -28,6 +28,7 @@ export async function GET(_request, { params }) {
 
     return NextResponse.json(
       {
+        result_id: row.result_id,
         request_id: row.request_id,
         transaction_id: row.transaction_id,
         document_path: row.document_path,
@@ -46,7 +47,7 @@ export async function GET(_request, { params }) {
       { status: 200 }
     );
   } catch (error) {
-    console.error("GET /api/transactions/[requestId] error:", error);
+    console.error("GET /api/transactions/[resultId] error:", error);
     return NextResponse.json(
       { error: "Failed to fetch transaction" },
       { status: 500 }

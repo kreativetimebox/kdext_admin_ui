@@ -155,18 +155,18 @@ function TransactionRow({ record, onOpen }) {
     <div
       role="button"
       tabIndex={0}
-      onClick={() => onOpen(record.request_id)}
+      onClick={() => onOpen(record.result_id)}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
-          onOpen(record.request_id);
+          onOpen(record.result_id);
         }
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(180px, 1.2fr) minmax(240px, 1.4fr) minmax(140px, 0.9fr) 110px 180px 36px",
+        gridTemplateColumns: "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 36px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -179,7 +179,21 @@ function TransactionRow({ record, onOpen }) {
       <span
         style={{
           fontSize: 13,
-          fontWeight: 600,
+          fontWeight: 700,
+          color: "var(--accent)",
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={record.result_id}
+      >
+        {record.result_id}
+      </span>
+
+      <span
+        style={{
+          fontSize: 12,
           color: "var(--foreground)",
           fontFamily: "ui-monospace, SFMono-Regular, monospace",
           overflow: "hidden",
@@ -189,20 +203,6 @@ function TransactionRow({ record, onOpen }) {
         title={record.transaction_id}
       >
         {record.transaction_id}
-      </span>
-
-      <span
-        style={{
-          fontSize: 12,
-          color: "var(--text-muted)",
-          fontFamily: "ui-monospace, SFMono-Regular, monospace",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={record.request_id}
-      >
-        {record.request_id}
       </span>
 
       <span
@@ -271,14 +271,15 @@ export default function TransactionsPage() {
       if (docType && r.document_type !== docType) return false;
       if (!q) return true;
       return (
+        (r.result_id || "").toLowerCase().includes(q) ||
         (r.transaction_id || "").toLowerCase().includes(q) ||
         (r.request_id || "").toLowerCase().includes(q)
       );
     });
   }, [records, search, docType]);
 
-  const handleOpen = (requestId) => {
-    router.push(`/transactions/${encodeURIComponent(requestId)}`);
+  const handleOpen = (resultId) => {
+    router.push(`/transactions/${encodeURIComponent(resultId)}`);
   };
 
   return (
@@ -355,7 +356,7 @@ export default function TransactionsPage() {
             />
             <input
               type="text"
-              placeholder="Search by transaction_id or request_id..."
+              placeholder="Search by result_id, transaction_id or request_id..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -418,14 +419,14 @@ export default function TransactionsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(180px, 1.2fr) minmax(240px, 1.4fr) minmax(140px, 0.9fr) 110px 180px 36px",
+              gridTemplateColumns: "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 36px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Transaction ID", "Request ID", "Document Type", "Status", "Submitted"].map((h) => (
+            {["Result ID", "Transaction ID", "Document Type", "Status", "Submitted"].map((h) => (
               <span
                 key={h}
                 style={{
@@ -467,7 +468,7 @@ export default function TransactionsPage() {
               </div>
             ) : (
               visibleRecords.map((record) => (
-                <TransactionRow key={record.request_id} record={record} onOpen={handleOpen} />
+                <TransactionRow key={record.result_id} record={record} onOpen={handleOpen} />
               ))
             )}
           </div>

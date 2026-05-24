@@ -5,6 +5,7 @@ export async function GET() {
   try {
     const rows = await getTransactionRecords();
     const records = rows.map((row) => ({
+      result_id: row.result_id,
       request_id: row.request_id,
       transaction_id: row.transaction_id,
       document_path: row.document_path,
