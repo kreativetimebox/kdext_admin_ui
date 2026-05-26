@@ -119,7 +119,7 @@ function AnalyzerContent() {
           {isLoading && activeId ? (
             <div className="flex-1 min-h-0 overflow-y-scroll p-5"><DocumentSkeleton /></div>
           ) : !activeId ? (
-            /* ── Empty / welcome state ── */
+            /* ── Empty // welcome state ── */
             <div className="flex-1 flex flex-col items-center justify-center gap-4 pb-16">
               <div
                 className="w-16 h-16 rounded-2xl flex items-center justify-center"
