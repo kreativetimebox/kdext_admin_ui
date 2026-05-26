@@ -41,7 +41,7 @@ export default function SidebarList({ onlyId = null }) {
     const q = search.toLowerCase();
     return scopedDocs.filter(
       (d) =>
-        String(d.id).includes(q) ||
+        String(d.id).toLowerCase().includes(q) ||
         (d.ocr_document_type || "").toLowerCase().includes(q)
     );
   }, [documents, search, onlyId]);
@@ -68,7 +68,7 @@ export default function SidebarList({ onlyId = null }) {
   }
 
   return (
-    <div className="flex flex-col h-full w-30 overflow-hidden">
+    <div className="flex flex-col h-full w-full overflow-hidden">
       {/* Header */}
       <div
         className="shrink-0 px-4 py-3 border-b"
