@@ -362,6 +362,15 @@ function FilterDropdown({ label, value, options, onChange, onClear }) {
   );
 }
 
+function formatDate(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return String(value);
+  }
+}
+
 /* ── Missing fields row ───────────────────────────────────── */
 function MissingFieldRow({ doc, onView }) {
   const [hovered, setHovered] = useState(false);
@@ -375,7 +384,7 @@ function MissingFieldRow({ doc, onView }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(200px, 1.2fr) 200px 1fr 100px",
+        gridTemplateColumns: "minmax(200px, 1.2fr) 200px 1fr 170px 100px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -426,6 +435,20 @@ function MissingFieldRow({ doc, onView }) {
           {nullFields.length > 3 && ` +${nullFields.length - 3} more`}
         </span>
       </div>
+
+      {/* Created At */}
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+        title={doc.created_at || ""}
+      >
+        {formatDate(doc.created_at)}
+      </span>
 
       {/* View Button */}
       <button
@@ -646,7 +669,7 @@ export default function MissingFieldsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(200px, 1.2fr) 200px 1fr 100px",
+              gridTemplateColumns: "minmax(200px, 1.2fr) 200px 1fr 170px 100px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -661,6 +684,9 @@ export default function MissingFieldsPage() {
             </span>
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
               Missing Fields
+            </span>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
+              Created At
             </span>
             <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", textAlign: "center" }}>
               Action
