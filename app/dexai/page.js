@@ -284,7 +284,7 @@ export default function DexaiUsersPage() {
                 margin: 0,
               }}
             >
-              DexAI Users
+              Clients
             </h1>
             <p style={{ fontSize: 13, color: "var(--text-muted)", marginTop: 4 }}>
               Users from{" "}

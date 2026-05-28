@@ -110,7 +110,7 @@ export default function Navbar() {
         <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
         <NavLink href="/analyzer"       label="Analyzer"        icon={FileSearch}   active={pathname === "/analyzer"} />
         <NavLink href="/missing-fields" label="Missing Fields"  icon={AlertCircle}  active={pathname === "/missing-fields"} />
-        <NavLink href="/dexai"          label="DexaiResult"     icon={Users}        active={pathname.startsWith("/dexai")} />
+        <NavLink href="/dexai"          label="ClientsAudit"     icon={Users}        active={pathname.startsWith("/dexai")} />
       </nav>
 
       {/* ── Right controls ── */}
