@@ -1,278 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { 
-  Search, 
-  Filter, 
-  Eye, 
-  AlertCircle, 
+import {
+  Search,
+  Filter,
+  Eye,
+  AlertCircle,
   FileWarning,
   ChevronDown,
   X,
-  ListFilter
+  ListFilter,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 
-function isMissingValue(val) {
-  if (val === null || val === undefined) return true;
-  if (typeof val === "string") {
-    const normalized = val.trim().toLowerCase();
-    if (normalized === "" || normalized === "null" || normalized === "na" || normalized === "n/a") {
-      return true;
-    }
-  }
-  return false;
-}
-
-function isMissingItemsArray(val) {
-  if (isMissingValue(val)) return true;
-  if (!Array.isArray(val)) return true;
-  return val.length === 0;
-}
-
-function getFirstValueByAliases(obj, aliases = []) {
-  if (!obj || typeof obj !== "object") return undefined;
-  for (const key of aliases) {
-    if (Object.prototype.hasOwnProperty.call(obj, key)) {
-      return obj[key];
-    }
-  }
-  return undefined;
-}
-
-function isMissingByAliases(obj, aliases = []) {
-  const value = getFirstValueByAliases(obj, aliases);
-  return isMissingValue(value);
-}
-
-function getValueByPath(obj, path) {
-  if (!obj || typeof obj !== "object") return undefined;
-  const parts = String(path).split(".");
-  let current = obj;
-  for (const part of parts) {
-    if (!current || typeof current !== "object" || !(part in current)) {
-      return undefined;
-    }
-    current = current[part];
-  }
-  return current;
-}
-
-function getFirstValueByPaths(obj, paths = []) {
-  for (const path of paths) {
-    const value = getValueByPath(obj, path);
-    if (value !== undefined) return value;
-  }
-  return undefined;
-}
-
-function isMissingByPaths(obj, paths = []) {
-  return isMissingValue(getFirstValueByPaths(obj, paths));
-}
-
-function getMissingFieldKeys(rawOcrUiResults, docType = "") {
-  // Unwrap formatted_result wrapper if present
-  const ocrUiResults = (rawOcrUiResults?.formatted_result && typeof rawOcrUiResults.formatted_result === "object")
-    ? rawOcrUiResults.formatted_result
-    : rawOcrUiResults;
-
-  const missing = [];
-  const normalizedDocType = String(docType || "").toLowerCase();
-  const compactDocType = normalizedDocType.replace(/[^a-z]/g, "");
-  const isBankStatementDoc = normalizedDocType.includes("bank statement") || compactDocType.includes("bankstatement");
-  const isReceiptDoc = normalizedDocType.includes("receipt");
-  const isInvoiceDoc = normalizedDocType.includes("invoice");
-  const isSaleDoc = normalizedDocType.includes("sale");
-  const isPurchaseDoc = normalizedDocType.includes("purchase");
-
-  if (!ocrUiResults || typeof ocrUiResults !== "object") {
-    if (isBankStatementDoc) {
-      return [
-        "bankName",
-        "accountHolderName",
-        "openingDate",
-        "closingDate",
-        "openingBalance",
-        "closingBalance",
-        "currencyCode",
-        "tableItems",
-      ];
-    }
-
-    if (isReceiptDoc) {
-      return [
-        "document_id",
-        "supplier_name",
-        "receipt_date",
-        "currency",
-        "total_amount",
-        "net_amount",
-        "vat_amount",
-        "discount",
-        "items",
-      ];
-    }
-
-    return [
-      "documentId",
-      "date",
-      "dueDate",
-      "currencyCode",
-      "totalAmount",
-      "netAmount",
-      "taxAmount",
-      "discountAmount",
-      "tableItems",
-    ];
-  }
-
-  if (isBankStatementDoc) {
-    if (isMissingByPaths(ocrUiResults, ["bankName", "bank_name"])) {
-      missing.push("bankName");
-    }
-    if (isMissingByPaths(ocrUiResults, ["accountHolderName", "account_holder_name"])) {
-      missing.push("accountHolderName");
-    }
-    if (isMissingByPaths(ocrUiResults, ["openingDate", "opening_date"])) {
-      missing.push("openingDate");
-    }
-    if (isMissingByPaths(ocrUiResults, ["closingDate", "closing_date"])) {
-      missing.push("closingDate");
-    }
-    if (isMissingByPaths(ocrUiResults, ["openingBalance", "opening_balance"])) {
-      missing.push("openingBalance");
-    }
-    if (isMissingByPaths(ocrUiResults, ["closingBalance", "closing_balance"])) {
-      missing.push("closingBalance");
-    }
-    if (isMissingByPaths(ocrUiResults, ["currencyCode", "currency"])) {
-      missing.push("currencyCode");
-    }
-
-    const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "table_items", "items"]);
-    if (isMissingItemsArray(items)) {
-      missing.push("tableItems");
-    }
-
-    return missing;
-  }
-
-  if (isReceiptDoc) {
-    if (isMissingByAliases(ocrUiResults, ["document_id", "documentId"])) {
-      missing.push("document_id");
-    }
-    if (isMissingByAliases(ocrUiResults, ["supplier_name", "supplierName"])) {
-      missing.push("supplier_name");
-    }
-    if (isMissingByAliases(ocrUiResults, ["receipt_date", "date"])) {
-      missing.push("receipt_date");
-    }
-    if (isMissingByAliases(ocrUiResults, ["currency", "currencyCode"])) {
-      missing.push("currency");
-    }
-    if (isMissingByAliases(ocrUiResults, ["total_amount", "totalAmount"])) {
-      missing.push("total_amount");
-    }
-    if (isMissingByAliases(ocrUiResults, ["net_amount", "netAmount"])) {
-      missing.push("net_amount");
-    }
-    if (isMissingByAliases(ocrUiResults, ["vat_amount", "taxAmount"])) {
-      missing.push("vat_amount");
-    }
-    if (isMissingByAliases(ocrUiResults, ["discount", "discountAmount"])) {
-      missing.push("discount");
-    }
-
-    const items = getFirstValueByAliases(ocrUiResults, ["items", "tableItems"]);
-    if (isMissingItemsArray(items)) {
-      missing.push("items");
-    }
-
-    return missing;
-  }
-
-  if (isInvoiceDoc) {
-    if (isMissingByPaths(ocrUiResults, ["documentId", "document_id", "invoice_number"])) {
-      missing.push("documentId");
-    }
-
-    if ((isPurchaseDoc || !isSaleDoc) && isMissingByPaths(ocrUiResults, ["supplierName", "supplier_name"])) {
-      missing.push("supplierName");
-    }
-
-    if (isMissingByPaths(ocrUiResults, ["customerName", "customer_name"])) {
-      missing.push("customerName");
-    }
-
-    if (isMissingByPaths(ocrUiResults, ["date", "invoice_date"])) {
-      missing.push("date");
-    }
-    if (isMissingByPaths(ocrUiResults, ["dueDate", "due_date"])) {
-      missing.push("dueDate");
-    }
-    if (isMissingByPaths(ocrUiResults, ["currencyCode", "currency"])) {
-      missing.push("currencyCode");
-    }
-    if (isMissingByPaths(ocrUiResults, ["totalAmount", "total_amount", "amounts.Grand Total", "amounts.total", "amounts.grand_total"])) {
-      missing.push("totalAmount");
-    }
-    if (isMissingByPaths(ocrUiResults, ["netAmount", "net_amount", "subtotal", "amounts.Subtotal", "amounts.subtotal"])) {
-      missing.push("netAmount");
-    }
-    if (isMissingByPaths(ocrUiResults, ["taxAmount", "vat_amount", "amounts.VAT", "amounts.vat"])) {
-      missing.push("taxAmount");
-    }
-    if (isMissingByPaths(ocrUiResults, ["discountAmount", "discount"])) {
-      missing.push("discountAmount");
-    }
-
-    const items = getFirstValueByPaths(ocrUiResults, ["tableItems", "items"]);
-    if (isMissingItemsArray(items)) {
-      missing.push("tableItems");
-    }
-
-    return missing;
-  }
-
-  const topLevelMandatory = [
-    "documentId",
-    "date",
-    "dueDate",
-    "currencyCode",
-    "totalAmount",
-    "netAmount",
-    "taxAmount",
-    "discountAmount",
-  ];
-
-  for (const field of topLevelMandatory) {
-    if (isMissingByAliases(ocrUiResults, [field])) {
-      missing.push(field);
-    }
-  }
-
-  if (isSaleDoc && isMissingByAliases(ocrUiResults, ["customerName", "customer_name"])) {
-    missing.push("customerName");
-  }
-  if (isPurchaseDoc && isMissingByAliases(ocrUiResults, ["supplierName", "supplier_name"])) {
-    missing.push("supplierName");
-  }
-
-  const tableItems = getFirstValueByAliases(ocrUiResults, ["tableItems", "items"]);
-  if (isMissingItemsArray(tableItems)) {
-    missing.push("tableItems");
-  }
-
-  return missing;
-}
-
 /* ── Filter dropdown ──────────────────────────────────────── */
-function FilterDropdown({ label, value, options, onChange, onClear }) {
+function FilterDropdown({ label, value, options, onChange }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -300,63 +47,61 @@ function FilterDropdown({ label, value, options, onChange, onClear }) {
       </button>
 
       {isOpen && (
-        <div
-          style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            left: 0,
-            minWidth: 180,
-            background: "var(--panel-bg)",
-            border: "1px solid var(--panel-border)",
-            borderRadius: 8,
-            boxShadow: "var(--shadow-md)",
-            zIndex: 50,
-            maxHeight: 240,
-            overflowY: "auto",
-          }}
-        >
+        <>
           <div
-            onClick={() => {
-              onChange("");
-              setIsOpen(false);
-            }}
+            onClick={() => setIsOpen(false)}
+            style={{ position: "fixed", inset: 0, zIndex: 40 }}
+          />
+          <div
             style={{
-              padding: "8px 12px",
-              fontSize: 13,
-              cursor: "pointer",
-              color: "var(--text-muted)",
-              borderBottom: "1px solid var(--panel-border)",
+              position: "absolute",
+              top: "calc(100% + 4px)",
+              left: 0,
+              minWidth: 180,
+              background: "var(--panel-bg)",
+              border: "1px solid var(--panel-border)",
+              borderRadius: 8,
+              boxShadow: "var(--shadow-md)",
+              zIndex: 50,
+              maxHeight: 240,
+              overflowY: "auto",
             }}
-            onMouseEnter={e => e.currentTarget.style.background = "var(--input-bg)"}
-            onMouseLeave={e => e.currentTarget.style.background = "transparent"}
           >
-            All
-          </div>
-          {options.map(opt => (
             <div
-              key={opt}
               onClick={() => {
-                onChange(opt);
+                onChange("");
                 setIsOpen(false);
               }}
               style={{
                 padding: "8px 12px",
                 fontSize: 13,
                 cursor: "pointer",
-                color: "var(--foreground)",
-                background: value === opt ? "var(--tag-bg)" : "transparent",
-              }}
-              onMouseEnter={e => {
-                if (value !== opt) e.currentTarget.style.background = "var(--input-bg)";
-              }}
-              onMouseLeave={e => {
-                if (value !== opt) e.currentTarget.style.background = "transparent";
+                color: "var(--text-muted)",
+                borderBottom: "1px solid var(--panel-border)",
               }}
             >
-              {opt}
+              All
             </div>
-          ))}
-        </div>
+            {options.map((opt) => (
+              <div
+                key={opt}
+                onClick={() => {
+                  onChange(opt);
+                  setIsOpen(false);
+                }}
+                style={{
+                  padding: "8px 12px",
+                  fontSize: 13,
+                  cursor: "pointer",
+                  color: "var(--foreground)",
+                  background: value === opt ? "var(--tag-bg)" : "transparent",
+                }}
+              >
+                {opt}
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
@@ -374,9 +119,7 @@ function formatDate(value) {
 /* ── Missing fields row ───────────────────────────────────── */
 function MissingFieldRow({ doc, onView }) {
   const [hovered, setHovered] = useState(false);
-
-  // Count missing mandatory fields in ocr_results (the actual DB column)
-  const nullFields = getMissingFieldKeys(doc.ocr_results, doc.ocr_document_type);
+  const nullFields = doc.missing_fields || [];
 
   return (
     <div
@@ -393,7 +136,6 @@ function MissingFieldRow({ doc, onView }) {
         transition: "background 0.15s",
       }}
     >
-      {/* ID */}
       <span
         style={{
           fontSize: 12,
@@ -409,7 +151,6 @@ function MissingFieldRow({ doc, onView }) {
         {doc.id}
       </span>
 
-      {/* Document Type */}
       <span
         style={{
           fontSize: 12,
@@ -424,19 +165,20 @@ function MissingFieldRow({ doc, onView }) {
         {doc.ocr_document_type || "Unknown"}
       </span>
 
-      {/* Missing Fields */}
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <FileWarning size={14} style={{ color: "var(--text-muted)" }} />
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          {nullFields.length} field{nullFields.length !== 1 ? "s" : ""} missing:
+          {nullFields.length} field{nullFields.length !== 1 ? "s" : ""}
+          {nullFields.length > 0 ? " missing:" : ""}
         </span>
-        <span style={{ fontSize: 12, color: "var(--foreground)", fontWeight: 500 }}>
-          {nullFields.slice(0, 3).join(", ")}
-          {nullFields.length > 3 && ` +${nullFields.length - 3} more`}
-        </span>
+        {nullFields.length > 0 && (
+          <span style={{ fontSize: 12, color: "var(--foreground)", fontWeight: 500 }}>
+            {nullFields.slice(0, 3).join(", ")}
+            {nullFields.length > 3 && ` +${nullFields.length - 3} more`}
+          </span>
+        )}
       </div>
 
-      {/* Created At */}
       <span
         style={{
           fontSize: 12,
@@ -450,7 +192,6 @@ function MissingFieldRow({ doc, onView }) {
         {formatDate(doc.created_at)}
       </span>
 
-      {/* View Button */}
       <button
         onClick={() => onView(doc.id)}
         style={{
@@ -488,48 +229,83 @@ export default function MissingFieldsPage() {
   const [docType, setDocType] = useState("");
   const [showAll, setShowAll] = useState(true);
 
-  useEffect(() => { initTheme(); }, [initTheme]);
+  useEffect(() => {
+    initTheme();
+  }, [initTheme]);
 
+  // Single fetch — `showAll=true` to get the full set once; we filter
+  // client-side so toggling filters never round-trips to the server.
   const { data, isLoading, error } = useQuery({
-    queryKey: ["missing-fields", search, docType, showAll],
+    queryKey: ["missing-fields", "all"],
     queryFn: async () => {
-      const params = new URLSearchParams();
-      if (search) params.append("search", search);
-      if (docType) params.append("docType", docType);
-      params.append("showAll", showAll.toString());
-
-      const res = await axios.get(`/api/missing-fields?${params.toString()}`);
+      const res = await axios.get(`/api/missing-fields?showAll=true`);
       return res.data.documents || [];
     },
-    staleTime: 2 * 60 * 1000,
-    onError: () => toast.error("Failed to load documents with missing fields"),
+    staleTime: 5 * 60 * 1000,
+    onError: () => toast.error("Failed to load documents"),
   });
+
+  const documents = data || [];
+
+  const docTypes = useMemo(() => {
+    return [...new Set(documents.map((d) => d.ocr_document_type).filter(Boolean))];
+  }, [documents]);
+
+  const visibleDocuments = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return documents.filter((doc) => {
+      if (docType && doc.ocr_document_type !== docType) return false;
+      if (!showAll && (doc.missing_count || 0) === 0) return false;
+      if (!q) return true;
+      return (
+        String(doc.id || "").toLowerCase().includes(q) ||
+        String(doc.request_id || "").toLowerCase().includes(q) ||
+        String(doc.ocr_document_type || "").toLowerCase().includes(q)
+      );
+    });
+  }, [documents, search, docType, showAll]);
 
   const handleView = (docId) => {
     setActiveId(docId);
     router.push(`/analyzer?focusId=${encodeURIComponent(docId)}`);
   };
 
-  // Extract unique doc types for the filter
-  const docTypes = data ? [...new Set(data.map(d => d.ocr_document_type).filter(Boolean))] : [];
-  const visibleDocuments = showAll
-    ? (data || [])
-    : (data || []).filter((doc) => getMissingFieldKeys(doc?.ocr_results, doc?.ocr_document_type).length > 0);
-
   return (
-    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        minHeight: "100vh",
+        background: "var(--background)",
+      }}
+    >
       <Navbar />
 
-      <main style={{ flex: 1, padding: "32px 40px", maxWidth: 1400, margin: "0 auto", width: "100%" }}>
+      <main
+        style={{
+          flex: 1,
+          padding: "32px 40px",
+          maxWidth: 1400,
+          margin: "0 auto",
+          width: "100%",
+        }}
+      >
         {/* Header */}
         <div style={{ marginBottom: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              marginBottom: 8,
+            }}
+          >
             <div
               style={{
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                background: showAll 
+                background: showAll
                   ? "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)"
                   : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
                 display: "flex",
@@ -537,20 +313,30 @@ export default function MissingFieldsPage() {
                 justifyContent: "center",
               }}
             >
-              {showAll ? <ListFilter size={20} color="#fff" /> : <AlertCircle size={20} color="#fff" />}
+              {showAll ? (
+                <ListFilter size={20} color="#fff" />
+              ) : (
+                <AlertCircle size={20} color="#fff" />
+              )}
             </div>
             <div style={{ flex: 1 }}>
-              <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>
+              <h1
+                style={{
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: "var(--foreground)",
+                  margin: 0,
+                }}
+              >
                 {showAll ? "All Documents" : "Missing Mandatory Fields"}
               </h1>
               <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>
-                {showAll 
+                {showAll
                   ? "Complete list of all processed documents"
                   : "Documents with incomplete or null values in OCR results"}
               </p>
             </div>
-            
-            {/* Toggle */}
+
             <button
               onClick={() => setShowAll(!showAll)}
               style={{
@@ -587,7 +373,6 @@ export default function MissingFieldsPage() {
             boxShadow: "var(--shadow-sm)",
           }}
         >
-          {/* Search */}
           <div style={{ flex: 1, position: "relative" }}>
             <Search
               size={16}
@@ -603,7 +388,7 @@ export default function MissingFieldsPage() {
               type="text"
               placeholder="Search by result ID or document type..."
               value={search}
-              onChange={e => setSearch(e.target.value)}
+              onChange={(e) => setSearch(e.target.value)}
               style={{
                 width: "100%",
                 padding: "9px 12px 9px 38px",
@@ -617,7 +402,6 @@ export default function MissingFieldsPage() {
             />
           </div>
 
-          {/* Filters */}
           <FilterDropdown
             label="Type"
             value={docType}
@@ -625,7 +409,6 @@ export default function MissingFieldsPage() {
             onChange={setDocType}
           />
 
-          {/* Clear all */}
           {(search || docType) && (
             <button
               onClick={() => {
@@ -644,10 +427,7 @@ export default function MissingFieldsPage() {
                 background: "var(--input-bg)",
                 color: "var(--text-muted)",
                 cursor: "pointer",
-                transition: "all 0.15s",
               }}
-              onMouseEnter={e => e.currentTarget.style.background = "var(--panel-border)"}
-              onMouseLeave={e => e.currentTarget.style.background = "var(--input-bg)"}
             >
               <X size={13} />
               Clear
@@ -665,7 +445,6 @@ export default function MissingFieldsPage() {
             overflow: "hidden",
           }}
         >
-          {/* Table Header */}
           <div
             style={{
               display: "grid",
@@ -676,27 +455,30 @@ export default function MissingFieldsPage() {
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              Result ID
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              Document Type
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              Missing Fields
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-              Created At
-            </span>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)", textAlign: "center" }}>
-              Action
-            </span>
+            {["Result ID", "Document Type", "Missing Fields", "Created At", "Action"].map(
+              (h, i) => (
+                <span
+                  key={i}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                    color: "var(--text-muted)",
+                    textAlign: i === 4 ? "center" : "left",
+                  }}
+                >
+                  {h}
+                </span>
+              )
+            )}
           </div>
 
-          {/* Table Body */}
           <div style={{ maxHeight: "calc(100vh - 400px)", overflowY: "auto" }}>
             {isLoading ? (
-              <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>
+              <div
+                style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}
+              >
                 Loading documents...
               </div>
             ) : error ? (
@@ -706,26 +488,35 @@ export default function MissingFieldsPage() {
               </div>
             ) : visibleDocuments.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center" }}>
-                <FileWarning size={40} style={{ color: "var(--text-muted)", marginBottom: 12 }} />
-                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>
+                <FileWarning
+                  size={40}
+                  style={{ color: "var(--text-muted)", marginBottom: 12 }}
+                />
+                <p
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "var(--foreground)",
+                    marginBottom: 4,
+                  }}
+                >
                   No documents found
                 </p>
                 <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
                   {search || docType
                     ? "Try adjusting your filters"
-                    : showAll 
-                      ? "No documents available" 
-                      : "All documents have complete data!"}
+                    : showAll
+                    ? "No documents available"
+                    : "All documents have complete data!"}
                 </p>
               </div>
             ) : (
-              visibleDocuments.map(doc => (
+              visibleDocuments.map((doc) => (
                 <MissingFieldRow key={doc.id} doc={doc} onView={handleView} />
               ))
             )}
           </div>
 
-          {/* Footer */}
           {visibleDocuments.length > 0 && (
             <div
               style={{
@@ -737,7 +528,8 @@ export default function MissingFieldsPage() {
                 textAlign: "center",
               }}
             >
-              Showing {visibleDocuments.length} document{visibleDocuments.length !== 1 ? "s" : ""} 
+              Showing {visibleDocuments.length} of {documents.length} document
+              {documents.length !== 1 ? "s" : ""}
               {!showAll && " with missing fields"}
             </div>
           )}

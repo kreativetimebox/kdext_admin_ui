@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useDeferredValue } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { List } from "react-window";
 import axios from "axios";
 import SidebarItem from "./SidebarItem";
 import { FileText, Search, X } from "lucide-react";
+
+const ROW_HEIGHT = 40;
 
 function SkeletonItem() {
   return (
@@ -14,6 +17,17 @@ function SkeletonItem() {
     >
       <div className="skeleton rounded w-8 h-4 shrink-0" />
       <div className="skeleton rounded flex-1 h-3" />
+    </div>
+  );
+}
+
+/* Row renderer for react-window — `index` selects from `rowProps.items`. */
+function Row({ index, style, items }) {
+  const doc = items[index];
+  if (!doc) return null;
+  return (
+    <div style={style}>
+      <SidebarItem id={doc.id} ocr_document_type={doc.ocr_document_type} />
     </div>
   );
 }
@@ -32,19 +46,22 @@ export default function SidebarList({ onlyId = null }) {
   const documents = data || [];
 
   const [search, setSearch] = useState("");
+  // useDeferredValue keeps typing responsive even with a 15k-row filter.
+  const deferredSearch = useDeferredValue(search);
+
   const visibleDocuments = useMemo(() => {
     const scopedDocs = onlyId
       ? documents.filter((d) => String(d.id) === String(onlyId))
       : documents;
 
-    if (!search.trim()) return scopedDocs;
-    const q = search.toLowerCase();
+    const q = deferredSearch.trim().toLowerCase();
+    if (!q) return scopedDocs;
     return scopedDocs.filter(
       (d) =>
         String(d.id).toLowerCase().includes(q) ||
         (d.ocr_document_type || "").toLowerCase().includes(q)
     );
-  }, [documents, search, onlyId]);
+  }, [documents, deferredSearch, onlyId]);
 
   if (isError) {
     return (
@@ -55,7 +72,9 @@ export default function SidebarList({ onlyId = null }) {
         >
           <FileText size={16} color="#ef4444" />
         </div>
-        <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>Failed to load</p>
+        <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
+          Failed to load
+        </p>
         <button
           onClick={() => refetch()}
           className="text-xs px-4 py-1.5 rounded-lg font-semibold text-white transition-opacity hover:opacity-80"
@@ -86,7 +105,7 @@ export default function SidebarList({ onlyId = null }) {
               className="text-[10px] font-bold px-2 py-0.5 rounded-full"
               style={{ background: "var(--accent)", color: "#fff" }}
             >
-              {visibleDocuments.length}
+              {visibleDocuments.length.toLocaleString()}
             </span>
           )}
         </div>
@@ -121,23 +140,34 @@ export default function SidebarList({ onlyId = null }) {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0">
         {isLoading ? (
-          Array.from({ length: 14 }).map((_, i) => <SkeletonItem key={i} />)
+          <div className="overflow-y-auto h-full">
+            {Array.from({ length: 14 }).map((_, i) => (
+              <SkeletonItem key={i} />
+            ))}
+          </div>
         ) : visibleDocuments.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 gap-1">
-            <FileText size={20} style={{ color: "var(--text-muted)", opacity: 0.4 }} />
+            <FileText
+              size={20}
+              style={{ color: "var(--text-muted)", opacity: 0.4 }}
+            />
             <p className="text-xs" style={{ color: "var(--text-muted)" }}>
               {search ? "No matches" : "No documents found"}
             </p>
           </div>
         ) : (
-          visibleDocuments.map((doc) => (
-            <SidebarItem key={doc.id} id={doc.id} ocr_document_type={doc.ocr_document_type} />
-          ))
+          <List
+            style={{ height: "100%", width: "100%" }}
+            rowComponent={Row}
+            rowCount={visibleDocuments.length}
+            rowHeight={ROW_HEIGHT}
+            rowProps={{ items: visibleDocuments }}
+            overscanCount={8}
+          />
         )}
       </div>
     </div>
   );
 }
-
