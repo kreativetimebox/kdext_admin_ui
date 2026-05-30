@@ -291,7 +291,7 @@ export default function DexaiUsersPage() {
               <span style={{ fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
                 MAIN_FINANCE_DB
               </span>
-              . Click any row to view that user&apos;s document processing results.
+              . Click any row to view that client&apos;s document processing results.
             </p>
           </div>
           <div style={{ display: "flex", gap: 8 }}>

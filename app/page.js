@@ -541,7 +541,7 @@ export default function HomePage() {
           <ActionCard
             icon={Users}
             color="#2563eb"
-            title="Clients"
+            title="DexAI Users"
             description="Browse all DexAI users and view their document processing results from the main finance database."
             href="/dexai"
             badge="Primary"
