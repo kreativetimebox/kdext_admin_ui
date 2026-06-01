@@ -22,9 +22,14 @@ async function loadDocuments(filters) {
   const rows = await getDocumentsWithMissingFields(filters);
   return rows.map((row) => ({
     id: row.id,
+    result_id: row.result_id,
+    transaction_id: row.transaction_id,
+    source: row.source,
     request_id: row.request_id,
     ocr_document_type: row.ocr_document_type,
     created_at: row.created_at,
+    submitted_at: row.submitted_at,
+    updated_at: row.updated_at,
     missing_count: Number(row.missing_count) || 0,
     missing_fields: row.missing_fields || [],
   }));

@@ -27,7 +27,12 @@ function Row({ index, style, items }) {
   if (!doc) return null;
   return (
     <div style={style}>
-      <SidebarItem id={doc.id} ocr_document_type={doc.ocr_document_type} />
+      <SidebarItem
+        id={doc.id}
+        result_id={doc.result_id}
+        source={doc.source}
+        ocr_document_type={doc.ocr_document_type}
+      />
     </div>
   );
 }
@@ -58,7 +63,8 @@ export default function SidebarList({ onlyId = null }) {
     if (!q) return scopedDocs;
     return scopedDocs.filter(
       (d) =>
-        String(d.id).toLowerCase().includes(q) ||
+        String(d.result_id ?? d.id).toLowerCase().includes(q) ||
+        String(d.transaction_id ?? "").toLowerCase().includes(q) ||
         (d.ocr_document_type || "").toLowerCase().includes(q)
     );
   }, [documents, deferredSearch, onlyId]);

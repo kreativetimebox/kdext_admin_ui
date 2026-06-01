@@ -46,6 +46,19 @@ function fullName(u) {
   return parts.length ? parts.join(" ") : "—";
 }
 
+/* Returns true if the query substring matches any of the record's timestamp
+   fields, checked against both the raw ISO value and the localized display
+   string (so "2026-06" and "6/1/2026" both work). */
+function matchesDate(value, q) {
+  if (!value) return false;
+  if (String(value).toLowerCase().includes(q)) return true;
+  try {
+    return new Date(value).toLocaleString().toLowerCase().includes(q);
+  } catch {
+    return false;
+  }
+}
+
 function StatusBadge({ status }) {
   const colors = {
     COMPLETED: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
@@ -170,7 +183,7 @@ function ResultRow({ record, onView }) {
       style={{
         display: "grid",
         gridTemplateColumns:
-          "minmax(200px, 1.4fr) minmax(140px, 0.9fr) 110px 160px 160px 110px 90px",
+          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 150px 150px 100px 80px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -192,6 +205,34 @@ function ResultRow({ record, onView }) {
         title={record.request_id}
       >
         {record.request_id}
+      </span>
+
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--foreground)",
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={record.result_id ? String(record.result_id) : ""}
+      >
+        {record.result_id ?? "—"}
+      </span>
+
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--foreground)",
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={record.transaction_id || ""}
+      >
+        {record.transaction_id || "—"}
       </span>
 
       <span
@@ -325,9 +366,13 @@ export default function UserResultsPage({ params }) {
       if (!q) return true;
       return (
         (r.request_id || "").toLowerCase().includes(q) ||
+        String(r.result_id ?? "").toLowerCase().includes(q) ||
         (r.transaction_id || "").toLowerCase().includes(q) ||
         (r.original_filename || "").toLowerCase().includes(q) ||
-        (r.document_type || "").toLowerCase().includes(q)
+        (r.document_type || "").toLowerCase().includes(q) ||
+        matchesDate(r.created_at, q) ||
+        matchesDate(r.submitted_at, q) ||
+        matchesDate(r.updated_at, q)
       );
     });
   }, [records, search, docType, status]);
@@ -490,7 +535,7 @@ export default function UserResultsPage({ params }) {
             />
             <input
               type="text"
-              placeholder="Search by request_id, filename, document type..."
+              placeholder="Search by request_id, result_id, transaction_id, filename, type, date..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -561,7 +606,7 @@ export default function UserResultsPage({ params }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "minmax(200px, 1.4fr) minmax(140px, 0.9fr) 110px 160px 160px 110px 90px",
+                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 150px 150px 100px 80px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -570,6 +615,8 @@ export default function UserResultsPage({ params }) {
           >
             {[
               "Request ID",
+              "Result ID",
+              "Transaction ID",
               "Document Type",
               "Status",
               "Created At",

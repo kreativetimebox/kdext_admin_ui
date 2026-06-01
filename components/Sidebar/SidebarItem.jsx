@@ -11,11 +11,18 @@ function getTypeMeta(type) {
   return { bg: "var(--tag-bg)", color: "var(--tag-color)" };
 }
 
-export default function SidebarItem({ id, ocr_document_type }) {
+const SOURCE_META = {
+  fin: { label: "FIN", bg: "var(--tag-bg)", color: "var(--tag-color)" },
+  main: { label: "MAIN", bg: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" },
+};
+
+export default function SidebarItem({ id, result_id, source, ocr_document_type }) {
   const { activeId, setActiveId } = useDocumentStore();
   const isActive = activeId === id;
   const [hovered, setHovered] = useState(false);
   const meta = getTypeMeta(ocr_document_type);
+  const srcMeta = SOURCE_META[source];
+  const displayId = result_id ?? id;
 
   return (
     <div
@@ -30,19 +37,32 @@ export default function SidebarItem({ id, ocr_document_type }) {
         transition: "background 0.12s ease, border-left-color 0.12s ease",
       }}
     >
+      {/* Source tag */}
+      {srcMeta && (
+        <span
+          className="shrink-0 text-[8px] font-bold tracking-wider px-1 py-0.5 rounded"
+          style={{ background: srcMeta.bg, color: srcMeta.color }}
+          title={`Source: ${srcMeta.label}`}
+        >
+          {srcMeta.label}
+        </span>
+      )}
+
       {/* ID chip */}
       <span
-        className="shrink-0 text-[10px] font-bold font-mono tabular-nums px-1.5 py-0.5 rounded"
+        className="shrink-0 text-[10px] font-bold font-mono tabular-nums px-1.5 py-0.5 rounded truncate"
         style={{
           background: isActive ? "var(--accent)" : "var(--input-bg)",
           color: isActive ? "#fff" : "var(--text-muted)",
           border: "1px solid",
           borderColor: isActive ? "var(--accent)" : "var(--panel-border)",
           minWidth: 36,
+          maxWidth: 90,
           textAlign: "center",
         }}
+        title={String(displayId)}
       >
-        {id}
+        {displayId}
       </span>
 
       {/* Type badge */}

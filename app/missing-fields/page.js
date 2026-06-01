@@ -116,6 +116,18 @@ function formatDate(value) {
   }
 }
 
+/* Match a query substring against a timestamp's raw ISO value and its
+   localized display string (so "2026-06" and "6/1/2026" both work). */
+function matchesDate(value, q) {
+  if (!value) return false;
+  if (String(value).toLowerCase().includes(q)) return true;
+  try {
+    return new Date(value).toLocaleString().toLowerCase().includes(q);
+  } catch {
+    return false;
+  }
+}
+
 /* ── Missing fields row ───────────────────────────────────── */
 function MissingFieldRow({ doc, onView }) {
   const [hovered, setHovered] = useState(false);
@@ -138,17 +150,46 @@ function MissingFieldRow({ doc, onView }) {
     >
       <span
         style={{
-          fontSize: 12,
-          fontWeight: 600,
-          color: "var(--accent)",
-          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
           overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
         }}
-        title={doc.id}
+        title={`${doc.result_id ?? doc.id}${doc.transaction_id ? ` · txn ${doc.transaction_id}` : ""}`}
       >
-        {doc.id}
+        {doc.source && (
+          <span
+            style={{
+              flexShrink: 0,
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "0.05em",
+              padding: "2px 5px",
+              borderRadius: 4,
+              background:
+                doc.source === "main" ? "var(--tag-purple-bg)" : "var(--tag-bg)",
+              color:
+                doc.source === "main"
+                  ? "var(--tag-purple-color)"
+                  : "var(--tag-color)",
+            }}
+          >
+            {doc.source === "main" ? "MAIN" : "FIN"}
+          </span>
+        )}
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 600,
+            color: "var(--accent)",
+            fontFamily: "ui-monospace, SFMono-Regular, monospace",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {doc.result_id ?? doc.id}
+        </span>
       </span>
 
       <span
@@ -258,9 +299,13 @@ export default function MissingFieldsPage() {
       if (!showAll && (doc.missing_count || 0) === 0) return false;
       if (!q) return true;
       return (
-        String(doc.id || "").toLowerCase().includes(q) ||
+        String(doc.result_id ?? doc.id ?? "").toLowerCase().includes(q) ||
+        String(doc.transaction_id || "").toLowerCase().includes(q) ||
         String(doc.request_id || "").toLowerCase().includes(q) ||
-        String(doc.ocr_document_type || "").toLowerCase().includes(q)
+        String(doc.ocr_document_type || "").toLowerCase().includes(q) ||
+        matchesDate(doc.created_at, q) ||
+        matchesDate(doc.submitted_at, q) ||
+        matchesDate(doc.updated_at, q)
       );
     });
   }, [documents, search, docType, showAll]);
@@ -386,7 +431,7 @@ export default function MissingFieldsPage() {
             />
             <input
               type="text"
-              placeholder="Search by result ID or document type..."
+              placeholder="Search by result ID, transaction ID, document type or date..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
