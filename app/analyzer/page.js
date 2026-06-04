@@ -10,7 +10,7 @@ import { useDocumentStore, useThemeStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 import SidebarList from "@/components/Sidebar/SidebarList";
 import FileViewer from "@/components/Viewer/FileViewer";
-import EditableFields from "@/components/Forms/EditableFields";
+import FormattedResultView from "@/components/Results/FormattedResultView";
 import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
 
@@ -175,15 +175,13 @@ function AnalyzerContent() {
               >
                 <div className="p-8 flex flex-col gap-8">
 
-                {/* Edit Fields */}
-                <Card title="Edit Fields" accent="var(--accent)">
-                  <EditableFields document={doc} isLoading={isLoading} />
-                </Card>
+                {/* OCR Results — formatted detail view */}
+                <FormattedResultView data={doc?.ocr_ui_results} title="OCR Results" />
 
-                {/* Parsed Results */}
+                {/* Formatted Result (JSON) */}
                 <div className="flex flex-col gap-3">
                   <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
-                    Parsed Results
+                    Formatted Result
                   </p>
                   <OCRResults data={doc?.ocr_ui_results} />
                 </div>

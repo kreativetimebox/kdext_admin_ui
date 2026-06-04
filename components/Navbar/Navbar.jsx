@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, AlertCircle, Users } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 
 /* ── Nav link ──────────────────────────────────────────────── */
@@ -109,7 +109,6 @@ export default function Navbar() {
       <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
         <NavLink href="/analyzer"       label="Analyzer"        icon={FileSearch}   active={pathname === "/analyzer"} />
-        <NavLink href="/missing-fields" label="Missing Fields"  icon={AlertCircle}  active={pathname === "/missing-fields"} />
         <NavLink href="/dexai"          label="ClientsAudit"     icon={Users}        active={pathname.startsWith("/dexai")} />
       </nav>
 

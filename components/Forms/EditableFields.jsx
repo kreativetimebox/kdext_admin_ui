@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useEffect, memo, useCallback } from "react";
-import { Save, Loader2, RotateCcw, Plus, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
-import toast from "react-hot-toast";
-import axios from "axios";
+import { useState, useEffect, memo } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 /* ── Keys rendered as a structured table (any array-of-objects) ── */
 function isArrayOfObjects(val) {
@@ -73,38 +70,6 @@ function isPairEndKey(key, allKeys) {
     const kb = allKeys.find((k) => k.toLowerCase().includes(b));
     return kb === key && ka && allKeys.includes(ka);
   });
-}
-
-/* ── Coerce edited string values back to their original types ── */
-function coerceToOriginalType(newVal, originalVal) {
-  if (typeof newVal !== "string") return newVal;
-  const trimmed = newVal.trim();
-
-  if (
-    (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
-    (trimmed.startsWith("[") && trimmed.endsWith("]"))
-  ) {
-    try { return JSON.parse(trimmed); } catch { /* keep as string */ }
-  }
-
-  if (trimmed === "") {
-    const origWasNull = originalVal === null || originalVal === undefined;
-    const origWasNullStr = typeof originalVal === "string" && originalVal.trim().toLowerCase() === "null";
-    if (origWasNull || origWasNullStr) return null;
-  }
-  if (trimmed.toLowerCase() === "null") return null;
-
-  if (typeof originalVal === "number" && trimmed !== "") {
-    const num = Number(trimmed);
-    if (!isNaN(num) && isFinite(num)) return num;
-  }
-
-  if (typeof originalVal === "boolean") {
-    if (trimmed.toLowerCase() === "true") return true;
-    if (trimmed.toLowerCase() === "false") return false;
-  }
-
-  return newVal;
 }
 
 /* ── Skeleton ── */
@@ -220,7 +185,7 @@ function isMandatoryFieldKey(fieldKey, docType = "") {
   return false;
 }
 
-/* ── Generic Array-of-Objects Table Editor ─────────────────── */
+/* ── Generic Array-of-Objects Table (read-only) ─────────────── */
 function discoverColumns(rows) {
   const seen = new Set();
   const cols = [];
@@ -240,41 +205,20 @@ function normalizeRows(rawRows) {
   return [];
 }
 
-function ArrayTableEditor({ fieldKey, items, onChange, isMandatory }) {
+function ArrayTable({ fieldKey, items, isMandatory }) {
   const rows = normalizeRows(items);
   const columns = discoverColumns(rows);
 
-  function updateCell(rowIdx, colKey, val) {
-    const updated = rows.map((r, i) =>
-      i === rowIdx ? { ...r, [colKey]: val } : r
-    );
-    onChange(fieldKey, updated);
-  }
-
-  function addRow() {
-    const empty = {};
-    columns.forEach((c) => { empty[c] = ""; });
-    onChange(fieldKey, [...rows, empty]);
-  }
-
-  function removeRow(rowIdx) {
-    onChange(fieldKey, rows.filter((_, i) => i !== rowIdx));
-  }
-
   const colCount = columns.length;
-  const gridCols = colCount > 0
-    ? `repeat(${colCount}, minmax(0, 1fr)) 36px`
-    : "1fr";
+  const gridCols = colCount > 0 ? `repeat(${colCount}, minmax(0, 1fr))` : "1fr";
 
-  const inputStyle = {
-    width: "100%",
-    padding: "6px 8px",
+  const cellStyle = {
     fontSize: 13,
-    borderRadius: 6,
-    border: "1px solid var(--input-border)",
-    background: "var(--input-bg)",
+    padding: "6px 8px",
     color: "var(--foreground)",
-    outline: "none",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
     minWidth: 0,
   };
 
@@ -318,14 +262,13 @@ function ArrayTableEditor({ fieldKey, items, onChange, isMandatory }) {
                 {toLabel(c)}
               </span>
             ))}
-            <span />
           </div>
         )}
 
         {/* Rows */}
         {rows.length === 0 ? (
           <div style={{ padding: "18px 12px", textAlign: "center", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
-            No items — click + Add Row
+            No items
           </div>
         ) : (
           rows.map((row, rowIdx) => (
@@ -335,94 +278,30 @@ function ArrayTableEditor({ fieldKey, items, onChange, isMandatory }) {
                 display: "grid",
                 gridTemplateColumns: gridCols,
                 gap: 6,
-                padding: "6px 10px",
+                padding: "2px 10px",
                 borderBottom: rowIdx < rows.length - 1 ? "1px solid var(--panel-border)" : "none",
                 alignItems: "center",
               }}
             >
               {columns.map((col) => (
-                <input
-                  key={col}
-                  type="text"
-                  value={displayValue(row[col])}
-                  placeholder={toLabel(col)}
-                  onChange={(e) => updateCell(rowIdx, col, e.target.value)}
-                  style={inputStyle}
-                  onFocus={(e) => { e.target.style.borderColor = "var(--accent)"; }}
-                  onBlur={(e) => { e.target.style.borderColor = "var(--input-border)"; }}
-                />
+                <span key={col} style={cellStyle} title={displayValue(row[col])}>
+                  {displayValue(row[col]) || "—"}
+                </span>
               ))}
-              <button
-                type="button"
-                onClick={() => removeRow(rowIdx)}
-                title="Remove row"
-                style={{
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  width: 28, height: 28, borderRadius: 6, border: "none",
-                  background: "transparent", color: "#ef4444", cursor: "pointer", flexShrink: 0,
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.1)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              >
-                <Trash2 size={13} />
-              </button>
             </div>
           ))
         )}
-
-        {/* Add row footer */}
-        <button
-          type="button"
-          onClick={addRow}
-          style={{
-            display: "flex", alignItems: "center", gap: 6, width: "100%",
-            padding: "8px 12px", fontSize: 12, fontWeight: 600,
-            color: "var(--accent)", background: "transparent", border: "none",
-            borderTop: rows.length > 0 ? "1px dashed var(--panel-border)" : "none",
-            cursor: "pointer",
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-        >
-          <Plus size={13} />
-          Add Row
-        </button>
       </div>
     </div>
   );
 }
 
-/* ── Single flat field ── */
-function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
+/* ── Single flat field (read-only) ── */
+function FieldDisplay({ fieldKey, value, isMandatory = false }) {
   const isObj = typeof value === "object" && value !== null && !Array.isArray(value);
   const rawStr = displayValue(value);
   const isLong = !isObj && rawStr.length > 100;
-
-  if (isObj || isLong) {
-    return (
-      <div className="flex flex-col gap-2.5">
-        <label className="text-[13px] font-semibold uppercase tracking-wider pl-1" style={{ color: "var(--text-muted)" }}>
-          {toLabel(fieldKey)}
-          {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
-        </label>
-        <textarea
-          value={rawStr}
-          onChange={(e) => onChange(fieldKey, e.target.value)}
-          rows={4}
-          className="w-full px-5 py-4 text-[14px] rounded-lg border transition-all resize-y font-mono overflow-y-auto"
-          style={{
-            background: "var(--input-bg)",
-            borderColor: "var(--input-border)",
-            color: "var(--foreground)",
-            minHeight: "5rem", maxHeight: "14rem",
-            outline: "none",
-          }}
-          onFocus={(e) => { e.target.style.borderColor = "var(--accent)"; }}
-          onBlur={(e) => { e.target.style.borderColor = "var(--input-border)"; }}
-        />
-      </div>
-    );
-  }
+  const isMultiline = isObj || isLong;
 
   return (
     <div className="flex flex-col gap-2.5">
@@ -430,20 +309,21 @@ function FieldInput({ fieldKey, value, onChange, isMandatory = false }) {
         {toLabel(fieldKey)}
         {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
       </label>
-      <input
-        type="text"
-        value={rawStr}
-        onChange={(e) => onChange(fieldKey, e.target.value)}
-        className="w-full h-12 px-5 text-[15px] rounded-lg border transition-all"
+      <div
+        className={
+          isMultiline
+            ? "w-full px-5 py-4 text-[14px] rounded-lg border font-mono whitespace-pre-wrap break-words overflow-y-auto"
+            : "w-full min-h-12 px-5 py-3 text-[15px] rounded-lg border break-words"
+        }
         style={{
           background: "var(--input-bg)",
           borderColor: "var(--input-border)",
-          color: "var(--foreground)",
-          outline: "none",
+          color: rawStr ? "var(--foreground)" : "var(--text-muted)",
+          maxHeight: isMultiline ? "14rem" : undefined,
         }}
-        onFocus={(e) => { e.target.style.borderColor = "var(--accent)"; }}
-        onBlur={(e) => { e.target.style.borderColor = "var(--input-border)"; }}
-      />
+      >
+        {rawStr || "—"}
+      </div>
     </div>
   );
 }
@@ -464,12 +344,10 @@ function isMultiReceipt(fields) {
   return Array.isArray(arr) && arr.length > 0 && arr.every((r) => r && typeof r === "object" && !Array.isArray(r));
 }
 
-/* ── Main component ── */
+/* ── Main component (read-only) ── */
 function EditableFields({ document, isLoading }) {
   const [fields, setFields] = useState({});
-  const [isSaving, setIsSaving] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     const uiSrc = extractFields(document?.ocr_ui_results);
@@ -500,81 +378,13 @@ function EditableFields({ document, isLoading }) {
 
   const viewFields = multiMode ? (fields.multiple_receipts[safePage] || {}) : fields;
 
-  const handleChange = useCallback((key, value) => {
-    setFields((prev) => {
-      if (isMultiReceipt(prev)) {
-        const idx = Math.min(Math.max(0, currentPage), prev.multiple_receipts.length - 1);
-        const nextArr = prev.multiple_receipts.map((r, i) =>
-          i === idx ? { ...r, [key]: value } : r
-        );
-        return { ...prev, multiple_receipts: nextArr };
-      }
-      return { ...prev, [key]: value };
-    });
-  }, [currentPage]);
-
-  const handleSave = async () => {
-    if (!document?.id) return;
-    setIsSaving(true);
-    try {
-      // Resolve the original flat fields for type-coercion hints
-      const rawUi = document?.ocr_ui_results ?? document?.ocr_results ?? {};
-      const original = (rawUi.formatted_result && typeof rawUi.formatted_result === "object")
-        ? rawUi.formatted_result
-        : rawUi;
-
-      const parsed = {};
-      for (const [key, val] of Object.entries(fields)) {
-        if (isArrayOfObjects(val)) {
-          const origRows = Array.isArray(original[key]) ? original[key] : [];
-          parsed[key] = val.map((row, ri) => {
-            const origRow = origRows[ri] ?? {};
-            const coercedRow = {};
-            for (const [ck, cv] of Object.entries(row)) {
-              coercedRow[ck] = coerceToOriginalType(cv, origRow[ck]);
-            }
-            return coercedRow;
-          });
-        } else {
-          parsed[key] = coerceToOriginalType(val, original[key]);
-        }
-      }
-
-      const { data } = await axios.post(`/api/document/${document.id}/update`, parsed);
-
-      // Unwrap the returned data the same way
-      const returnedUi = data?.ocr_ui_results;
-      const returnedFields = (returnedUi?.formatted_result && typeof returnedUi.formatted_result === "object")
-        ? returnedUi.formatted_result
-        : (typeof returnedUi === "object" && returnedUi ? returnedUi : null);
-
-      if (returnedFields && Object.keys(returnedFields).length > 0) {
-        setFields(returnedFields);
-      } else {
-        setFields(parsed);
-      }
-
-      queryClient.invalidateQueries({ queryKey: ["document", document.id] });
-      // Also clear the missing-fields cache so the Missing Fields page
-      // no longer shows this document once its fields have been filled.
-      queryClient.invalidateQueries({ queryKey: ["missing-fields"] });
-      toast.success("Saved successfully");
-    } catch (err) {
-      console.error("Save error:", err);
-
-      toast.error(err?.response?.data?.error || "Failed to save");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
   if (isLoading) return <EditableFieldSkeleton />;
 
   const docType = document?.ocr_document_type || "";
   const allKeys = Object.keys(viewFields);
   const mandatoryKeys = allKeys.filter((key) => isMandatoryFieldKey(key, docType));
 
-  // Split: array-of-objects → table editor; everything else → flat input
+  // Split: array-of-objects → table view; everything else → flat display
   const tableKeys = mandatoryKeys.filter((k) => isArrayOfObjects(viewFields[k]));
   const flatKeys = mandatoryKeys.filter((k) => !isArrayOfObjects(viewFields[k]));
 
@@ -663,7 +473,7 @@ function EditableFields({ document, isLoading }) {
       {mandatoryKeys.length === 0 ? (
         <div className="px-5 py-6 text-center">
           <p className="text-sm text-[var(--text-muted)] italic">
-            No mandatory editable fields available for this {multiMode ? "receipt" : "document"}.
+            No mandatory fields available for this {multiMode ? "receipt" : "document"}.
           </p>
         </div>
       ) : (
@@ -684,17 +494,15 @@ function EditableFields({ document, isLoading }) {
                         const partnerKey = getPairEnd(key, group.keys);
                         return (
                           <div key={key} className="grid grid-cols-2 gap-4">
-                            <FieldInput
+                            <FieldDisplay
                               fieldKey={key}
                               value={viewFields[key]}
-                              onChange={handleChange}
                               isMandatory={isMandatoryFieldKey(key, docType)}
                             />
                             {partnerKey && (
-                              <FieldInput
+                              <FieldDisplay
                                 fieldKey={partnerKey}
                                 value={viewFields[partnerKey]}
-                                onChange={handleChange}
                                 isMandatory={isMandatoryFieldKey(partnerKey, docType)}
                               />
                             )}
@@ -702,11 +510,10 @@ function EditableFields({ document, isLoading }) {
                         );
                       }
                       return (
-                        <FieldInput
+                        <FieldDisplay
                           key={key}
                           fieldKey={key}
                           value={viewFields[key]}
-                          onChange={handleChange}
                           isMandatory={isMandatoryFieldKey(key, docType)}
                         />
                       );
@@ -717,7 +524,7 @@ function EditableFields({ document, isLoading }) {
             </div>
           )}
 
-          {/* Array-of-objects table editors */}
+          {/* Array-of-objects tables */}
           {tableKeys.length > 0 && (
             <div
               className={flatKeys.length > 0 ? "border-t" : ""}
@@ -725,51 +532,16 @@ function EditableFields({ document, isLoading }) {
             >
               <div className="flex flex-col gap-8 px-8 py-6">
                 {tableKeys.map((key) => (
-                  <ArrayTableEditor
+                  <ArrayTable
                     key={key}
                     fieldKey={key}
                     items={viewFields[key]}
-                    onChange={handleChange}
                     isMandatory={isMandatoryFieldKey(key, docType)}
                   />
                 ))}
               </div>
             </div>
           )}
-
-          {/* Save / Reset buttons */}
-          <div
-            className="flex items-center justify-center gap-5 px-8 py-6 border-t"
-            style={{ borderColor: "var(--panel-border)", background: "var(--panel-bg)" }}
-          >
-            <button
-              type="button"
-              className="flex items-center justify-center gap-3 rounded-xl text-lg font-medium transition-colors"
-              style={{
-                background: "var(--input-bg)", color: "var(--text-muted)",
-                border: "1px solid var(--panel-border)", minWidth: "160px", minHeight: "52px", padding: "14px 32px",
-              }}
-              onClick={() => {
-                const src = extractFields(document?.ocr_ui_results) ?? extractFields(document?.ocr_results);
-                if (src) setFields(src);
-              }}
-            >
-              <RotateCcw size={18} />
-              Reset
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={isSaving || !document?.id}
-              className="flex items-center justify-center gap-3 rounded-xl text-lg font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                background: isSaving ? "var(--text-muted)" : "var(--accent)",
-                minWidth: "180px", minHeight: "52px", padding: "14px 36px",
-              }}
-            >
-              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-              {isSaving ? "Saving…" : "Save"}
-            </button>
-          </div>
         </>
       )}
     </div>
