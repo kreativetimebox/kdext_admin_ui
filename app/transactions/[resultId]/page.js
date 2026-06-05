@@ -16,6 +16,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { copyToClipboard } from "@/lib/clipboard";
 import Navbar from "@/components/Navbar/Navbar";
 import JsonPanel from "@/components/Results/JsonPanel";
 
@@ -51,12 +52,10 @@ function isPdfPath(path) {
 function CopyButton({ value, label }) {
   const [copied, setCopied] = useState(false);
   const handleCopy = async () => {
-    try {
-      await navigator.clipboard.writeText(value);
+    const ok = await copyToClipboard(value);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    } catch {
-      /* ignore */
     }
   };
   return (

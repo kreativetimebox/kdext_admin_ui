@@ -5,6 +5,7 @@ import { ChevronDown, ChevronRight, Braces, Copy, Check } from "lucide-react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark, atomOneLight } from "react-syntax-highlighter/dist/cjs/styles/hljs";
 import { useThemeStore } from "@/lib/store";
+import { copyToClipboard } from "@/lib/clipboard";
 
 const VARIANT_COLORS = {
   default: { iconBg: "var(--tag-bg)",        iconColor: "var(--tag-color)" },
@@ -27,11 +28,11 @@ function JsonPanel({ title, data, defaultOpen = false, variant = "default" }) {
   const handleCopy = useCallback(async (e) => {
     e.stopPropagation();
     if (!jsonString) return;
-    try {
-      await navigator.clipboard.writeText(jsonString);
+    const ok = await copyToClipboard(jsonString);
+    if (ok) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* ignore */ }
+    }
   }, [jsonString]);
 
   return (
