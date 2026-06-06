@@ -150,46 +150,17 @@ function MissingFieldRow({ doc, onView }) {
     >
       <span
         style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
+          fontSize: 12,
+          fontWeight: 600,
+          color: "var(--accent)",
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
           overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
         title={`${doc.result_id ?? doc.id}${doc.transaction_id ? ` · txn ${doc.transaction_id}` : ""}`}
       >
-        {doc.source && (
-          <span
-            style={{
-              flexShrink: 0,
-              fontSize: 9,
-              fontWeight: 700,
-              letterSpacing: "0.05em",
-              padding: "2px 5px",
-              borderRadius: 4,
-              background:
-                doc.source === "main" ? "var(--tag-purple-bg)" : "var(--tag-bg)",
-              color:
-                doc.source === "main"
-                  ? "var(--tag-purple-color)"
-                  : "var(--tag-color)",
-            }}
-          >
-            {doc.source === "main" ? "MAIN" : "FIN"}
-          </span>
-        )}
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: "var(--accent)",
-            fontFamily: "ui-monospace, SFMono-Regular, monospace",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {doc.result_id ?? doc.id}
-        </span>
+        {doc.result_id ?? doc.id}
       </span>
 
       <span

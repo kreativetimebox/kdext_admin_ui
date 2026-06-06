@@ -30,7 +30,6 @@ function Row({ index, style, items }) {
       <SidebarItem
         id={doc.id}
         result_id={doc.result_id}
-        source={doc.source}
         ocr_document_type={doc.ocr_document_type}
       />
     </div>

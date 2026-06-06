@@ -24,7 +24,6 @@ async function loadDocuments(filters) {
     id: row.id,
     result_id: row.result_id,
     transaction_id: row.transaction_id,
-    source: row.source,
     request_id: row.request_id,
     ocr_document_type: row.ocr_document_type,
     created_at: row.created_at,
