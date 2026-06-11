@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - production_h200
   workflow_dispatch:
 
 env:
@@ -26,6 +27,27 @@ jobs:
       # --------------------------------------------------
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # --------------------------------------------------
+      # 1.5. Set deployment target based on branch
+      # --------------------------------------------------
+      - name: Set deployment target based on branch
+        id: target
+        run: |
+          if [ "${{ github.ref }}" = "refs/heads/production_h200" ]; then
+            echo "DEPLOY_HOST=217.16.188.48" >> $GITHUB_ENV
+            echo "DEPLOY_PORT=22" >> $GITHUB_ENV
+            echo "DB_HOST=217.16.188.48" >> $GITHUB_ENV
+            echo "DB_PORT=5005" >> $GITHUB_ENV
+            echo "SERVER=H200 (New Server)" >> $GITHUB_ENV
+          else
+            echo "DEPLOY_HOST=185.14.252.37" >> $GITHUB_ENV
+            echo "DEPLOY_PORT=22" >> $GITHUB_ENV
+            echo "DB_HOST=185.14.252.37" >> $GITHUB_ENV
+            echo "DB_PORT=5005" >> $GITHUB_ENV
+            echo "SERVER=RTX5000 (Main Server)" >> $GITHUB_ENV
+          fi
+          echo "Deploying to $SERVER"
 
       # --------------------------------------------------
       # 2. FREE DISK (IMPORTANT)
@@ -63,11 +85,7 @@ jobs:
           echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
 
       # --------------------------------------------------
       # 6. Save image (LOCAL FILE ONLY)
@@ -82,29 +100,19 @@ jobs:
       # --------------------------------------------------
       - name: Upload image
         run: |
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-
-          scp -i ~/.ssh/deploy_key -P "$PORT" \
+          scp -i ~/.ssh/deploy_key -P "$DEPLOY_PORT" \
             -o StrictHostKeyChecking=no \
             image.tar \
-            balabantaray-user@"$HOST":~/image.tar
+            balabantaray-user@"$DEPLOY_HOST":~/image.tar
 
       # --------------------------------------------------
       # 8. Deploy (NO sudo, SAFE)
       # --------------------------------------------------
       - name: Deploy
         run: |
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-
-          ssh -i ~/.ssh/deploy_key -p "$PORT" \
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
             -o StrictHostKeyChecking=no \
-            balabantaray-user@"$HOST" << 'EOF'
+            balabantaray-user@"$DEPLOY_HOST" << 'EOF'
 
               set -e
 
@@ -142,11 +150,11 @@ jobs:
                 -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
                 -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                -e DB_HOST=${{ secrets.DB_HOST || '185.14.252.37' }} \
-                -e DB_PORT=${{ secrets.DB_PORT || '5005' }} \
-                -e DB_NAME=${{ secrets.DB_NAME || 'financedb' }} \
-                -e DB_USER=${{ secrets.DB_USER || 'financedb_user' }} \
-                -e DB_PASSWORD=${{ secrets.DB_PASSWORD || 'financedb_password_2026' }} \
+                -e DB_HOST=${{ env.DB_HOST }} \
+                -e DB_PORT=5005 \
+                -e DB_NAME=financedb \
+                -e DB_USER=financedb_user \
+                -e DB_PASSWORD=financedb_password_2026 \
                 ${IMAGE}:latest
 
               echo "⏳ Waiting for health..."
@@ -185,11 +193,11 @@ jobs:
                 -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
                 -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                -e DB_HOST=${{ secrets.DB_HOST || '185.14.252.37' }} \
-                -e DB_PORT=${{ secrets.DB_PORT || '5005' }} \
-                -e DB_NAME=${{ secrets.DB_NAME || 'financedb' }} \
-                -e DB_USER=${{ secrets.DB_USER || 'financedb_user' }} \
-                -e DB_PASSWORD=${{ secrets.DB_PASSWORD || 'financedb_password_2026' }} \
+                -e DB_HOST=${{ env.DB_HOST }} \
+                -e DB_PORT=5005 \
+                -e DB_NAME=financedb \
+                -e DB_USER=financedb_user \
+                -e DB_PASSWORD=financedb_password_2026 \
                 ${IMAGE}:latest
 
               docker rm -f ${APP}_new || true
@@ -203,12 +211,7 @@ jobs:
       # --------------------------------------------------
       - name: Verify
         run: |
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-
-          ssh -i ~/.ssh/deploy_key -p "$PORT" \
+          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
             -o StrictHostKeyChecking=no \
-            balabantaray-user@"$HOST" \
+            balabantaray-user@"$DEPLOY_HOST" \
             "docker ps | grep kdext_manual_anaylizer"
