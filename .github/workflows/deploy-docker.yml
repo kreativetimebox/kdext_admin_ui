@@ -190,12 +190,8 @@ jobs:
       # --------------------------------------------------
       - name: Verify
         run: |
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-
-          ssh -i ~/.ssh/deploy_key -p "$PORT" \
+          ssh -i ~/.ssh/deploy_key -p 22 \
             -o StrictHostKeyChecking=no \
-            balabantaray-user@"$HOST" \
+            -T \
+            balabantaray-user@185.14.252.37 \
             "docker ps | grep kdext_manual_anaylizer"
