@@ -117,6 +117,7 @@ jobs:
 
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
             -o StrictHostKeyChecking=no \
+            -T \
             balabantaray-user@"$DEPLOY_HOST" << EOF
 
               set -e
