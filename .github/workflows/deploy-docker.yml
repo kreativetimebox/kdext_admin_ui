@@ -142,11 +142,11 @@ jobs:
                 -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
                 -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                -e DB_HOST=${{ secrets.DB_HOST || '185.14.252.20' }} \
-                -e DB_PORT=${{ secrets.DB_PORT || '5432' }} \
+                -e DB_HOST=${{ secrets.DB_HOST || '185.14.252.37' }} \
+                -e DB_PORT=${{ secrets.DB_PORT || '5005' }} \
                 -e DB_NAME=${{ secrets.DB_NAME || 'financedb' }} \
                 -e DB_USER=${{ secrets.DB_USER || 'financedb_user' }} \
-                -e DB_PASSWORD=${{ secrets.DB_PASSWORD || 'financedb_user_pass_2025' }} \
+                -e DB_PASSWORD=${{ secrets.DB_PASSWORD || 'financedb_password_2026' }} \
                 ${IMAGE}:latest
 
               echo "⏳ Waiting for health..."
@@ -185,11 +185,11 @@ jobs:
                 -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
                 -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                -e DB_HOST=${{ secrets.DB_HOST || '185.14.252.20' }} \
-                -e DB_PORT=${{ secrets.DB_PORT || '5432' }} \
+                -e DB_HOST=${{ secrets.DB_HOST || '185.14.252.37' }} \
+                -e DB_PORT=${{ secrets.DB_PORT || '5005' }} \
                 -e DB_NAME=${{ secrets.DB_NAME || 'financedb' }} \
                 -e DB_USER=${{ secrets.DB_USER || 'financedb_user' }} \
-                -e DB_PASSWORD=${{ secrets.DB_PASSWORD || 'financedb_user_pass_2025' }} \
+                -e DB_PASSWORD=${{ secrets.DB_PASSWORD || 'financedb_password_2026' }} \
                 ${IMAGE}:latest
 
               docker rm -f ${APP}_new || true
