@@ -60,14 +60,10 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.VAST_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          ssh-keyscan -p "$PORT" -H "$HOST" >> ~/.ssh/known_hosts
+          ssh-keyscan -p 22 -H 185.14.252.37 >> ~/.ssh/known_hosts
 
       # --------------------------------------------------
       # 6. Save image (LOCAL FILE ONLY)
@@ -82,29 +78,20 @@ jobs:
       # --------------------------------------------------
       - name: Upload image
         run: |
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-
-          scp -i ~/.ssh/deploy_key -P "$PORT" \
+          scp -i ~/.ssh/deploy_key -P 22 \
             -o StrictHostKeyChecking=no \
             image.tar \
-            balabantaray-user@"$HOST":~/image.tar
+            balabantaray-user@185.14.252.37:~/image.tar
 
       # --------------------------------------------------
       # 8. Deploy (NO sudo, SAFE)
       # --------------------------------------------------
       - name: Deploy
         run: |
-          PORT=${{ secrets.SERVER_PORT }}
-          [ -z "$PORT" ] && PORT=22
-
-          HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
-
-          ssh -i ~/.ssh/deploy_key -p "$PORT" \
+          ssh -i ~/.ssh/deploy_key -p 22 \
             -o StrictHostKeyChecking=no \
-            balabantaray-user@"$HOST" << 'EOF'
+            -T \
+            balabantaray-user@185.14.252.37 << 'EOF'
 
               set -e
 
@@ -137,7 +124,7 @@ jobs:
                 -e PORT=3004 \
                 -e HOSTNAME=0.0.0.0 \
                 -e DEXAI_DB_URL=${{ secrets.DEXAI_DB_URL }} \
-                -e MAIN_FINANCE_DB_URL=${{ secrets.MAIN_FINANCE_DB_URL }} \
+                -e MAIN_FINANCE_DB_URL=postgresql://financedb_user:financedb_password_2026@185.14.252.37:5005/financedb \
                 -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
                 -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
@@ -180,7 +167,7 @@ jobs:
                 -e PORT=3004 \
                 -e HOSTNAME=0.0.0.0 \
                 -e DEXAI_DB_URL=${{ secrets.DEXAI_DB_URL }} \
-                -e MAIN_FINANCE_DB_URL=${{ secrets.MAIN_FINANCE_DB_URL }} \
+                -e MAIN_FINANCE_DB_URL=postgresql://financedb_user:financedb_password_2026@185.14.252.37:5005/financedb \
                 -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
                 -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
                 -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
