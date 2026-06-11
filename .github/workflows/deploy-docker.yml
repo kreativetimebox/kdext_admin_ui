@@ -224,7 +224,8 @@ jobs:
       # --------------------------------------------------
       - name: Verify
         run: |
-          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
+          ssh -i ~/.ssh/deploy_key -p 22 \
             -o StrictHostKeyChecking=no \
-            balabantaray-user@"$DEPLOY_HOST" \
+            -T \
+            balabantaray-user@185.14.252.37 \
             "docker ps | grep kdext_manual_anaylizer"
