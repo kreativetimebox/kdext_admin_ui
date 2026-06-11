@@ -112,8 +112,15 @@ jobs:
       # --------------------------------------------------
       - name: Deploy
         run: |
-          DB_HOST_VAR="${{ env.DB_HOST }}"
-          MAIN_FINANCE_DB_URL_VAR="${{ env.MAIN_FINANCE_DB_URL }}"
+          if [ "${{ github.ref }}" = "refs/heads/production_h200" ]; then
+            DEPLOY_HOST="217.16.188.48"
+            DB_HOST_VALUE="217.16.188.48"
+            MAIN_FINANCE_DB_URL_VALUE="postgresql://financedb_user:financedb_password_2026@217.16.188.48:5005/financedb"
+          else
+            DEPLOY_HOST="185.14.252.37"
+            DB_HOST_VALUE="185.14.252.37"
+            MAIN_FINANCE_DB_URL_VALUE="postgresql://financedb_user:financedb_password_2026@185.14.252.37:5005/financedb"
+          fi
 
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
             -o StrictHostKeyChecking=no \
@@ -127,12 +134,8 @@ jobs:
               DEPLOY_DIR=/home/balabantaray-user/kdext
               PROD_PORT=3004
               TEMP_PORT=3005
-              DB_HOST_VALUE="$DB_HOST_VAR"
-              if [ "$DB_HOST_VALUE" = "217.16.188.48" ]; then
-                MAIN_FINANCE_DB_URL_VALUE="postgresql://financedb_user:financedb_password_2026@217.16.188.48:5005/financedb"
-              else
-                MAIN_FINANCE_DB_URL_VALUE="postgresql://financedb_user:financedb_password_2026@185.14.252.37:5005/financedb"
-              fi
+              DB_HOST_VALUE="$DB_HOST_VALUE"
+              MAIN_FINANCE_DB_URL_VALUE="$MAIN_FINANCE_DB_URL_VALUE"
 
               mkdir -p $DEPLOY_DIR
               cd $DEPLOY_DIR
