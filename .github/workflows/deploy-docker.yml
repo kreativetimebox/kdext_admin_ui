@@ -60,7 +60,7 @@ jobs:
           mkdir -p ~/.ssh
           chmod 700 ~/.ssh
 
-          echo "${{ secrets.SERVER_SSH_KEY }}" > ~/.ssh/deploy_key
+          echo "${{ secrets.VAST_SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
 
           HOST=$(echo "${{ secrets.SERVER_HOST }}" | tr -d '\n\r' | xargs)
