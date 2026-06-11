@@ -125,7 +125,7 @@ jobs:
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
             -o StrictHostKeyChecking=no \
             -T \
-            balabantaray-user@"$DEPLOY_HOST" << EOF
+            balabantaray-user@"$DEPLOY_HOST" "DB_HOST_VALUE='$DB_HOST_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' bash -s" << 'EOF'
 
               set -e
 
@@ -134,8 +134,6 @@ jobs:
               DEPLOY_DIR=/home/balabantaray-user/kdext
               PROD_PORT=3004
               TEMP_PORT=3005
-              DB_HOST_VALUE="$DB_HOST_VALUE"
-              MAIN_FINANCE_DB_URL_VALUE="$MAIN_FINANCE_DB_URL_VALUE"
 
               mkdir -p $DEPLOY_DIR
               cd $DEPLOY_DIR
