@@ -116,12 +116,7 @@ jobs:
             DEPLOY_HOST="217.16.188.48"
             DB_HOST_VALUE="217.16.188.48"
             MAIN_FINANCE_DB_URL_VALUE="postgresql://financedb_user:financedb_password_2026@217.16.188.48:5005/financedb"
-          else
-            DEPLOY_HOST="185.14.252.37"
-            DB_HOST_VALUE="185.14.252.37"
-            MAIN_FINANCE_DB_URL_VALUE="postgresql://financedb_user:financedb_password_2026@185.14.252.37:5005/financedb"
-          fi
-
+      
           ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
             -o StrictHostKeyChecking=no \
             -T \
