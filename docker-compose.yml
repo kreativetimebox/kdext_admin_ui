@@ -1,6 +1,9 @@
+version: '3.8'
+
 services:
-  app:
+  manual-analyzer:
     build: .
+    container_name: manual-analyzer
     ports:
       - "3004:3004"
     environment:
@@ -8,8 +11,18 @@ services:
       - PORT=3004
       - HOSTNAME=0.0.0.0
       - DEXAI_DB_URL=${DEXAI_DB_URL}
+      # Connect to financedb-postgres using container name (requires same network)
+      - MAIN_FINANCE_DB_URL=postgresql://postgres:financedb_secure_pass_2025@financedb-postgres:5432/financedb
+      - JWT_SECRET=${JWT_SECRET}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
       - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
       - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
       - AWS_REGION=${AWS_REGION}
+    networks:
+      - financedb_network
     restart: always
+
+networks:
+  # Reference the network created by financedb docker-compose
+  financedb_network:
+    external: true

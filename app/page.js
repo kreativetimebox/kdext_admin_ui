@@ -17,6 +17,8 @@ import {
   Layers,
   ShieldCheck,
   Sparkles,
+  Building,
+  Store,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
@@ -479,6 +481,22 @@ export default function HomePage() {
             value={overview?.users_count}
             sub={`${formatNumber(overview?.active_users_count)} active`}
             color="#2563eb"
+            loading={isLoading}
+          />
+          <StatTile
+            icon={Building}
+            label="Businesses"
+            value={overview?.businesses_count}
+            sub="registered"
+            color="#8b5cf6"
+            loading={isLoading}
+          />
+          <StatTile
+            icon={Store}
+            label="Clients"
+            value={overview?.clients_count}
+            sub="in system"
+            color="#06b6d4"
             loading={isLoading}
           />
           <StatTile
