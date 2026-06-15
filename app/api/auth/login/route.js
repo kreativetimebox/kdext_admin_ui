@@ -139,8 +139,11 @@ export async function POST(req) {
     const cookieStore = await cookies();
     cookieStore.set("auth_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      // Only mark the cookie Secure when actually served over HTTPS.
+      // Over plain HTTP (IP:port) a Secure cookie is dropped by the browser,
+      // which breaks the post-login redirect. Set COOKIE_SECURE=true once TLS is in place.
+      secure: process.env.COOKIE_SECURE === "true",
+      sameSite: "lax",
       maxAge: 24 * 60 * 60, // 24 hours
       path: "/",
     });
