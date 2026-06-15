@@ -1,5 +1,9 @@
-name: Build and Deploy Docker Image (SCP, Zero Downtime)
+name: Deploy
 
+# Fast deploy (same pattern as kdext_api): instead of building the image on the
+# runner and shipping a large image.tar over SCP, we ship only the source over
+# SSH and build + run the image on the server. The server's Docker layer cache
+# makes rebuilds quick. Secrets come from repo secrets; host/DB are chosen by branch.
 on:
   push:
     branches:
@@ -9,217 +13,106 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: kdext_manual_anaylizer
-  IMAGE_TAG: latest
+  SSH_PORT: "22"
+  SSH_USER: balabantaray-user
+  REMOTE_DIR: /home/balabantaray-user/kdext
   APP_NAME: kdext_manual_anaylizer
-  PROD_PORT: 3004
-  TEMP_PORT: 3005
-  DEPLOY_DIR: /home/balabantaray-user/kdext   # ✅ FIXED (no /opt)
+  APP_PORT: "3004"
 
 jobs:
-  build-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
 
     steps:
-      # --------------------------------------------------
-      # 1. Checkout
-      # --------------------------------------------------
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # --------------------------------------------------
-      # 1.5. Set deployment target based on branch
-      # --------------------------------------------------
       - name: Set deployment target based on branch
-        id: target
         run: |
           if [ "${{ github.ref }}" = "refs/heads/production_h200" ]; then
-            echo "DEPLOY_HOST=217.16.188.48" >> $GITHUB_ENV
-            echo "DEPLOY_PORT=22" >> $GITHUB_ENV
+            echo "SSH_HOST=217.16.188.48" >> $GITHUB_ENV
             echo "DB_HOST=217.16.188.48" >> $GITHUB_ENV
-            echo "DB_PORT=5005" >> $GITHUB_ENV
             echo "MAIN_FINANCE_DB_URL=postgresql://financedb_user:financedb_password_2026@217.16.188.48:5005/financedb" >> $GITHUB_ENV
             echo "SERVER=H200 (New Server)" >> $GITHUB_ENV
           else
-            echo "DEPLOY_HOST=185.14.252.37" >> $GITHUB_ENV
-            echo "DEPLOY_PORT=22" >> $GITHUB_ENV
+            echo "SSH_HOST=185.14.252.37" >> $GITHUB_ENV
             echo "DB_HOST=185.14.252.37" >> $GITHUB_ENV
-            echo "DB_PORT=5005" >> $GITHUB_ENV
             echo "MAIN_FINANCE_DB_URL=postgresql://financedb_user:financedb_password_2026@185.14.252.37:5005/financedb" >> $GITHUB_ENV
             echo "SERVER=RTX5000 (Main Server)" >> $GITHUB_ENV
           fi
           echo "Deploying to $SERVER"
 
-      # --------------------------------------------------
-      # 2. FREE DISK (IMPORTANT)
-      # --------------------------------------------------
-      - name: Free disk space
+      - name: Setup SSH
         run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf /usr/local/lib/android
-          docker system prune -af --volumes
-          df -h
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          echo "${{ secrets.VAST_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -p "$SSH_PORT" "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null || true
 
-      # --------------------------------------------------
-      # 3. Docker setup
-      # --------------------------------------------------
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # --------------------------------------------------
-      # 4. Build image
-      # --------------------------------------------------
-      - name: Build Docker image
+      - name: Upload code to server
         run: |
-          docker build -t $IMAGE_NAME:$IMAGE_TAG .
-          docker builder prune -f
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" "mkdir -p $REMOTE_DIR"
+          tar czf - \
+            --exclude='.git' \
+            --exclude='node_modules' \
+            --exclude='.next' \
+            --exclude='.env*' \
+            . | ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" "$SSH_USER@$SSH_HOST" \
+                "tar xzf - -C $REMOTE_DIR"
 
-      # --------------------------------------------------
-      # 5. Setup SSH
-      # --------------------------------------------------
-      - name: Setup SSH key
+      - name: Build & restart
         run: |
-          mkdir -p ~/.ssh
-          chmod 700 ~/.ssh
+          DB_HOST_VALUE="${{ env.DB_HOST }}"
+          MAIN_FINANCE_DB_URL_VALUE="${{ env.MAIN_FINANCE_DB_URL }}"
 
-          echo "${{ secrets.VAST_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-
-          ssh-keyscan -p "$DEPLOY_PORT" -H "$DEPLOY_HOST" >> ~/.ssh/known_hosts
-
-      # --------------------------------------------------
-      # 6. Save image (LOCAL FILE ONLY)
-      # --------------------------------------------------
-      - name: Save Docker image
-        run: |
-          docker save $IMAGE_NAME:$IMAGE_TAG -o image.tar
-          ls -lh image.tar
-
-      # --------------------------------------------------
-      # 7. Upload (HOME DIR ONLY)
-      # --------------------------------------------------
-      - name: Upload image
-        run: |
-          scp -i ~/.ssh/deploy_key -P "$DEPLOY_PORT" \
-            -o StrictHostKeyChecking=no \
-            image.tar \
-            balabantaray-user@"$DEPLOY_HOST":~/image.tar
-
-      # --------------------------------------------------
-      # 8. Deploy (NO sudo, SAFE)
-      # --------------------------------------------------
-      - name: Deploy
-        run: |
-          DEPLOY_HOST="217.16.188.48"
-          DB_HOST_VALUE="217.16.188.48"
-          MAIN_FINANCE_DB_URL_VALUE="postgresql://financedb_user:financedb_password_2026@217.16.188.48:5005/financedb"
-      
-          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
-            -o StrictHostKeyChecking=no \
+          ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
+            -o ServerAliveInterval=60 -o ServerAliveCountMax=30 \
             -T \
-            balabantaray-user@"$DEPLOY_HOST" "DB_HOST_VALUE='$DB_HOST_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' bash -s" << 'EOF'
+            "$SSH_USER@$SSH_HOST" "DB_HOST_VALUE='$DB_HOST_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' bash -s" << 'EOF'
+          set -euo pipefail
+          cd /home/balabantaray-user/kdext
 
-              set -e
+          APP=kdext_manual_anaylizer
+          IMAGE=kdext_manual_anaylizer
+          PORT=3004
 
-              APP=kdext_manual_anaylizer
-              IMAGE=kdext_manual_anaylizer
-              DEPLOY_DIR=/home/balabantaray-user/kdext
-              PROD_PORT=3004
-              TEMP_PORT=3005
+          echo "🔨 Building image on server..."
+          docker build -t ${IMAGE}:latest .
 
-              mkdir -p $DEPLOY_DIR
-              cd $DEPLOY_DIR
+          echo "🧹 Removing old container..."
+          docker rm -f ${APP} 2>/dev/null || true
 
-              echo "📦 Loading image..."
-              docker load < ~/image.tar
-              rm -f ~/image.tar
+          echo "🚀 Starting container..."
+          docker run -d --name ${APP} \
+            -p ${PORT}:3004 \
+            --restart unless-stopped \
+            -e NODE_ENV=production \
+            -e PORT=3004 \
+            -e HOSTNAME=0.0.0.0 \
+            -e COOKIE_SECURE=false \
+            -e DEXAI_DB_URL="${{ secrets.DEXAI_DB_URL }}" \
+            -e MAIN_FINANCE_DB_URL="$MAIN_FINANCE_DB_URL_VALUE" \
+            -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
+            -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
+            -e AWS_BUCKET_NAME="${{ secrets.AWS_BUCKET_NAME }}" \
+            -e AWS_REGION="${{ secrets.AWS_REGION }}" \
+            -e DB_HOST="$DB_HOST_VALUE" \
+            -e DB_PORT=5005 \
+            -e DB_NAME=financedb \
+            -e DB_USER=financedb_user \
+            -e DB_PASSWORD=financedb_password_2026 \
+            ${IMAGE}:latest
 
-              echo "🏷 Backup old image..."
-              if docker image inspect ${IMAGE}:latest >/dev/null 2>&1; then
-                docker tag ${IMAGE}:latest ${IMAGE}:previous
-              fi
-
-              echo "🚀 Start TEMP container..."
-              docker rm -f ${APP}_new 2>/dev/null || true
-
-              docker run -d \
-                --name ${APP}_new \
-                -p ${TEMP_PORT}:3004 \
-                --restart unless-stopped \
-                -e NODE_ENV=production \
-                -e PORT=3004 \
-                -e HOSTNAME=0.0.0.0 \
-                -e DEXAI_DB_URL=${{ secrets.DEXAI_DB_URL }} \
-                -e MAIN_FINANCE_DB_URL=$MAIN_FINANCE_DB_URL_VALUE \
-                -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
-                -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
-                -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                -e DB_HOST=$DB_HOST_VALUE \
-                -e DB_PORT=5005 \
-                -e DB_NAME=financedb \
-                -e DB_USER=financedb_user \
-                -e DB_PASSWORD=financedb_password_2026 \
-                ${IMAGE}:latest
-
-              echo "⏳ Waiting for health..."
-              ok=false
-              for i in {1..30}; do
-                if curl -fs http://127.0.0.1:${TEMP_PORT}/api/health >/dev/null 2>&1 || \
-                   curl -fs http://127.0.0.1:${TEMP_PORT} >/dev/null 2>&1; then
-                  ok=true
-                  echo "✅ Healthy"
-                  break
-                fi
-                sleep 3
-              done
-
-              if [ "$ok" != "true" ]; then
-                echo "❌ Failed"
-                docker logs ${APP}_new
-                docker rm -f ${APP}_new
-                docker tag ${IMAGE}:previous ${IMAGE}:latest || true
-                exit 1
-              fi
-
-              echo "🔁 Switch to PROD..."
-              docker rm -f ${APP} 2>/dev/null || true
-
-              docker run -d \
-                --name ${APP} \
-                -p ${PROD_PORT}:3004 \
-                --restart unless-stopped \
-                -e NODE_ENV=production \
-                -e PORT=3004 \
-                -e HOSTNAME=0.0.0.0 \
-                -e DEXAI_DB_URL=${{ secrets.DEXAI_DB_URL }} \
-                -e MAIN_FINANCE_DB_URL=$MAIN_FINANCE_DB_URL_VALUE \
-                -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-                -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
-                -e AWS_BUCKET_NAME=${{ secrets.AWS_BUCKET_NAME }} \
-                -e AWS_REGION=${{ secrets.AWS_REGION }} \
-                -e DB_HOST=$DB_HOST_VALUE \
-                -e DB_PORT=5005 \
-                -e DB_NAME=financedb \
-                -e DB_USER=financedb_user \
-                -e DB_PASSWORD=financedb_password_2026 \
-                ${IMAGE}:latest
-
-              docker rm -f ${APP}_new || true
-
-              echo "✅ Deployment done"
-
+          echo "⏳ Health check..."
+          for i in $(seq 1 60); do
+            if curl -fs http://localhost:${PORT}/api/health >/dev/null 2>&1 || \
+               curl -fs http://localhost:${PORT} >/dev/null 2>&1; then
+              echo "✅ Healthy"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "❌ App did not become ready"
+          docker logs ${APP} | tail -100 || true
+          exit 1
           EOF
-
-      # --------------------------------------------------
-      # 9. Verify
-      # --------------------------------------------------
-      - name: Verify
-        run: |
-          ssh -i ~/.ssh/deploy_key -p "$DEPLOY_PORT" \
-            -o StrictHostKeyChecking=no \
-            -T \
-            balabantaray-user@"$DEPLOY_HOST" \
-            "docker ps | grep kdext_manual_anaylizer"
