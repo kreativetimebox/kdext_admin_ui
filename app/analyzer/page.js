@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import { Database } from "lucide-react";
@@ -10,7 +10,7 @@ import { useDocumentStore, useThemeStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 import SidebarList from "@/components/Sidebar/SidebarList";
 import FileViewer from "@/components/Viewer/FileViewer";
-import FormattedResultView from "@/components/Results/FormattedResultView";
+import EditableResultView, { EditHistory } from "@/components/Results/EditableResultView";
 import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
 
@@ -78,6 +78,7 @@ function AnalyzerContent() {
   const { activeId, setDocument } = useDocumentStore();
   const { initTheme } = useThemeStore();
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const focusId = searchParams.get("focusId");
 
   useEffect(() => { initTheme(); }, [initTheme]);
@@ -115,7 +116,7 @@ function AnalyzerContent() {
         </aside>
 
         {/* Right panel */}
-        <main className="flex-1 min-h-0 flex flex-col overflow-hidden">
+        <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto">
           {isLoading && activeId ? (
             <div className="flex-1 min-h-0 overflow-y-scroll p-5"><DocumentSkeleton /></div>
           ) : !activeId ? (
@@ -138,11 +139,12 @@ function AnalyzerContent() {
               </div>
             </div>
           ) : (
-            <div className="flex flex-1 min-h-0 overflow-hidden">
+            <>
+            <div className="flex min-w-0">
 
               {/* ── Left: File Viewer panel ── */}
               <div
-                className="w-[800px] shrink-0 flex flex-col overflow-hidden border-r"
+                className="w-[460px] shrink-0 flex flex-col overflow-hidden border-r"
                 style={{ borderColor: "var(--panel-border)", background: "var(--panel-bg)" }}
               >
                 {/* panel header */}
@@ -169,14 +171,29 @@ function AnalyzerContent() {
               </div>
 
               {/* ── Right: Data panel ── */}
-              <div
-                className="flex-1 min-h-0"
-                style={{ overflowY: "scroll", scrollbarGutter: "stable" }}
-              >
-                <div className="p-8 flex flex-col gap-8">
+              <div className="flex-1 min-w-0">
+                <div className="p-8 flex flex-col gap-8 min-w-0">
 
-                {/* OCR Results — formatted detail view */}
-                <FormattedResultView data={doc?.ocr_ui_results} title="OCR Results" />
+                {/* OCR Results — editable detail view with Save / Publish */}
+                <EditableResultView
+                  resultId={activeId}
+                  data={doc?.ocr_ui_results}
+                  onSaved={(res) => {
+                    // Reflect the saved fields back into the cached document so
+                    // the JSON viewers below and the next open stay in sync.
+                    if (res?.ocr_ui_results !== undefined) {
+                      queryClient.setQueryData(["document", activeId], (prev) =>
+                        prev
+                          ? {
+                              ...prev,
+                              ocr_ui_results: res.ocr_ui_results,
+                              ocr_results: res.ocr_ui_results,
+                            }
+                          : prev
+                      );
+                    }
+                  }}
+                />
 
                 {/* Formatted Result (JSON) */}
                 <div className="flex flex-col gap-3">
@@ -197,6 +214,10 @@ function AnalyzerContent() {
                 </div>
               </div>
             </div>
+
+            {/* Edit history — full-width bar across file viewer + results */}
+            <EditHistory data={doc?.ocr_ui_results} />
+            </>
           )}
         </main>
       </div>
