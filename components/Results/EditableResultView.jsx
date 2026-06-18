@@ -324,8 +324,8 @@ const EDITABLE_CSS = `
 .ed-fld,.ed-cell,.ed-json{
   width:100%;
   color:var(--foreground);
-  background:transparent;
-  border:1px solid transparent;
+  background:var(--input-bg);
+  border:1px solid var(--input-border);
   outline:none;
   font-family:ui-monospace,SFMono-Regular,monospace;
 }

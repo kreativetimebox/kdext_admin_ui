@@ -125,7 +125,6 @@ export default function Navbar() {
       {/* ── Nav links ── */}
       <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
-        <NavLink href="/analyzer"       label="Analyzer"        icon={FileSearch}   active={pathname === "/analyzer"} />
         <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
         <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
       </nav>

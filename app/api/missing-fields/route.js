@@ -7,12 +7,11 @@ export async function GET(req) {
     const showAll = searchParams.get("showAll") === "true";
     const search = searchParams.get("search") || "";
     const docType = searchParams.get("docType") || "";
+    const clientId = searchParams.get("clientId") || "";
+    const businessName = searchParams.get("businessName") || "";
+    const status = searchParams.get("status") || "";
 
-    // Missing-field detection runs entirely in SQL against the main finance DB,
-    // derived from the document_processing_requests.formatted_result JSON per
-    // document type (see lib/queries.js). No dependency on a mandatory_fields
-    // column, which does not exist on the main DB's document_types table.
-    const documents = await getDocumentsWithMissingFields({ search, docType, showAll });
+    const documents = await getDocumentsWithMissingFields({ search, docType, showAll, clientId, businessName, status });
 
     return NextResponse.json(
       { documents, total: documents.length },
