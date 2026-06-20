@@ -31,12 +31,18 @@ jobs:
         run: |
           if [ "${{ github.ref }}" = "refs/heads/production_h200" ]; then
             echo "SSH_HOST=217.16.188.48" >> $GITHUB_ENV
-            echo "DB_HOST=217.16.188.48" >> $GITHUB_ENV
-            echo "MAIN_FINANCE_DB_URL=postgresql://financedb_user:financedb_password_2026@217.16.188.48:5005/financedb" >> $GITHUB_ENV
+            echo "DB_HOST=kdext-financeai-db.c1gucy88ma99.ap-southeast-2.rds.amazonaws.com" >> $GITHUB_ENV
+            echo "DB_PORT=5432" >> $GITHUB_ENV
+            echo "DB_NAME=postgres" >> $GITHUB_ENV
+            echo "DB_PASSWORD=AQ1lVaY3lJUHNb3yp655" >> $GITHUB_ENV
+            echo "MAIN_FINANCE_DB_URL=postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db.c1gucy88ma99.ap-southeast-2.rds.amazonaws.com:5432/postgres" >> $GITHUB_ENV
             echo "SERVER=H200 (New Server)" >> $GITHUB_ENV
           else
             echo "SSH_HOST=185.14.252.37" >> $GITHUB_ENV
             echo "DB_HOST=185.14.252.37" >> $GITHUB_ENV
+            echo "DB_PORT=5005" >> $GITHUB_ENV
+            echo "DB_NAME=financedb" >> $GITHUB_ENV
+            echo "DB_PASSWORD=financedb_password_2026" >> $GITHUB_ENV
             echo "MAIN_FINANCE_DB_URL=postgresql://financedb_user:financedb_password_2026@185.14.252.37:5005/financedb" >> $GITHUB_ENV
             echo "SERVER=RTX5000 (Main Server)" >> $GITHUB_ENV
           fi
@@ -63,12 +69,15 @@ jobs:
       - name: Build & restart
         run: |
           DB_HOST_VALUE="${{ env.DB_HOST }}"
+          DB_PORT_VALUE="${{ env.DB_PORT }}"
+          DB_NAME_VALUE="${{ env.DB_NAME }}"
+          DB_PASSWORD_VALUE="${{ env.DB_PASSWORD }}"
           MAIN_FINANCE_DB_URL_VALUE="${{ env.MAIN_FINANCE_DB_URL }}"
 
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             -o ServerAliveInterval=60 -o ServerAliveCountMax=30 \
             -T \
-            "$SSH_USER@$SSH_HOST" "DB_HOST_VALUE='$DB_HOST_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' bash -s" << 'EOF'
+            "$SSH_USER@$SSH_HOST" "DB_HOST_VALUE='$DB_HOST_VALUE' DB_PORT_VALUE='$DB_PORT_VALUE' DB_NAME_VALUE='$DB_NAME_VALUE' DB_PASSWORD_VALUE='$DB_PASSWORD_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' bash -s" << 'EOF'
           set -euo pipefail
           cd /home/balabantaray-user/kdext
 
@@ -97,10 +106,10 @@ jobs:
             -e AWS_BUCKET_NAME="${{ secrets.AWS_BUCKET_NAME }}" \
             -e AWS_REGION="${{ secrets.AWS_REGION }}" \
             -e DB_HOST="$DB_HOST_VALUE" \
-            -e DB_PORT=5005 \
-            -e DB_NAME=financedb \
+            -e DB_PORT="$DB_PORT_VALUE" \
+            -e DB_NAME="$DB_NAME_VALUE" \
             -e DB_USER=financedb_user \
-            -e DB_PASSWORD=financedb_password_2026 \
+            -e DB_PASSWORD="$DB_PASSWORD_VALUE" \
             ${IMAGE}:latest
 
           echo "⏳ Health check..."

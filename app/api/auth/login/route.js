@@ -73,22 +73,14 @@ export async function POST(req) {
     const isPasswordValid = await verifyPassword(password, user.password_hash);
 
     if (!isPasswordValid) {
-      // Record failed login attempt
-      await financeQuery(
-        `SELECT record_failed_login_attempt($1)`,
-        [email.toLowerCase()]
-      );
-
-      // Log the failed login
-      await financeQuery(
-        `SELECT log_internal_login($1, $2, $3, $4, $5)`,
-        [user.internal_user_id, false, req.ip, req.headers.get("user-agent") || "", "Invalid password"]
-      );
-
-      return Response.json(
-        { error: "Invalid credentials" },
-        { status: 401 }
-      );
+      try {
+        await financeQuery(`SELECT record_failed_login_attempt($1)`, [email.toLowerCase()]);
+        await financeQuery(`SELECT log_internal_login($1, $2, $3, $4, $5)`,
+          [user.internal_user_id, false, req.ip, req.headers.get("user-agent") || "", "Invalid password"]);
+      } catch (logErr) {
+        console.error("Failed to log login attempt:", logErr.message);
+      }
+      return Response.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
     // Check if user has required roles (SUPER_ADMIN, HITL, or ADMIN)
@@ -102,27 +94,26 @@ export async function POST(req) {
     console.log(`Login attempt: ${email}, roles: [${userRoles.join(", ")}], allowed: ${hasRequiredRole}`);
 
     if (!hasRequiredRole) {
-      await financeQuery(
-        `SELECT log_internal_login($1, $2, $3, $4, $5)`,
-        [user.internal_user_id, false, req.ip, req.headers.get("user-agent") || "", "Insufficient permissions"]
-      );
+      try {
+        await financeQuery(`SELECT log_internal_login($1, $2, $3, $4, $5)`,
+          [user.internal_user_id, false, req.ip, req.headers.get("user-agent") || "", "Insufficient permissions"]);
+      } catch (logErr) {
+        console.error("Failed to log login attempt:", logErr.message);
+      }
       return Response.json(
         { error: "You do not have permission to access this application" },
         { status: 403 }
       );
     }
 
-    // Update last login and reset failed attempts
-    await financeQuery(
-      `SELECT update_internal_user_last_login($1)`,
-      [user.internal_user_id]
-    );
-
-    // Log successful login
-    await financeQuery(
-      `SELECT log_internal_login($1, $2, $3, $4, $5)`,
-      [user.internal_user_id, true, req.ip, req.headers.get("user-agent") || "", null]
-    );
+    // Update last login and log — non-blocking so logging failures never break auth
+    try {
+      await financeQuery(`SELECT update_internal_user_last_login($1)`, [user.internal_user_id]);
+      await financeQuery(`SELECT log_internal_login($1, $2, $3, $4, $5)`,
+        [user.internal_user_id, true, req.ip, req.headers.get("user-agent") || "", null]);
+    } catch (logErr) {
+      console.error("Failed to log successful login:", logErr.message);
+    }
 
     // Create JWT token
     const token = await new SignJWT({
