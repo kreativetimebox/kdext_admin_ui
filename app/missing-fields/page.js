@@ -215,11 +215,11 @@ function MissingFieldRow({ doc, onView }) {
           borderRadius: 8,
           fontSize: 13,
           fontWeight: 600,
-          background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+          background: "var(--brand-gradient)",
           color: "#fff",
           border: "none",
           cursor: "pointer",
-          boxShadow: hovered ? "0 4px 12px rgba(37,99,235,0.4)" : "none",
+          boxShadow: hovered ? "0 10px 22px var(--brand-glow)" : "none",
           transform: hovered ? "translateY(-1px)" : "translateY(0)",
           transition: "all 0.2s",
         }}
@@ -322,8 +322,8 @@ export default function MissingFieldsPage() {
                 height: 40,
                 borderRadius: 12,
                 background: showAll
-                  ? "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)"
-                  : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  ? "var(--brand-gradient)"
+                  : "linear-gradient(135deg, var(--danger-color) 0%, #9f1d42 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -498,7 +498,7 @@ export default function MissingFieldsPage() {
                 Loading documents...
               </div>
             ) : error ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#ef4444" }}>
+              <div style={{ padding: 40, textAlign: "center", color: "var(--danger-color)" }}>
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load documents</p>
               </div>

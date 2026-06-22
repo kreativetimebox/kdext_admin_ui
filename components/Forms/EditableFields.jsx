@@ -229,7 +229,7 @@ function ArrayTable({ fieldKey, items, isMandatory }) {
         style={{ color: "var(--text-muted)" }}
       >
         {toLabel(fieldKey)}
-        {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
+        {isMandatory && <span style={{ color: "var(--danger-color)", marginLeft: 4 }}>*</span>}
       </label>
 
       <div style={{ border: "1px solid var(--panel-border)", borderRadius: 10, overflow: "hidden" }}>
@@ -307,7 +307,7 @@ function FieldDisplay({ fieldKey, value, isMandatory = false }) {
     <div className="flex flex-col gap-2.5">
       <label className="text-[13px] font-semibold uppercase tracking-wider pl-1" style={{ color: "var(--text-muted)" }}>
         {toLabel(fieldKey)}
-        {isMandatory && <span style={{ color: "#ef4444", marginLeft: 4 }}>*</span>}
+        {isMandatory && <span style={{ color: "var(--danger-color)", marginLeft: 4 }}>*</span>}
       </label>
       <div
         className={

@@ -34,9 +34,13 @@ export default function RootLayout({ children }) {
               style: {
                 fontSize: "13px",
                 maxWidth: "360px",
+                background: "var(--panel-bg)",
+                color: "var(--foreground)",
+                border: "1px solid var(--panel-border)",
+                boxShadow: "var(--shadow-md)",
               },
               success: {
-                iconTheme: { primary: "#3b82f6", secondary: "#fff" },
+                iconTheme: { primary: "var(--success)", secondary: "#fff" },
               },
             }}
           />

@@ -110,7 +110,7 @@ function JsonPanel({ title, data, defaultOpen = false, variant = "default" }) {
               customStyle={{
                 margin: 0,
                 padding: "14px 16px",
-                background: isDark ? "#0d1117" : "#f8fafc",
+                background: "var(--code-bg)",
                 fontSize: "11.5px",
                 lineHeight: "1.7",
                 borderRadius: 0,

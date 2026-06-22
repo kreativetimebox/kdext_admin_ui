@@ -29,7 +29,7 @@ function formatDate(value) {
 function StatusBadge({ status }) {
   const colors = {
     COMPLETED: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
-    FAILED: { bg: "#fee2e2", color: "#b91c1c" },
+    FAILED: { bg: "var(--danger-bg)", color: "var(--danger-color)" },
     PENDING: { bg: "var(--tag-amber-bg)", color: "var(--tag-amber-color)" },
     PROCESSING: { bg: "var(--tag-bg)", color: "var(--accent)" },
   };
@@ -294,7 +294,7 @@ export default function TransactionsPage() {
               width: 40,
               height: 40,
               borderRadius: 12,
-              background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+              background: "var(--brand-gradient)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -450,7 +450,7 @@ export default function TransactionsPage() {
                 Loading transactions...
               </div>
             ) : error ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#ef4444" }}>
+              <div style={{ padding: 40, textAlign: "center", color: "var(--danger-color)" }}>
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load transactions</p>
               </div>

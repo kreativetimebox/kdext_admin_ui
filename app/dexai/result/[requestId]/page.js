@@ -101,7 +101,7 @@ function CopyButton({ value, label }) {
         flexShrink: 0,
       }}
     >
-      {copied ? <Check size={11} style={{ color: "#10b981" }} /> : <Copy size={11} />}
+      {copied ? <Check size={11} style={{ color: "var(--success)" }} /> : <Copy size={11} />}
     </button>
   );
 }
@@ -109,7 +109,7 @@ function CopyButton({ value, label }) {
 function StatusBadge({ status }) {
   const colors = {
     COMPLETED: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
-    FAILED: { bg: "#fee2e2", color: "#b91c1c" },
+    FAILED: { bg: "var(--danger-bg)", color: "var(--danger-color)" },
     PENDING: { bg: "var(--tag-amber-bg)", color: "var(--tag-amber-color)" },
     PROCESSING: { bg: "var(--tag-bg)", color: "var(--accent)" },
   };
@@ -179,7 +179,7 @@ function FileRender({ url, originalFilename, documentPath }) {
           textAlign: "center",
         }}
       >
-        <AlertCircle size={26} style={{ color: "#f59e0b" }} />
+        <AlertCircle size={26} style={{ color: "var(--tag-amber-color)" }} />
         <p style={{ fontSize: 12 }}>Failed to load</p>
         <a
           href={url}
@@ -434,7 +434,7 @@ export default function DexaiResultPage({ params }) {
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+                background: "var(--brand-gradient)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -492,7 +492,7 @@ export default function DexaiResultPage({ params }) {
             style={{
               padding: 60,
               textAlign: "center",
-              color: "#ef4444",
+              color: "var(--danger-color)",
               background: "var(--panel-bg)",
               border: "1px solid var(--panel-border)",
               borderRadius: 12,
@@ -527,25 +527,25 @@ export default function DexaiResultPage({ params }) {
             >
               <SummaryStat
                 icon={UserIcon}
-                color="#2563eb"
+                color="var(--accent)"
                 label="User"
                 value={userFullName}
               />
               <SummaryStat
                 icon={FileText}
-                color="#7c3aed"
+                color="var(--tag-purple-color)"
                 label="Document Type"
                 value={data.document_type || "—"}
               />
               <SummaryStat
                 icon={Clock}
-                color="#059669"
+                color="var(--success)"
                 label="Processing Time"
                 value={formatDuration(data.processing_duration_ms)}
               />
               <SummaryStat
                 icon={Calendar}
-                color="#0891b2"
+                color="var(--accent-2)"
                 label="Submitted"
                 value={formatDate(data.submitted_at)}
               />
@@ -682,7 +682,7 @@ export default function DexaiResultPage({ params }) {
                   </MetaRow>
                   {data.error_message && (
                     <MetaRow label="Error">
-                      <span style={{ color: "#ef4444" }}>{data.error_message}</span>
+                      <span style={{ color: "var(--danger-color)" }}>{data.error_message}</span>
                     </MetaRow>
                   )}
                 </div>

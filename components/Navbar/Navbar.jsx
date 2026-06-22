@@ -20,11 +20,9 @@ function NavLink({ href, label, icon: Icon, active }) {
         fontWeight: active ? 600 : 500,
         textDecoration: "none",
         color: active ? "#fff" : "var(--text-muted)",
-        background: active
-          ? "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)"
-          : "transparent",
+        background: active ? "var(--brand-gradient)" : "transparent",
         border: active ? "none" : "1px solid transparent",
-        boxShadow: active ? "0 2px 8px rgba(37,99,235,0.35)" : "none",
+        boxShadow: active ? "0 10px 24px var(--brand-glow)" : "none",
         transition: "all 0.15s ease",
         whiteSpace: "nowrap",
       }}
@@ -66,8 +64,8 @@ export default function Navbar() {
         padding: "0 28px",
         background: "var(--header-bg)",
         borderBottom: "1px solid var(--panel-border)",
-        backdropFilter: "blur(12px)",
-        boxShadow: "0 1px 0 var(--panel-border), 0 2px 12px rgba(0,0,0,0.05)",
+        backdropFilter: "blur(18px)",
+        boxShadow: "0 1px 0 var(--panel-border), 0 18px 42px rgba(24,19,60,0.12)",
         flexShrink: 0,
       }}
     >
@@ -78,8 +76,8 @@ export default function Navbar() {
             width: 32,
             height: 32,
             borderRadius: 10,
-            background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
-            boxShadow: "0 2px 10px rgba(37,99,235,0.4)",
+            background: "var(--brand-gradient)",
+            boxShadow: "0 10px 24px var(--brand-glow)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -149,7 +147,7 @@ export default function Navbar() {
             userSelect: "none",
           }}
         >
-          <Sun size={12} style={{ color: "#f59e0b" }} />
+          <Sun size={12} style={{ color: "var(--tag-amber-color)" }} />
           <div
             style={{
               position: "relative",

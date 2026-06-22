@@ -245,7 +245,7 @@ function ActionCard({ icon: Icon, title, description, color, href, badge }) {
 function StatusBadge({ status }) {
   const colors = {
     COMPLETED: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
-    FAILED: { bg: "#fee2e2", color: "#b91c1c" },
+    FAILED: { bg: "var(--danger-bg)", color: "var(--danger-color)" },
     PENDING: { bg: "var(--tag-amber-bg)", color: "var(--tag-amber-color)" },
     PROCESSING: { bg: "var(--tag-bg)", color: "var(--accent)" },
   };
@@ -305,32 +305,15 @@ export default function HomePage() {
         overflow: "hidden",
       }}
     >
-      {/* ambient blobs */}
+      {/* ambient pattern */}
       <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
         <div
           style={{
             position: "absolute",
-            top: "-10%",
-            left: "15%",
-            width: 600,
-            height: 600,
-            borderRadius: "50%",
+            inset: 0,
             background:
-              "radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)",
-            filter: "blur(40px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: "30%",
-            right: "-5%",
-            width: 500,
-            height: 500,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)",
-            filter: "blur(40px)",
+              "linear-gradient(135deg, rgba(255,255,255,0.16) 0%, transparent 46%, rgba(255,255,255,0.08) 100%)",
+            opacity: 0.45,
           }}
         />
       </div>
@@ -366,8 +349,7 @@ export default function HomePage() {
                   position: "absolute",
                   inset: -12,
                   borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 70%)",
+                  background: "var(--brand-gradient-soft)",
                   filter: "blur(8px)",
                 }}
               />
@@ -376,9 +358,8 @@ export default function HomePage() {
                   width: 60,
                   height: 60,
                   borderRadius: 18,
-                  background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
-                  boxShadow:
-                    "0 10px 30px rgba(37,99,235,0.42), 0 0 0 1px rgba(99,102,241,0.3)",
+                  background: "var(--brand-gradient)",
+                  boxShadow: "0 14px 36px var(--brand-glow), 0 0 0 1px var(--active-border)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -418,7 +399,7 @@ export default function HomePage() {
                   lineHeight: 1.1,
                   margin: 0,
                   background:
-                    "linear-gradient(135deg, var(--foreground) 30%, #6366f1 100%)",
+                    "linear-gradient(135deg, var(--foreground) 30%, var(--accent) 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -478,7 +459,7 @@ export default function HomePage() {
             label="Users"
             value={overview?.users_count}
             sub={`${formatNumber(overview?.active_users_count)} active`}
-            color="#2563eb"
+            color="var(--accent)"
             loading={isLoading}
           />
           <StatTile
@@ -486,7 +467,7 @@ export default function HomePage() {
             label="Total Requests"
             value={overview?.total_requests}
             sub={`${formatNumber(overview?.distinct_doc_types)} document types`}
-            color="#7c3aed"
+            color="var(--tag-purple-color)"
             loading={isLoading}
           />
           <StatTile
@@ -494,7 +475,7 @@ export default function HomePage() {
             label="Completed"
             value={overview?.completed_requests}
             sub={successRate != null ? `${successRate}% success rate` : "—"}
-            color="#059669"
+            color="var(--success)"
             loading={isLoading}
           />
           <StatTile
@@ -502,7 +483,7 @@ export default function HomePage() {
             label="Failed"
             value={overview?.failed_requests}
             sub={`${formatNumber(overview?.pending_requests)} in progress`}
-            color="#dc2626"
+            color="var(--danger-color)"
             loading={isLoading}
           />
         </section>
@@ -540,7 +521,7 @@ export default function HomePage() {
         >
           <ActionCard
             icon={Users}
-            color="#2563eb"
+            color="var(--accent)"
             title="DexAI Users"
             description="Browse all DexAI users and view their document processing results from the main finance database."
             href="/dexai"
@@ -548,7 +529,7 @@ export default function HomePage() {
           />
           <ActionCard
             icon={FileSearch}
-            color="#7c3aed"
+            color="var(--tag-purple-color)"
             title="Manual Analyzer"
             description="Open the OCR result analyzer to review and correct extracted fields side-by-side with the source file."
             href="/analyzer"
@@ -777,7 +758,7 @@ export default function HomePage() {
               width: 16,
               height: 16,
               borderRadius: 5,
-              background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+              background: "var(--brand-gradient)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

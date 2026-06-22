@@ -62,7 +62,7 @@ function matchesDate(value, q) {
 function StatusBadge({ status }) {
   const colors = {
     COMPLETED: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
-    FAILED: { bg: "#fee2e2", color: "#b91c1c" },
+    FAILED: { bg: "var(--danger-bg)", color: "var(--danger-color)" },
     PENDING: { bg: "var(--tag-amber-bg)", color: "var(--tag-amber-color)" },
     PROCESSING: { bg: "var(--tag-bg)", color: "var(--accent)" },
   };
@@ -290,10 +290,10 @@ function ResultRow({ record, onView }) {
           fontWeight: 600,
           border: "none",
           background:
-            "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+            "var(--brand-gradient)",
           color: "#fff",
           cursor: "pointer",
-          boxShadow: hovered ? "0 4px 14px rgba(37,99,235,0.4)" : "0 2px 6px rgba(37,99,235,0.25)",
+          boxShadow: hovered ? "0 10px 24px var(--brand-glow)" : "0 2px 8px var(--brand-glow)",
           transition: "all 0.15s ease",
         }}
       >
@@ -442,7 +442,7 @@ export default function UserResultsPage({ params }) {
               width: 52,
               height: 52,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+              background: "var(--brand-gradient)",
               color: "#fff",
               display: "flex",
               alignItems: "center",
@@ -651,7 +651,7 @@ export default function UserResultsPage({ params }) {
                 Loading results...
               </div>
             ) : resultsQuery.error ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#ef4444" }}>
+              <div style={{ padding: 40, textAlign: "center", color: "var(--danger-color)" }}>
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load results</p>
               </div>

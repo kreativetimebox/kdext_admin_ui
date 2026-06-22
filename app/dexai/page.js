@@ -77,7 +77,7 @@ function UserRow({ user, onOpen }) {
             width: 32,
             height: 32,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+            background: "var(--brand-gradient)",
             color: "#fff",
             display: "flex",
             alignItems: "center",
@@ -170,7 +170,7 @@ function UserRow({ user, onOpen }) {
         style={{
           fontSize: 12,
           fontWeight: 600,
-          color: user.failed_count > 0 ? "#b91c1c" : "var(--text-muted)",
+          color: user.failed_count > 0 ? "var(--danger-color)" : "var(--text-muted)",
           display: "flex",
           alignItems: "center",
           gap: 4,
@@ -267,7 +267,7 @@ export default function DexaiUsersPage() {
               width: 40,
               height: 40,
               borderRadius: 12,
-              background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+              background: "var(--brand-gradient)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -452,7 +452,7 @@ export default function DexaiUsersPage() {
                 Loading users...
               </div>
             ) : error ? (
-              <div style={{ padding: 40, textAlign: "center", color: "#ef4444" }}>
+              <div style={{ padding: 40, textAlign: "center", color: "var(--danger-color)" }}>
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load users</p>
               </div>

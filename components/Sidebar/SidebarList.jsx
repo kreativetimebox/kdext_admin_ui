@@ -73,9 +73,9 @@ export default function SidebarList({ onlyId = null }) {
       <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center mb-1"
-          style={{ background: "#fee2e2" }}
+          style={{ background: "var(--danger-bg)" }}
         >
-          <FileText size={16} color="#ef4444" />
+          <FileText size={16} color="var(--danger-color)" />
         </div>
         <p className="text-sm font-medium" style={{ color: "var(--foreground)" }}>
           Failed to load
