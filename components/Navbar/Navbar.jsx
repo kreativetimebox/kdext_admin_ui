@@ -24,18 +24,16 @@ function NavLink({ href, label, icon: Icon, active }) {
         fontWeight: active ? 600 : 500,
         textDecoration: "none",
         color: active ? "#fff" : "var(--text-muted)",
-        background: active
-          ? "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)"
-          : "transparent",
-        border: active ? "none" : "1px solid transparent",
-        boxShadow: active ? "0 2px 8px rgba(37,99,235,0.35)" : "none",
+        background: active ? "rgba(255,255,255,0.18)" : "transparent",
+        border: active ? "1px solid rgba(255,255,255,0.2)" : "1px solid transparent",
+        boxShadow: active ? "0 8px 26px rgba(20,14,53,0.16)" : "none",
         transition: "all 0.15s ease",
         whiteSpace: "nowrap",
       }}
       onMouseEnter={e => {
         if (!active) {
           e.currentTarget.style.color = "var(--foreground)";
-          e.currentTarget.style.background = "var(--input-bg)";
+          e.currentTarget.style.background = "rgba(255,255,255,0.1)";
           e.currentTarget.style.border = "1px solid var(--panel-border)";
         }
       }}
@@ -83,8 +81,8 @@ export default function Navbar() {
         padding: "0 28px",
         background: "var(--header-bg)",
         borderBottom: "1px solid var(--panel-border)",
-        backdropFilter: "blur(12px)",
-        boxShadow: "0 1px 0 var(--panel-border), 0 2px 12px rgba(0,0,0,0.05)",
+        backdropFilter: "blur(18px)",
+        boxShadow: "0 1px 0 var(--panel-border), 0 14px 36px rgba(20,14,53,0.14)",
         flexShrink: 0,
       }}
     >
@@ -95,8 +93,8 @@ export default function Navbar() {
             width: 32,
             height: 32,
             borderRadius: 10,
-            background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
-            boxShadow: "0 2px 10px rgba(37,99,235,0.4)",
+            background: "var(--brand-gradient)",
+            boxShadow: "0 10px 24px rgba(20,14,53,0.22)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -109,7 +107,7 @@ export default function Navbar() {
             style={{
               fontSize: 13.5,
               fontWeight: 700,
-              letterSpacing: "-0.01em",
+              letterSpacing: 0,
               color: "var(--foreground)",
               lineHeight: 1.1,
             }}
@@ -206,7 +204,7 @@ export default function Navbar() {
                   width: 24,
                   height: 24,
                   borderRadius: "50%",
-                  background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+                  background: "var(--brand-gradient)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",

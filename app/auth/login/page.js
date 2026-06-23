@@ -92,79 +92,61 @@ export default function LoginPage() {
         overflow: "hidden",
       }}
     >
-      {/* Ambient blobs */}
-      <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        <div
-          style={{
-            position: "absolute",
-            top: "-10%",
-            left: "15%",
-            width: 600,
-            height: 600,
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)",
-            filter: "blur(40px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-10%",
-            right: "15%",
-            width: 500,
-            height: 500,
-            borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)",
-            filter: "blur(40px)",
-          }}
-        />
-      </div>
-
       <div
+        className="login-shell"
         style={{
           position: "relative",
           zIndex: 1,
           width: "100%",
-          maxWidth: 420,
-          padding: "40px 32px",
+          maxWidth: 1120,
+          padding: "48px 32px",
+          display: "grid",
+          gridTemplateColumns: "minmax(280px, 1fr) minmax(360px, 520px)",
+          gap: 56,
+          alignItems: "center",
         }}
       >
         {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ color: "#fff", minWidth: 0 }}>
           <div
             style={{
-              width: 56,
-              height: 56,
-              borderRadius: 16,
-              background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+              width: 60,
+              height: 60,
+              borderRadius: 18,
+              background: "rgba(255,255,255,0.14)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              margin: "0 auto 20px",
-              boxShadow: "0 10px 30px rgba(37,99,235,0.3)",
+              margin: "0 0 24px",
+              boxShadow: "var(--shadow-md)",
+              border: "1px solid var(--panel-border)",
             }}
           >
             <Lock size={28} color="#fff" />
           </div>
           <h1
             style={{
-              fontSize: 28,
+              fontSize: "clamp(2.3rem, 5vw, 4.4rem)",
               fontWeight: 800,
-              color: "var(--foreground)",
-              margin: "0 0 8px",
+              color: "#fff",
+              margin: "0 0 18px",
+              lineHeight: 1.03,
+              fontFamily: "Georgia, 'Times New Roman', serif",
             }}
           >
-            Admin Portal
+            Welcome To DexAI
           </h1>
           <p
             style={{
-              fontSize: 13.5,
-              color: "var(--text-muted)",
+              fontSize: "clamp(1rem, 2vw, 1.35rem)",
+              color: "rgba(255,255,255,0.92)",
               margin: 0,
-              lineHeight: 1.55,
+              lineHeight: 1.5,
+              fontWeight: 700,
+              maxWidth: 540,
             }}
           >
-            Sign in with your admin credentials to access the document analysis dashboard.
+            Smart Accounting for Accountants & Business Owners
           </p>
         </div>
 
@@ -173,12 +155,23 @@ export default function LoginPage() {
           style={{
             background: "var(--panel-bg)",
             border: "1px solid var(--panel-border)",
-            borderRadius: 16,
-            padding: "32px 28px",
+            borderRadius: 34,
+            padding: "44px 42px",
             boxShadow: "var(--shadow-lg)",
-            marginBottom: 20,
+            backdropFilter: "blur(18px)",
           }}
         >
+          <h2
+            style={{
+              fontSize: 28,
+              fontWeight: 800,
+              color: "#fff",
+              margin: "0 0 28px",
+              fontFamily: "Georgia, 'Times New Roman', serif",
+            }}
+          >
+            Welcome Back
+          </h2>
           <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Email Field */}
             <div>
@@ -189,7 +182,7 @@ export default function LoginPage() {
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
-                  color: "var(--text-muted)",
+                  color: "rgba(255,255,255,0.86)",
                   marginBottom: 8,
                 }}
               >
@@ -216,7 +209,7 @@ export default function LoginPage() {
                     width: "100%",
                     padding: "11px 16px 11px 40px",
                     background: "var(--input-bg)",
-                    border: "1px solid var(--panel-border)",
+                    border: "1px solid var(--input-border)",
                     borderRadius: 10,
                     fontSize: 14,
                     color: "var(--foreground)",
@@ -225,11 +218,11 @@ export default function LoginPage() {
                     boxSizing: "border-box",
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = "var(--accent)";
-                    e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.1)";
+                    e.target.style.borderColor = "#fff";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.12)";
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "var(--panel-border)";
+                    e.target.style.borderColor = "var(--input-border)";
                     e.target.style.boxShadow = "none";
                   }}
                 />
@@ -245,7 +238,7 @@ export default function LoginPage() {
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
-                  color: "var(--text-muted)",
+                  color: "rgba(255,255,255,0.86)",
                   marginBottom: 8,
                 }}
               >
@@ -273,7 +266,7 @@ export default function LoginPage() {
                     width: "100%",
                     padding: "11px 40px 11px 40px",
                     background: "var(--input-bg)",
-                    border: "1px solid var(--panel-border)",
+                    border: "1px solid var(--input-border)",
                     borderRadius: 10,
                     fontSize: 14,
                     color: "var(--foreground)",
@@ -282,11 +275,11 @@ export default function LoginPage() {
                     boxSizing: "border-box",
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = "var(--accent)";
-                    e.target.style.boxShadow = "0 0 0 3px rgba(37, 99, 235, 0.1)";
+                    e.target.style.borderColor = "#fff";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.12)";
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = "var(--panel-border)";
+                    e.target.style.borderColor = "var(--input-border)";
                     e.target.style.boxShadow = "none";
                   }}
                 />
@@ -329,15 +322,15 @@ export default function LoginPage() {
                   alignItems: "flex-start",
                   gap: 12,
                   padding: "12px 14px",
-                  background: "rgba(220, 38, 38, 0.1)",
-                  border: "1px solid rgba(220, 38, 38, 0.3)",
+                  background: "var(--danger-bg)",
+                  border: "1px solid rgba(255,255,255,0.22)",
                   borderRadius: 8,
                 }}
               >
                 <AlertCircle
                   size={16}
                   style={{
-                    color: "#dc2626",
+                    color: "var(--danger-color)",
                     flexShrink: 0,
                     marginTop: 2,
                   }}
@@ -346,7 +339,7 @@ export default function LoginPage() {
                   style={{
                     margin: 0,
                     fontSize: 13,
-                    color: "#dc2626",
+                    color: "var(--danger-color)",
                     lineHeight: 1.4,
                   }}
                 >
@@ -363,9 +356,9 @@ export default function LoginPage() {
                 padding: "11px 16px",
                 background: loading
                   ? "var(--text-muted)"
-                  : "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+                  : "rgba(255,255,255,0.18)",
                 color: "#fff",
-                border: "none",
+                border: "1px solid rgba(255,255,255,0.18)",
                 borderRadius: 10,
                 fontSize: 14,
                 fontWeight: 700,
@@ -379,12 +372,14 @@ export default function LoginPage() {
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.target.style.boxShadow = "0 10px 30px rgba(37,99,235,0.4)";
+                  e.target.style.boxShadow = "0 10px 30px rgba(20,14,53,0.26)";
+                  e.target.style.background = "rgba(255,255,255,0.26)";
                   e.target.style.transform = "translateY(-2px)";
                 }
               }}
               onMouseLeave={(e) => {
                 e.target.style.boxShadow = "none";
+                e.target.style.background = loading ? "var(--text-muted)" : "rgba(255,255,255,0.18)";
                 e.target.style.transform = "translateY(0)";
               }}
             >
@@ -403,21 +398,20 @@ export default function LoginPage() {
           </form>
         </div>
 
-        {/* Footer */}
-        <p
-          style={{
-            fontSize: 12,
-            color: "var(--text-muted)",
-            textAlign: "center",
-            margin: 0,
-            lineHeight: 1.5,
-          }}
-        >
-          Only authorized administrators (SuperAdmin, HITL, Admin) can access this portal.
-        </p>
       </div>
 
       <style>{`
+        @media (max-width: 820px) {
+          .login-shell {
+            grid-template-columns: 1fr !important;
+            gap: 28px !important;
+            padding: 32px 18px !important;
+          }
+          .login-shell > div:last-child {
+            padding: 32px 22px !important;
+            border-radius: 24px !important;
+          }
+        }
         @keyframes spin {
           from { transform: rotate(0deg); }
           to { transform: rotate(360deg); }

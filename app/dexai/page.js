@@ -69,7 +69,7 @@ function CompanySection({ company, users, onUserOpen }) {
           e.currentTarget.style.background = "linear-gradient(135deg, var(--input-bg) 0%, transparent 100%)";
         }}
       >
-        <Building2 size={18} style={{ color: "#2563eb", flexShrink: 0 }} />
+        <Building2 size={18} style={{ color: "var(--accent)", flexShrink: 0 }} />
         <span
           style={{
             fontSize: 15,
@@ -140,7 +140,7 @@ function UserRow({ user, onOpen }) {
             width: 28,
             height: 28,
             borderRadius: "50%",
-            background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+            background: "var(--brand-gradient)",
             color: "#fff",
             display: "flex",
             alignItems: "center",
@@ -616,7 +616,7 @@ export default function DexaiUsersPage() {
               width: 40,
               height: 40,
               borderRadius: 12,
-              background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+              background: "var(--brand-gradient)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

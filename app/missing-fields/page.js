@@ -373,7 +373,7 @@ const STATUS_STYLES = {
   COMPLETED:      { label: "Completed",      bg: "rgba(34,197,94,0.12)",  color: "#22c55e" },
   PENDING:        { label: "Pending",        bg: "rgba(234,179,8,0.12)",  color: "#eab308" },
   QUEUED:         { label: "Pending",        bg: "rgba(234,179,8,0.12)",  color: "#eab308" },
-  PROCESSING:     { label: "Processing",     bg: "rgba(59,130,246,0.12)", color: "#3b82f6" },
+  PROCESSING:     { label: "Processing",     bg: "rgba(255,109,142,0.16)", color: "#ffd6e1" },
   TO_BE_TESTED:   { label: "To Be Tested",  bg: "rgba(249,115,22,0.12)", color: "#f97316" },
   FAILED:         { label: "Failed",         bg: "rgba(239,68,68,0.12)",  color: "#ef4444" },
 };
@@ -624,11 +624,11 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
           borderRadius: 8,
           fontSize: 13,
           fontWeight: 600,
-          background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+          background: "var(--brand-gradient)",
           color: "#fff",
           border: "none",
           cursor: "pointer",
-          boxShadow: hovered ? "0 4px 12px rgba(37,99,235,0.4)" : "none",
+          boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
           transform: hovered ? "translateY(-1px)" : "translateY(0)",
           transition: "all 0.2s",
         }}
@@ -772,8 +772,8 @@ export default function MissingFieldsPage() {
                 height: 40,
                 borderRadius: 12,
                 background: showAll
-                  ? "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)"
-                  : "linear-gradient(135deg, #ef4444 0%, #dc2626 100%)",
+                  ? "var(--brand-gradient)"
+                  : "linear-gradient(135deg, #ff5778 0%, #d43d6f 100%)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

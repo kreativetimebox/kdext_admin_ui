@@ -67,18 +67,6 @@ function StatTile({ icon: Icon, label, value, sub, color, loading }) {
         overflow: "hidden",
       }}
     >
-      <div
-        aria-hidden
-        style={{
-          position: "absolute",
-          top: -30,
-          right: -30,
-          width: 110,
-          height: 110,
-          borderRadius: "50%",
-          background: `radial-gradient(circle, ${color}1a 0%, transparent 70%)`,
-        }}
-      />
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12 }}>
         <div
           style={{
@@ -112,7 +100,7 @@ function StatTile({ icon: Icon, label, value, sub, color, loading }) {
           fontWeight: 800,
           color: "var(--foreground)",
           lineHeight: 1.1,
-          letterSpacing: "-0.02em",
+          letterSpacing: 0,
         }}
       >
         {loading ? (
@@ -158,7 +146,7 @@ function ActionCard({ icon: Icon, title, description, color, href, badge }) {
         boxShadow: hovered
           ? `0 12px 32px ${color}22, var(--shadow-sm)`
           : "var(--shadow-sm)",
-        borderRadius: 20,
+        borderRadius: 16,
         padding: "26px 24px",
         display: "flex",
         flexDirection: "column",
@@ -307,36 +295,6 @@ export default function HomePage() {
         overflow: "hidden",
       }}
     >
-      {/* ambient blobs */}
-      <div aria-hidden style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0 }}>
-        <div
-          style={{
-            position: "absolute",
-            top: "-10%",
-            left: "15%",
-            width: 600,
-            height: 600,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)",
-            filter: "blur(40px)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: "30%",
-            right: "-5%",
-            width: 500,
-            height: 500,
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(99,102,241,0.07) 0%, transparent 70%)",
-            filter: "blur(40px)",
-          }}
-        />
-      </div>
-
       <Navbar />
 
       <main
@@ -365,22 +323,12 @@ export default function HomePage() {
             <div style={{ position: "relative", display: "inline-flex" }}>
               <div
                 style={{
-                  position: "absolute",
-                  inset: -12,
-                  borderRadius: "50%",
-                  background:
-                    "radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 70%)",
-                  filter: "blur(8px)",
-                }}
-              />
-              <div
-                style={{
                   width: 60,
                   height: 60,
                   borderRadius: 18,
-                  background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+                  background: "var(--brand-gradient)",
                   boxShadow:
-                    "0 10px 30px rgba(37,99,235,0.42), 0 0 0 1px rgba(99,102,241,0.3)",
+                    "0 10px 30px rgba(20,14,53,0.28), 0 0 0 1px rgba(255,255,255,0.22)",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -416,11 +364,11 @@ export default function HomePage() {
                 style={{
                   fontSize: "clamp(1.6rem, 3.4vw, 2.4rem)",
                   fontWeight: 800,
-                  letterSpacing: "-0.02em",
+                  letterSpacing: 0,
                   lineHeight: 1.1,
                   margin: 0,
                   background:
-                    "linear-gradient(135deg, var(--foreground) 30%, #6366f1 100%)",
+                    "linear-gradient(135deg, #ffffff 30%, #ffd6e1 100%)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
@@ -480,7 +428,7 @@ export default function HomePage() {
             label="Users"
             value={overview?.users_count}
             sub={`${formatNumber(overview?.active_users_count)} active`}
-            color="#2563eb"
+            color="#ff6d8e"
             loading={isLoading}
           />
           <StatTile
@@ -504,7 +452,7 @@ export default function HomePage() {
             label="Total Requests"
             value={overview?.total_requests}
             sub={`${formatNumber(overview?.distinct_doc_types)} document types`}
-            color="#7c3aed"
+            color="#c985ff"
             loading={isLoading}
           />
           <StatTile
@@ -558,7 +506,7 @@ export default function HomePage() {
         >
           <ActionCard
             icon={Users}
-            color="#2563eb"
+            color="#ff6d8e"
             title="DexAI Users"
             description="Browse all DexAI users and view their document processing results from the main finance database."
             href="/dexai"
@@ -566,7 +514,7 @@ export default function HomePage() {
           />
           <ActionCard
             icon={FileSearch}
-            color="#7c3aed"
+            color="#c985ff"
             title="Manual Analyzer"
             description="Open the OCR result analyzer to review and correct extracted fields side-by-side with the source file."
             href="/analyzer"
@@ -795,7 +743,7 @@ export default function HomePage() {
               width: 16,
               height: 16,
               borderRadius: 5,
-              background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
+              background: "var(--brand-gradient)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",

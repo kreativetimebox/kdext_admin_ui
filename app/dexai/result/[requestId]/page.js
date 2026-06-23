@@ -434,7 +434,7 @@ export default function DexaiResultPage({ params }) {
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+                background: "var(--brand-gradient)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -527,13 +527,13 @@ export default function DexaiResultPage({ params }) {
             >
               <SummaryStat
                 icon={UserIcon}
-                color="#2563eb"
+                color="#ff6d8e"
                 label="User"
                 value={userFullName}
               />
               <SummaryStat
                 icon={FileText}
-                color="#7c3aed"
+                color="#c985ff"
                 label="Document Type"
                 value={data.document_type || "—"}
               />
@@ -545,7 +545,7 @@ export default function DexaiResultPage({ params }) {
               />
               <SummaryStat
                 icon={Calendar}
-                color="#0891b2"
+                color="#8fb0ff"
                 label="Submitted"
                 value={formatDate(data.submitted_at)}
               />

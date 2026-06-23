@@ -321,7 +321,7 @@ export default function TransactionDetailPage({ params }) {
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+                background: "var(--brand-gradient)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
