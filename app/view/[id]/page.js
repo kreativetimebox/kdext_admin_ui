@@ -168,9 +168,8 @@ export default function ViewDocumentPage() {
 
                       <div className="flex flex-col gap-3">
                         <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
-                          HITL Updated Result
+                          HITL Updated Result (JSON)
                         </p>
-                        <FormattedResultView data={doc?.hitl_updated_result} title="HITL Updated Result" />
                         <OCRResults data={doc?.hitl_updated_result} />
                       </div>
 
