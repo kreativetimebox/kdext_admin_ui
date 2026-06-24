@@ -603,7 +603,7 @@ export default function EditableResultView({ resultId, data, onSaved }) {
       );
       // Re-seed from what the server actually stored so the freshly-appended
       // audit entry (with the verified editor) shows up immediately.
-      const stored = unwrapFields(res.data?.ocr_ui_results);
+      const stored = unwrapFields(res.data?.hitl_updated_result);
       if (stored && typeof stored === "object") {
         const seed = structuredClone(stored);
         setDraft(seed);
@@ -627,6 +627,15 @@ export default function EditableResultView({ resultId, data, onSaved }) {
   const busy = publishing;
   const isEmpty =
     scalarEntries.length === 0 && objectEntries.length === 0 && tableEntries.length === 0;
+  // Publishing requires an existing hitl_updated_result to finalize. When the
+  // source (data) is null/empty there is nothing to publish, so the button is
+  // disabled.
+  const sourceFields = unwrapFields(data);
+  const sourceEmpty =
+    !sourceFields ||
+    typeof sourceFields !== "object" ||
+    Object.keys(sourceFields).length === 0;
+  const publishDisabled = busy || hasInvalid || sourceEmpty;
 
   /* Render one field within the OCR RESULTS grid — scalars get an input,
      arrays/empty-arrays fall back to an inline JSON editor. */
@@ -722,7 +731,8 @@ export default function EditableResultView({ resultId, data, onSaved }) {
         <button
           type="button"
           onClick={publishResult}
-          disabled={busy || hasInvalid}
+          disabled={publishDisabled}
+          title={sourceEmpty ? "No HITL-updated result to publish" : undefined}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -734,8 +744,8 @@ export default function EditableResultView({ resultId, data, onSaved }) {
             border: "none",
             background: "var(--accent)",
             color: "#fff",
-            cursor: busy || hasInvalid ? "not-allowed" : "pointer",
-            opacity: busy || hasInvalid ? 0.6 : 1,
+            cursor: publishDisabled ? "not-allowed" : "pointer",
+            opacity: publishDisabled ? 0.6 : 1,
           }}
         >
           <UploadCloud size={14} /> {publishing ? "Publishing…" : "Publish"}
