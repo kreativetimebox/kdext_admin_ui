@@ -604,8 +604,6 @@ export default function DexaiUsersPage() {
         style={{
           flex: 1,
           padding: "32px 40px",
-          maxWidth: 1500,
-          margin: "0 auto",
           width: "100%",
         }}
       >

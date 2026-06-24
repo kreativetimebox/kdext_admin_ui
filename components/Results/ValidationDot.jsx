@@ -3,9 +3,10 @@
 /**
  * Mandatory-field validation indicator for the audit tables.
  *
- *   validation === true  → green dot + "To be tested"  (passed validation)
- *   validation === false → glowing red dot             (missing mandatory fields)
- *   null / undefined     → muted "—"                   (not yet validated)
+ *   validation === true  → green dot + "Valid"          (all mandatory fields present)
+ *   validation === false → glowing red dot + "To be tested"
+ *                          (missing mandatory fields → needs human review)
+ *   null / undefined     → muted "—"                    (not yet validated)
  *
  * The glow is driven by the global `valGlow` keyframe (app/globals.css).
  */
@@ -31,7 +32,7 @@ export default function ValidationDot({ validation }) {
             whiteSpace: "nowrap",
           }}
         >
-          To be tested
+          Valid
         </span>
       </span>
     );
@@ -51,6 +52,17 @@ export default function ValidationDot({ validation }) {
             animation: "valGlow 1.4s ease-in-out infinite",
           }}
         />
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.04em",
+            color: "#ef4444",
+            whiteSpace: "nowrap",
+          }}
+        >
+          To be tested
+        </span>
       </span>
     );
   }

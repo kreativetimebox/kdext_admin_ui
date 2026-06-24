@@ -10,6 +10,7 @@ import { useThemeStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 import FileViewer from "@/components/Viewer/FileViewer";
 import EditableResultView, { EditHistory } from "@/components/Results/EditableResultView";
+import FormattedResultView from "@/components/Results/FormattedResultView";
 import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
 
@@ -169,6 +170,7 @@ export default function ViewDocumentPage() {
                         <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
                           HITL Updated Result
                         </p>
+                        <FormattedResultView data={doc?.hitl_updated_result} title="HITL Updated Result" />
                         <OCRResults data={doc?.hitl_updated_result} />
                       </div>
 
@@ -179,6 +181,7 @@ export default function ViewDocumentPage() {
                       <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
                         Original Result (Formatted)
                       </p>
+                      <FormattedResultView data={doc?.ocr_ui_results} title="OCR Results" />
                       <OCRResults data={doc?.ocr_ui_results} />
                     </div>
                   )}
