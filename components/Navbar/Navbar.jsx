@@ -112,7 +112,7 @@ export default function Navbar() {
               lineHeight: 1.1,
             }}
           >
-            kdext_doc_parser
+            TechDexAI
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>
             Admin Portal

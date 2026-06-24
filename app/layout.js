@@ -21,8 +21,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <title>kdext_doc_parser — Admin Portal</title>
-        <meta name="description" content="Admin portal for kdext_doc_parser — internal document parsing result review and correction." />
+        <title>TechDexAI — Admin Portal</title>
+        <meta name="description" content="Admin portal for techdexai_doc_parser — internal document parsing result review and correction." />
       </head>
       <body>
         <QueryClientProvider client={queryClientRef.current}>

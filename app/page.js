@@ -374,7 +374,7 @@ export default function HomePage() {
                   backgroundClip: "text",
                 }}
               >
-                kdext_doc_parser
+                TechDexAI_doc_parser
               </h1>
               <p
                 style={{
@@ -752,7 +752,7 @@ export default function HomePage() {
             <Layers size={9} color="#fff" />
           </div>
           <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
-            kdext_doc_parser · Admin Portal · Internal Use Only
+            TechDexAI · Admin Portal · Internal Use Only
             {recent.length > 0 && (
               <>
                 {" "}
