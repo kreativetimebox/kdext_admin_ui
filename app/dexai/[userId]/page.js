@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
+import ValidationDot from "@/components/Results/ValidationDot";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -183,7 +184,7 @@ function ResultRow({ record, onView }) {
       style={{
         display: "grid",
         gridTemplateColumns:
-          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 150px 150px 100px 80px",
+          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 80px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -255,6 +256,8 @@ function ResultRow({ record, onView }) {
       </span>
 
       <StatusBadge status={record.status} />
+
+      <ValidationDot validation={record.validation} />
 
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
         {formatDate(record.created_at || record.submitted_at)}
@@ -606,7 +609,7 @@ export default function UserResultsPage({ params }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 150px 150px 100px 80px",
+                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 80px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -619,6 +622,7 @@ export default function UserResultsPage({ params }) {
               "Transaction ID",
               "Document Type",
               "Status",
+              "Validation",
               "Created At",
               "Updated At",
               "Processing",

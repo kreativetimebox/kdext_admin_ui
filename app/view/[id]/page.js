@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
@@ -18,6 +18,10 @@ export default function ViewDocumentPage() {
   const router = useRouter();
   const { initTheme } = useThemeStore();
   const queryClient = useQueryClient();
+
+  // Result tabs: "hitl" = editable HITL-updated copy, "original" = read-only
+  // original extraction (formatted_result).
+  const [resultTab, setResultTab] = useState("hitl");
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
@@ -118,24 +122,66 @@ export default function ViewDocumentPage() {
 
                 {/* Data panel */}
                 <div className="flex-1 min-w-0 p-8 flex flex-col gap-8">
-                  <EditableResultView
-                    resultId={id}
-                    data={doc?.ocr_ui_results}
-                    onSaved={(res) => {
-                      if (res?.ocr_ui_results !== undefined) {
-                        queryClient.setQueryData(["document", id], (prev) =>
-                          prev ? { ...prev, ocr_ui_results: res.ocr_ui_results, ocr_results: res.ocr_ui_results } : prev
-                        );
-                      }
-                    }}
-                  />
-
-                  <div className="flex flex-col gap-3">
-                    <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
-                      Formatted Result
-                    </p>
-                    <OCRResults data={doc?.ocr_ui_results} />
+                  {/* Tabs: HITL Updated (editable) vs Original Result (read-only) */}
+                  <div className="flex items-center gap-2">
+                    {[
+                      { key: "hitl", label: "HITL Updated" },
+                      { key: "original", label: "Original Result" },
+                    ].map((t) => {
+                      const active = resultTab === t.key;
+                      return (
+                        <button
+                          key={t.key}
+                          onClick={() => setResultTab(t.key)}
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            border: "1px solid var(--panel-border)",
+                            background: active ? "var(--brand-gradient)" : "var(--input-bg)",
+                            color: active ? "#fff" : "var(--foreground)",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          {t.label}
+                        </button>
+                      );
+                    })}
                   </div>
+
+                  {resultTab === "hitl" ? (
+                    <>
+                      <EditableResultView
+                        resultId={id}
+                        data={doc?.hitl_updated_result}
+                        onSaved={(res) => {
+                          if (res?.hitl_updated_result !== undefined) {
+                            queryClient.setQueryData(["document", id], (prev) =>
+                              prev ? { ...prev, hitl_updated_result: res.hitl_updated_result } : prev
+                            );
+                          }
+                        }}
+                      />
+
+                      <div className="flex flex-col gap-3">
+                        <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
+                          HITL Updated Result
+                        </p>
+                        <OCRResults data={doc?.hitl_updated_result} />
+                      </div>
+
+                      <EditHistory data={doc?.hitl_updated_result} />
+                    </>
+                  ) : (
+                    <div className="flex flex-col gap-3">
+                      <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
+                        Original Result (Formatted)
+                      </p>
+                      <OCRResults data={doc?.ocr_ui_results} />
+                    </div>
+                  )}
 
                   <div className="flex flex-col gap-3">
                     <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
@@ -145,8 +191,6 @@ export default function ViewDocumentPage() {
                   </div>
                 </div>
               </div>
-
-              <EditHistory data={doc?.ocr_ui_results} />
             </>
           )}
         </main>

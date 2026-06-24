@@ -98,6 +98,12 @@ body {
   border-radius: 6px;
 }
 
+/* ─── Validation indicator glow (failed validation, red dot) ─── */
+@keyframes valGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.55), 0 0 4px 1px rgba(239,68,68,0.6); }
+  50%      { box-shadow: 0 0 0 4px rgba(239,68,68,0), 0 0 9px 3px rgba(239,68,68,0.9); }
+}
+
 /* ─── Focus ring ─── */
 :focus-visible {
   outline: 2px solid rgba(255, 255, 255, 0.86);

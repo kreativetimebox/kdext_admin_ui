@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { updateUiResults } from "@/lib/queries";
+import { updateHitlResult } from "@/lib/queries";
 
 const AUDIT_LIMIT = 50;
 
@@ -29,8 +29,9 @@ export async function POST(request, { params }) {
       roles = [];
     }
 
-    // The editable fields (and our meta) live at the top level, or under
-    // formatted_result when the pipeline wraps them.
+    // The editable fields (and our meta) live at the top level, or under a
+    // wrapper key when the pipeline wraps them. Edits are saved to the
+    // hitl_updated_result column; formatted_result stays immutable.
     const inner =
       result.formatted_result &&
       typeof result.formatted_result === "object" &&
@@ -48,7 +49,7 @@ export async function POST(request, { params }) {
     const existing = Array.isArray(inner._audit) ? inner._audit : [];
     inner._audit = [...existing, entry].slice(-AUDIT_LIMIT);
 
-    const updated = await updateUiResults(id, result);
+    const updated = await updateHitlResult(id, result);
 
     if (!updated) {
       return NextResponse.json(
@@ -58,9 +59,10 @@ export async function POST(request, { params }) {
     }
 
     return NextResponse.json(
-      // The DB column is formatted_result; expose it as ocr_ui_results so the
-      // frontend reads the saved data (incl. the appended audit) back.
-      { success: true, id: updated.id, ocr_ui_results: updated.ocr_results },
+      // The DB column is hitl_updated_result; expose it as hitl_updated_result
+      // so the frontend reads the saved HITL data (incl. the appended audit)
+      // back into the editable tab.
+      { success: true, id: updated.id, hitl_updated_result: updated.hitl_results },
       { status: 200 }
     );
   } catch (error) {

@@ -20,6 +20,7 @@ import {
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
+import ValidationDot from "@/components/Results/ValidationDot";
 
 const HITL_ASSIGN_ALLOWED = ["financeai@financeai.com", "rashika@financeai.com"];
 function emailCanAssign(email = "") {
@@ -517,7 +518,7 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(200px, 1.2fr) 180px 1fr 130px 130px 180px 90px",
+        gridTemplateColumns: "minmax(200px, 1.2fr) 180px 1fr 130px 140px 130px 180px 90px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -591,6 +592,8 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         currentStatus={doc.hitl_status}
         onStatusChanged={onStatusChanged}
       />
+
+      <ValidationDot validation={doc.validation} />
 
       <span
         style={{
@@ -948,14 +951,14 @@ export default function MissingFieldsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(200px, 1.2fr) 180px 1fr 130px 130px 180px 90px",
+              gridTemplateColumns: "minmax(200px, 1.2fr) 180px 1fr 130px 140px 130px 180px 90px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Result ID", "Document Type", "Missing Fields", "HITL Status", "Created At", "HITL", "Action"].map((h, i) => (
+            {["Result ID", "Document Type", "Missing Fields", "HITL Status", "Validation", "Created At", "HITL", "Action"].map((h, i) => (
               <span
                 key={i}
                 style={{
