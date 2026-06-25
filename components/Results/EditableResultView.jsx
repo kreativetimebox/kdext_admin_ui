@@ -150,9 +150,30 @@ const DEFAULT_ITEM_COLUMNS = [
 function isTableEntry(key, v) {
   return isArrayOfObjects(v) || (Array.isArray(v) && isItemsKey(key));
 }
+/* Preferred left-to-right order for bank-statement style tables. Columns are
+   matched loosely (normalized key contains the token) so variants like
+   "debit_amount"/"debitamount" all line up. Unlisted columns keep their
+   original order after the preferred ones. */
+const PREFERRED_COLUMN_ORDER = ["date", "description", "credit", "debit", "balance"];
+function rankColumn(col) {
+  const norm = String(col).toLowerCase().replace(/[^a-z]/g, "");
+  const i = PREFERRED_COLUMN_ORDER.findIndex((t) => norm.includes(t));
+  return i === -1 ? PREFERRED_COLUMN_ORDER.length : i;
+}
+function orderColumns(cols) {
+  // Only reorder when the table looks like a bank statement (has both a
+  // balance-style and a date-style column), so item tables stay untouched.
+  const hasBalance = cols.some((c) => rankColumn(c) === PREFERRED_COLUMN_ORDER.indexOf("balance"));
+  const hasDate = cols.some((c) => rankColumn(c) === PREFERRED_COLUMN_ORDER.indexOf("date"));
+  if (!hasBalance || !hasDate) return cols;
+  return cols
+    .map((c, i) => ({ c, i }))
+    .sort((a, b) => rankColumn(a.c) - rankColumn(b.c) || a.i - b.i)
+    .map((x) => x.c);
+}
 function columnsFor(key, rows) {
   const cols = tableColumns(rows);
-  if (cols.length > 0) return cols;
+  if (cols.length > 0) return orderColumns(cols);
   return isItemsKey(key) ? DEFAULT_ITEM_COLUMNS : [];
 }
 
