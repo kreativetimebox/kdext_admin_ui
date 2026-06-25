@@ -11,6 +11,9 @@
     linear-gradient(118deg, #fb244e 0%, #aa2c66 43%, #25356f 100%);
   --foreground:    #fff7fb;
   --panel-bg:      rgba(255, 255, 255, 0.28);
+  /* Floating dropdown menus: nearly solid (~10% transparency) so the
+     light menu text stays readable when overlapping page content. */
+  --menu-bg:       rgba(42, 36, 88, 0.9);
   --panel-border:  rgba(255, 255, 255, 0.18);
   --sidebar-bg:    rgba(54, 49, 104, 0.42);
   --header-bg:     rgba(48, 43, 93, 0.42);
@@ -49,6 +52,7 @@
     repeating-linear-gradient(150deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 138px),
     linear-gradient(118deg, #f12650 0%, #8f2d66 44%, #192b62 100%);
   --panel-bg:      rgba(255, 255, 255, 0.26);
+  --menu-bg:       rgba(24, 24, 60, 0.9);
   --header-bg:     rgba(27, 27, 67, 0.5);
   --input-bg:      rgba(16, 18, 48, 0.3);
 }

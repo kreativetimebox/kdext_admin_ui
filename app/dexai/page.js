@@ -363,7 +363,7 @@ function SearchableDropdown({
             left: 0,
             zIndex: 50,
             width: "max(100%, 260px)",
-            background: "var(--panel-bg)",
+            background: "var(--menu-bg)",
             border: "1px solid var(--panel-border)",
             borderRadius: 8,
             boxShadow: "var(--shadow-sm)",

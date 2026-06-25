@@ -225,7 +225,7 @@ export default function Navbar() {
                   position: "absolute",
                   top: "calc(100% + 6px)",
                   right: 0,
-                  background: "var(--panel-bg)",
+                  background: "var(--menu-bg)",
                   border: "1px solid var(--panel-border)",
                   borderRadius: 10,
                   boxShadow: "0 10px 40px rgba(0,0,0,0.15)",

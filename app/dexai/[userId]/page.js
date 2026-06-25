@@ -126,7 +126,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
               top: "calc(100% + 4px)",
               left: 0,
               minWidth: 200,
-              background: "var(--panel-bg)",
+              background: "var(--menu-bg)",
               border: "1px solid var(--panel-border)",
               borderRadius: 8,
               boxShadow: "var(--shadow-md)",
