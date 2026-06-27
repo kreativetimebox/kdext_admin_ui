@@ -734,7 +734,7 @@ export default function MissingFieldsPage() {
         matchesDate(doc.updated_at, q)
       );
     });
-  }, [documents, search, docType, clientId, businessName, hitlUserId, showAll]);
+  }, [documents, search, docType, clientId, businessName, hitlUserId, statusFilter, showAll]);
 
   const handleView = (docId) => {
     setActiveId(docId);
