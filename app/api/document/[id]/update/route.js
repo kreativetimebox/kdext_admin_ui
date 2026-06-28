@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateHitlResult } from "@/lib/queries";
+import { publishDocumentCorrected } from "@/lib/events";
 
 const AUDIT_LIMIT = 50;
 
@@ -56,6 +57,24 @@ export async function POST(request, { params }) {
         { error: "Document not found or update failed" },
         { status: 404 }
       );
+    }
+
+    // Notify the customer's registered webhook that the document was corrected.
+    // Best-effort: a broker hiccup must never fail the reviewer's save. The
+    // event is published to RabbitMQ; the Gateway's webhook worker delivers it.
+    if (updated.request_id && updated.user_id != null) {
+      try {
+        await publishDocumentCorrected({
+          documentId: updated.request_id,
+          userId: updated.user_id,
+          version: updated.result_version,
+        });
+      } catch (pubErr) {
+        console.error(
+          "Failed to publish document.corrected event:",
+          pubErr?.message || pubErr
+        );
+      }
     }
 
     return NextResponse.json(
