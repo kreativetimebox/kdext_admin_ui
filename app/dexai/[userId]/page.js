@@ -18,8 +18,9 @@ import {
   Clock,
   Calendar,
   FileText,
+  Pencil,
 } from "lucide-react";
-import { useThemeStore } from "@/lib/store";
+import { useThemeStore, useDocumentStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
 
@@ -175,7 +176,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function ResultRow({ record, onView }) {
+function ResultRow({ record, onView, onEdit }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -184,7 +185,7 @@ function ResultRow({ record, onView }) {
       style={{
         display: "grid",
         gridTemplateColumns:
-          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 80px",
+          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 160px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -281,28 +282,54 @@ function ResultRow({ record, onView }) {
         {formatDuration(record.processing_duration_ms)}
       </span>
 
-      <button
-        onClick={() => onView(record.request_id)}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "6px 12px",
-          borderRadius: 8,
-          fontSize: 12,
-          fontWeight: 600,
-          border: "none",
-          background:
-            "var(--brand-gradient)",
-          color: "#fff",
-          cursor: "pointer",
-          boxShadow: hovered ? "0 4px 14px rgba(20,14,53,0.26)" : "0 2px 6px rgba(20,14,53,0.18)",
-          transition: "all 0.15s ease",
-        }}
-      >
-        <Eye size={12} />
-        View
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+        {record.validation === false && record.result_id != null && (
+          <button
+            onClick={() => onEdit(record.result_id)}
+            title="Open result in HITL Edit"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              border: "1px solid #f9731655",
+              background: "rgba(249,115,22,0.12)",
+              color: "#f97316",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <Pencil size={12} />
+            Edit
+          </button>
+        )}
+
+        <button
+          onClick={() => onView(record.request_id)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 12px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            border: "none",
+            background:
+              "var(--brand-gradient)",
+            color: "#fff",
+            cursor: "pointer",
+            boxShadow: hovered ? "0 4px 14px rgba(20,14,53,0.26)" : "0 2px 6px rgba(20,14,53,0.18)",
+            transition: "all 0.15s ease",
+          }}
+        >
+          <Eye size={12} />
+          View
+        </button>
+      </div>
     </div>
   );
 }
@@ -310,6 +337,7 @@ function ResultRow({ record, onView }) {
 export default function UserResultsPage({ params }) {
   const { userId } = use(params);
   const { initTheme } = useThemeStore();
+  const { setActiveId } = useDocumentStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [docType, setDocType] = useState("");
@@ -382,6 +410,14 @@ export default function UserResultsPage({ params }) {
 
   const handleView = (requestId) => {
     router.push(`/dexai/result/${encodeURIComponent(requestId)}`);
+  };
+
+  // "To be tested" rows → open the result directly in the HITL edit view.
+  // The view route resolves a document by its result_id.
+  const handleEdit = (resultId) => {
+    if (!resultId) return;
+    setActiveId(resultId);
+    router.push(`/view/${encodeURIComponent(resultId)}`);
   };
 
   return (
@@ -607,7 +643,7 @@ export default function UserResultsPage({ params }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 80px",
+                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 160px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -681,7 +717,7 @@ export default function UserResultsPage({ params }) {
               </div>
             ) : (
               visibleRecords.map((r) => (
-                <ResultRow key={r.request_id} record={r} onView={handleView} />
+                <ResultRow key={r.request_id} record={r} onView={handleView} onEdit={handleEdit} />
               ))
             )}
           </div>
