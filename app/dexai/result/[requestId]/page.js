@@ -355,6 +355,9 @@ export default function DexaiResultPage({ params }) {
   const { initTheme } = useThemeStore();
   const router = useRouter();
 
+  // Result tabs: "original" = formatted_result, "hitl" = hitl_updated_result.
+  const [resultTab, setResultTab] = useState("original");
+
   useEffect(() => {
     initTheme();
   }, [initTheme]);
@@ -434,7 +437,7 @@ export default function DexaiResultPage({ params }) {
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+                background: "var(--brand-gradient)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -527,13 +530,13 @@ export default function DexaiResultPage({ params }) {
             >
               <SummaryStat
                 icon={UserIcon}
-                color="#2563eb"
+                color="#ff6d8e"
                 label="User"
                 value={userFullName}
               />
               <SummaryStat
                 icon={FileText}
-                color="#7c3aed"
+                color="#c985ff"
                 label="Document Type"
                 value={data.document_type || "—"}
               />
@@ -545,7 +548,7 @@ export default function DexaiResultPage({ params }) {
               />
               <SummaryStat
                 icon={Calendar}
-                color="#0891b2"
+                color="#8fb0ff"
                 label="Submitted"
                 value={formatDate(data.submitted_at)}
               />
@@ -697,15 +700,75 @@ export default function DexaiResultPage({ params }) {
                   minWidth: 0,
                 }}
               >
-                <FormattedResultView
-                  data={data.formatted_result}
-                  title="OCR Results"
-                />
-                <JsonPanel
-                  title="Formatted Result (JSON)"
-                  data={data.formatted_result}
-                  variant="green"
-                />
+                {/* Tabs: Original Result vs HITL Updated (both read-only) */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  {[
+                    { key: "original", label: "Original Result" },
+                    { key: "hitl", label: "HITL Updated" },
+                  ].map((t) => {
+                    const active = resultTab === t.key;
+                    return (
+                      <button
+                        key={t.key}
+                        onClick={() => setResultTab(t.key)}
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          border: "1px solid var(--panel-border)",
+                          background: active ? "var(--brand-gradient)" : "var(--input-bg)",
+                          color: active ? "#fff" : "var(--foreground)",
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {t.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {resultTab === "original" ? (
+                  <>
+                    <FormattedResultView
+                      data={data.formatted_result}
+                      title="OCR Results"
+                    />
+                    <JsonPanel
+                      title="Formatted Result (JSON)"
+                      data={data.formatted_result}
+                      variant="green"
+                    />
+                  </>
+                ) : data.hitl_updated_result ? (
+                  <>
+                    <FormattedResultView
+                      data={data.hitl_updated_result}
+                      title="HITL Updated Result"
+                    />
+                    <JsonPanel
+                      title="HITL Updated Result (JSON)"
+                      data={data.hitl_updated_result}
+                      variant="green"
+                    />
+                  </>
+                ) : (
+                  <div
+                    style={{
+                      padding: "24px 16px",
+                      borderRadius: 12,
+                      border: "1px dashed var(--panel-border)",
+                      background: "var(--input-bg)",
+                      color: "var(--text-muted)",
+                      fontSize: 13,
+                      textAlign: "center",
+                    }}
+                  >
+                    No HITL-updated result yet — this document has not been edited.
+                  </div>
+                )}
+
                 <JsonPanel
                   title="Processing Result"
                   data={data.processing_result}

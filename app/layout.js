@@ -21,8 +21,8 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <head>
-        <title>kdext_doc_parser — Admin Portal</title>
-        <meta name="description" content="Admin portal for kdext_doc_parser — internal document parsing result review and correction." />
+        <title>TechDexAI — Admin Portal</title>
+        <meta name="description" content="Admin portal for techdexai_doc_parser — internal document parsing result review and correction." />
       </head>
       <body>
         <QueryClientProvider client={queryClientRef.current}>
@@ -34,9 +34,13 @@ export default function RootLayout({ children }) {
               style: {
                 fontSize: "13px",
                 maxWidth: "360px",
+                background: "rgba(55, 48, 101, 0.92)",
+                color: "#fff7fb",
+                border: "1px solid rgba(255,255,255,0.18)",
+                boxShadow: "0 20px 58px rgba(20, 14, 53, 0.24)",
               },
               success: {
-                iconTheme: { primary: "#3b82f6", secondary: "#fff" },
+                iconTheme: { primary: "#ff6d8e", secondary: "#fff" },
               },
             }}
           />
