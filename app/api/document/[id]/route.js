@@ -36,7 +36,7 @@ export async function GET(_request, { params }) {
         ocr_ui_results: doc.ocr_results ?? {},
         // hitl_updated_result is the human-corrected copy — the editable
         // "HITL Updated" tab. Null when it has never been edited (start empty).
-        hitl_updated_result: doc.hitl_updated_result ?? null,
+        hitl_updated_result: doc.status === 'TO_BE_TESTED' && !doc.hitl_updated_result ? doc.ocr_results : doc.hitl_updated_result ?? null,
         // processing_result is the raw worker payload — exposed as the "raw"
         // counterpart so existing viewers keep working.
         ocr_raw_results: doc.processing_result ?? {},
