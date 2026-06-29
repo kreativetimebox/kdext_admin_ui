@@ -295,10 +295,11 @@ function ResultRow({ record, onView, onEdit }) {
               borderRadius: 8,
               fontSize: 12,
               fontWeight: 600,
-              border: "1px solid #f9731655",
-              background: "rgba(249,115,22,0.12)",
-              color: "#f97316",
+              border: "1px solid #c2410c",
+              background: "#ea580c",
+              color: "#fff",
               cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(124,45,18,0.35)",
               transition: "all 0.15s ease",
             }}
           >
