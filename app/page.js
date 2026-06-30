@@ -367,8 +367,7 @@ export default function HomePage() {
                   letterSpacing: 0,
                   lineHeight: 1.1,
                   margin: 0,
-                  background:
-                    "linear-gradient(135deg, #ffffff 30%, #ffd6e1 100%)",
+                  background: "var(--brand-gradient)",
                   WebkitBackgroundClip: "text",
                   WebkitTextFillColor: "transparent",
                   backgroundClip: "text",
