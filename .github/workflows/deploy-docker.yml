@@ -128,8 +128,4 @@ jobs:
           echo "❌ App did not become ready"
           docker logs ${APP} | tail -100 || true
           exit 1
-<<<<<<< HEAD
           EOF
-=======
-          EOF
->>>>>>> 403871b672b7198c956d859e499a4b55a92d00ec

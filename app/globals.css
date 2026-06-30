@@ -5,47 +5,6 @@
 
 /* ─── DexAI reference theme ─── */
 :root {
-<<<<<<< HEAD
-  --background:
-    repeating-linear-gradient(30deg, rgba(255,255,255,0.038) 0 1px, transparent 1px 138px),
-    repeating-linear-gradient(150deg, rgba(255,255,255,0.032) 0 1px, transparent 1px 138px),
-    linear-gradient(118deg, #fb244e 0%, #aa2c66 43%, #25356f 100%);
-  --foreground:    #fff7fb;
-  --panel-bg:      rgba(255, 255, 255, 0.28);
-  /* Floating dropdown menus: nearly solid (~10% transparency) so the
-     light menu text stays readable when overlapping page content. */
-  --menu-bg:       rgba(42, 36, 88, 0.9);
-  --panel-border:  rgba(255, 255, 255, 0.18);
-  --sidebar-bg:    rgba(54, 49, 104, 0.42);
-  --header-bg:     rgba(48, 43, 93, 0.42);
-  --text-muted:    rgba(255, 247, 251, 0.66);
-  --accent:        #ff6d8e;
-  --accent-hover:  #ff89a4;
-  --accent-strong: #ff315f;
-  --accent-cool:   #6f77c8;
-  --brand-gradient: linear-gradient(135deg, #ff315f 0%, #b33c79 50%, #5468b6 100%);
-  --brand-gradient-soft: linear-gradient(135deg, rgba(255,49,95,0.28) 0%, rgba(84,104,182,0.25) 100%);
-  --input-bg:      rgba(31, 28, 69, 0.24);
-  --input-border:  rgba(255, 255, 255, 0.62);
-  --tag-bg:        rgba(255, 109, 142, 0.16);
-  --tag-color:     #ffd6e1;
-  --active-row:    rgba(255, 255, 255, 0.13);
-  --active-border: rgba(255, 255, 255, 0.36);
-  --scrollbar:     rgba(255, 255, 255, 0.38);
-  --shadow-sm:     0 14px 40px rgba(20, 14, 53, 0.16);
-  --shadow-md:     0 20px 58px rgba(20, 14, 53, 0.24);
-  --shadow-lg:     0 28px 80px rgba(20, 14, 53, 0.32);
-  --code-bg:         rgba(12, 14, 38, 0.48);
-  --tag-green-bg:    rgba(80, 220, 170, 0.17);
-  --tag-green-color: #98ffd4;
-  --tag-amber-bg:    rgba(255, 196, 87, 0.18);
-  --tag-amber-color: #ffe0a2;
-  --tag-purple-bg:   rgba(202, 128, 255, 0.17);
-  --tag-purple-color: #f1d5ff;
-  --danger-bg:       rgba(255, 87, 120, 0.16);
-  --danger-color:    #ffb5c4;
-  --section-title:   rgba(255, 247, 251, 0.52);
-=======
   --background:    #f1f5f9;
   --foreground:    #0f172a;
   --panel-bg:      #ffffff;
@@ -80,20 +39,9 @@
   --danger-bg:       #fee2e2;
   --danger-color:    #dc2626;
   --section-title:   #94a3b8;
->>>>>>> 403871b672b7198c956d859e499a4b55a92d00ec
 }
 
 .dark {
-<<<<<<< HEAD
-  --background:
-    repeating-linear-gradient(30deg, rgba(255,255,255,0.034) 0 1px, transparent 1px 138px),
-    repeating-linear-gradient(150deg, rgba(255,255,255,0.03) 0 1px, transparent 1px 138px),
-    linear-gradient(118deg, #f12650 0%, #8f2d66 44%, #192b62 100%);
-  --panel-bg:      rgba(255, 255, 255, 0.26);
-  --menu-bg:       rgba(24, 24, 60, 0.9);
-  --header-bg:     rgba(27, 27, 67, 0.5);
-  --input-bg:      rgba(16, 18, 48, 0.3);
-=======
   --background:    #0c1120;
   --foreground:    #e2e8f0;
   --panel-bg:      #141c2e;
@@ -128,7 +76,6 @@
   --danger-bg:       #450a0a;
   --danger-color:    #f87171;
   --section-title:   #475569;
->>>>>>> 403871b672b7198c956d859e499a4b55a92d00ec
 }
 
 /* ─── Base ─── */
@@ -190,11 +137,7 @@ body {
 
 input::placeholder,
 textarea::placeholder {
-<<<<<<< HEAD
-  color: rgba(255, 247, 251, 0.44);
-=======
   color: var(--text-muted);
->>>>>>> 403871b672b7198c956d859e499a4b55a92d00ec
 }
 
 button,
@@ -204,7 +147,3 @@ textarea,
 select {
   font: inherit;
 }
-<<<<<<< HEAD
-
-=======
->>>>>>> 403871b672b7198c956d859e499a4b55a92d00ec
