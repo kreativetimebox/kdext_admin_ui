@@ -24,16 +24,16 @@ function NavLink({ href, label, icon: Icon, active }) {
         fontWeight: active ? 600 : 500,
         textDecoration: "none",
         color: active ? "#fff" : "var(--text-muted)",
-        background: active ? "rgba(255,255,255,0.18)" : "transparent",
-        border: active ? "1px solid rgba(255,255,255,0.2)" : "1px solid transparent",
-        boxShadow: active ? "0 8px 26px rgba(20,14,53,0.16)" : "none",
+        background: active ? "var(--accent)" : "transparent",
+        border: active ? "1px solid var(--accent)" : "1px solid transparent",
+        boxShadow: active ? "var(--shadow-sm)" : "none",
         transition: "all 0.15s ease",
         whiteSpace: "nowrap",
       }}
       onMouseEnter={e => {
         if (!active) {
           e.currentTarget.style.color = "var(--foreground)";
-          e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+          e.currentTarget.style.background = "var(--active-row)";
           e.currentTarget.style.border = "1px solid var(--panel-border)";
         }
       }}
