@@ -33,7 +33,11 @@ export default function ViewDocumentPage() {
       return res.data;
     },
     enabled: !!id,
+<<<<<<< HEAD
     staleTime: 5 * 60 * 1000,
+=======
+    staleTime: 30 * 60 * 1000,
+>>>>>>> 403871b672b7198c956d859e499a4b55a92d00ec
     onError: () => toast.error("Failed to load document"),
   });
 
@@ -117,7 +121,15 @@ export default function ViewDocumentPage() {
                     </h2>
                   </div>
                   <div className="flex-1 min-h-0 overflow-y-auto">
+<<<<<<< HEAD
                     <FileViewer document={doc} isLoading={isLoading} />
+=======
+                    <FileViewer
+                    document={doc}
+                    isLoading={isLoading}
+                    onRefresh={() => queryClient.invalidateQueries({ queryKey: ["document", id] })}
+                  />
+>>>>>>> 403871b672b7198c956d859e499a4b55a92d00ec
                   </div>
                 </div>
 

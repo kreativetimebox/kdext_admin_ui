@@ -107,13 +107,13 @@ export default function LoginPage() {
         }}
       >
         {/* Header */}
-        <div style={{ color: "#fff", minWidth: 0 }}>
+        <div style={{ color: "var(--foreground)", minWidth: 0 }}>
           <div
             style={{
               width: 60,
               height: 60,
               borderRadius: 18,
-              background: "rgba(255,255,255,0.14)",
+              background: "var(--brand-gradient)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -128,7 +128,7 @@ export default function LoginPage() {
             style={{
               fontSize: "clamp(2.3rem, 5vw, 4.4rem)",
               fontWeight: 800,
-              color: "#fff",
+              color: "var(--foreground)",
               margin: "0 0 18px",
               lineHeight: 1.03,
               fontFamily: "Georgia, 'Times New Roman', serif",
@@ -139,7 +139,7 @@ export default function LoginPage() {
           <p
             style={{
               fontSize: "clamp(1rem, 2vw, 1.35rem)",
-              color: "rgba(255,255,255,0.92)",
+              color: "var(--text-muted)",
               margin: 0,
               lineHeight: 1.5,
               fontWeight: 700,
@@ -165,7 +165,7 @@ export default function LoginPage() {
             style={{
               fontSize: 28,
               fontWeight: 800,
-              color: "#fff",
+              color: "var(--foreground)",
               margin: "0 0 28px",
               fontFamily: "Georgia, 'Times New Roman', serif",
             }}
@@ -182,7 +182,7 @@ export default function LoginPage() {
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
-                  color: "rgba(255,255,255,0.86)",
+                  color: "var(--text-muted)",
                   marginBottom: 8,
                 }}
               >
@@ -218,8 +218,8 @@ export default function LoginPage() {
                     boxSizing: "border-box",
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = "#fff";
-                    e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.12)";
+                    e.target.style.borderColor = "var(--accent)";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.15)";
                   }}
                   onBlur={(e) => {
                     e.target.style.borderColor = "var(--input-border)";
@@ -238,7 +238,7 @@ export default function LoginPage() {
                   fontWeight: 700,
                   textTransform: "uppercase",
                   letterSpacing: "0.08em",
-                  color: "rgba(255,255,255,0.86)",
+                  color: "var(--text-muted)",
                   marginBottom: 8,
                 }}
               >
@@ -275,8 +275,8 @@ export default function LoginPage() {
                     boxSizing: "border-box",
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = "#fff";
-                    e.target.style.boxShadow = "0 0 0 3px rgba(255,255,255,0.12)";
+                    e.target.style.borderColor = "var(--accent)";
+                    e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.15)";
                   }}
                   onBlur={(e) => {
                     e.target.style.borderColor = "var(--input-border)";
@@ -323,7 +323,7 @@ export default function LoginPage() {
                   gap: 12,
                   padding: "12px 14px",
                   background: "var(--danger-bg)",
-                  border: "1px solid rgba(255,255,255,0.22)",
+                  border: "1px solid var(--danger-color)",
                   borderRadius: 8,
                 }}
               >
@@ -356,9 +356,9 @@ export default function LoginPage() {
                 padding: "11px 16px",
                 background: loading
                   ? "var(--text-muted)"
-                  : "rgba(255,255,255,0.18)",
+                  : "var(--accent)",
                 color: "#fff",
-                border: "1px solid rgba(255,255,255,0.18)",
+                border: "1px solid var(--accent)",
                 borderRadius: 10,
                 fontSize: 14,
                 fontWeight: 700,
@@ -372,14 +372,14 @@ export default function LoginPage() {
               }}
               onMouseEnter={(e) => {
                 if (!loading) {
-                  e.target.style.boxShadow = "0 10px 30px rgba(20,14,53,0.26)";
-                  e.target.style.background = "rgba(255,255,255,0.26)";
+                  e.target.style.boxShadow = "var(--shadow-md)";
+                  e.target.style.background = "var(--accent-hover)";
                   e.target.style.transform = "translateY(-2px)";
                 }
               }}
               onMouseLeave={(e) => {
                 e.target.style.boxShadow = "none";
-                e.target.style.background = loading ? "var(--text-muted)" : "rgba(255,255,255,0.18)";
+                e.target.style.background = loading ? "var(--text-muted)" : "var(--accent)";
                 e.target.style.transform = "translateY(0)";
               }}
             >
