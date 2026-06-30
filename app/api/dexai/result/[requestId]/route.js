@@ -48,6 +48,7 @@ export async function GET(_request, { params }) {
         updated_at: row.updated_at,
         signed_url: signedUrl,
         formatted_result: row.formatted_result ?? null,
+        hitl_updated_result: row.hitl_updated_result ?? null,
         processing_result: row.processing_result ?? null,
         user: {
           user_id: row.user_id,

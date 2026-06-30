@@ -63,6 +63,7 @@ export default function SidebarList({ onlyId = null }) {
     return scopedDocs.filter(
       (d) =>
         String(d.result_id ?? d.id).toLowerCase().includes(q) ||
+        String(d.request_id ?? "").toLowerCase().includes(q) ||
         String(d.transaction_id ?? "").toLowerCase().includes(q) ||
         (d.ocr_document_type || "").toLowerCase().includes(q)
     );
@@ -124,7 +125,7 @@ export default function SidebarList({ onlyId = null }) {
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Filter by ID or type…"
+            placeholder="Search by result ID, request ID, transaction ID…"
             className="w-full h-7 pl-7 pr-7 text-xs rounded-lg border outline-none"
             style={{
               background: "var(--input-bg)",
