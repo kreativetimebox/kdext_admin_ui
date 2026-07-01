@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, memo } from "react";
-import { Eye, EyeOff, FileText, AlertCircle, ZoomIn, ZoomOut, RotateCcw, Download } from "lucide-react";
+import { useState, useEffect, useRef, memo } from "react";
+import { Eye, EyeOff, FileText, AlertCircle, ZoomIn, ZoomOut, RotateCcw, Download, RefreshCw } from "lucide-react";
 import { useDocumentStore } from "@/lib/store";
 
 const ZOOM_STEP = 0.15;
@@ -33,10 +33,23 @@ function FileViewerSkeleton() {
   );
 }
 
-function FileViewer({ document, isLoading }) {
-  const [isVisible, setIsVisible] = useState(true);
-  const [zoom, setZoom]           = useState(1);
+function FileViewer({ document, isLoading, onRefresh }) {
+  const [isVisible, setIsVisible]   = useState(true);
+  const [zoom, setZoom]             = useState(1);
+  const [imgRefreshing, setImgRefreshing] = useState(false);
+  const refreshTimerRef             = useRef(null);
   const { activeId } = useDocumentStore();
+
+  // Auto-schedule a refresh just before the signed URL expires (1 hour = 3600s).
+  // We refresh at 55 minutes so there's a 5-minute buffer.
+  useEffect(() => {
+    if (!onRefresh) return;
+    clearTimeout(refreshTimerRef.current);
+    refreshTimerRef.current = setTimeout(() => {
+      onRefresh();
+    }, 55 * 60 * 1000);
+    return () => clearTimeout(refreshTimerRef.current);
+  }, [onRefresh]);
 
   const zoomIn    = () => setZoom((z) => Math.min(+(z + ZOOM_STEP).toFixed(2), ZOOM_MAX));
   const zoomOut   = () => setZoom((z) => Math.max(+(z - ZOOM_STEP).toFixed(2), ZOOM_MIN));
@@ -61,6 +74,13 @@ function FileViewer({ document, isLoading }) {
 
   const signedUrl  = document?.signed_url;
   const sourceFile = document?.source_file;
+
+  // once a fresh signed URL arrives after a refresh, clear the refreshing state
+  const prevUrlRef = useRef(signedUrl);
+  if (signedUrl !== prevUrlRef.current) {
+    prevUrlRef.current = signedUrl;
+    if (imgRefreshing) setImgRefreshing(false);
+  }
   const pathOnly   = getPathPart(sourceFile);
   const displayName = getDisplayName(sourceFile);
 
@@ -142,13 +162,27 @@ function FileViewer({ document, isLoading }) {
             </div>
           ) : isImage ? (
             <div className="flex items-center justify-center p-2 min-h-48">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={signedUrl}
-                alt={sourceFile}
-                style={{ transform: `scale(${zoom})`, transformOrigin: "top center", transition: "transform 0.15s ease" }}
-                className="object-contain rounded shadow-sm"
-              />
+              {imgRefreshing ? (
+                <div className="flex flex-col items-center gap-2 py-10 text-center">
+                  <RefreshCw size={22} className="text-[var(--accent)] animate-spin" />
+                  <p className="text-xs text-[var(--text-muted)]">Refreshing preview…</p>
+                </div>
+              ) : (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  key={signedUrl}
+                  src={signedUrl}
+                  alt={sourceFile}
+                  onError={() => {
+                    if (onRefresh) {
+                      setImgRefreshing(true);
+                      onRefresh();
+                    }
+                  }}
+                  style={{ transform: `scale(${zoom})`, transformOrigin: "top center", transition: "transform 0.15s ease" }}
+                  className="object-contain rounded shadow-sm"
+                />
+              )}
             </div>
           ) : isPdf ? (
             <div style={{ transform: `scale(${zoom})`, transformOrigin: "top left", transition: "transform 0.15s ease",

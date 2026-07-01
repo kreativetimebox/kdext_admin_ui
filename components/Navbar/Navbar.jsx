@@ -1,9 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users } from "lucide-react";
+import { useRouter, usePathname } from "next/navigation";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { useAuth } from "@/lib/useAuth";
+import { useState } from "react";
+import axios from "axios";
+import toast from "react-hot-toast";
 
 /* ── Nav link ──────────────────────────────────────────────── */
 function NavLink({ href, label, icon: Icon, active }) {
@@ -20,18 +24,16 @@ function NavLink({ href, label, icon: Icon, active }) {
         fontWeight: active ? 600 : 500,
         textDecoration: "none",
         color: active ? "#fff" : "var(--text-muted)",
-        background: active
-          ? "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)"
-          : "transparent",
-        border: active ? "none" : "1px solid transparent",
-        boxShadow: active ? "0 2px 8px rgba(37,99,235,0.35)" : "none",
+        background: active ? "var(--accent)" : "transparent",
+        border: active ? "1px solid var(--accent)" : "1px solid transparent",
+        boxShadow: active ? "var(--shadow-sm)" : "none",
         transition: "all 0.15s ease",
         whiteSpace: "nowrap",
       }}
       onMouseEnter={e => {
         if (!active) {
           e.currentTarget.style.color = "var(--foreground)";
-          e.currentTarget.style.background = "var(--input-bg)";
+          e.currentTarget.style.background = "var(--active-row)";
           e.currentTarget.style.border = "1px solid var(--panel-border)";
         }
       }}
@@ -53,6 +55,19 @@ function NavLink({ href, label, icon: Icon, active }) {
 export default function Navbar() {
   const { isDark, toggleTheme } = useThemeStore();
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, loading } = useAuth();
+  const [showUserMenu, setShowUserMenu] = useState(false);
+
+  const handleLogout = async () => {
+    try {
+      await axios.post("/api/auth/logout");
+      toast.success("Logged out successfully");
+      router.push("/auth/login");
+    } catch (error) {
+      toast.error("Error logging out");
+    }
+  };
 
   return (
     <header
@@ -66,8 +81,8 @@ export default function Navbar() {
         padding: "0 28px",
         background: "var(--header-bg)",
         borderBottom: "1px solid var(--panel-border)",
-        backdropFilter: "blur(12px)",
-        boxShadow: "0 1px 0 var(--panel-border), 0 2px 12px rgba(0,0,0,0.05)",
+        backdropFilter: "blur(18px)",
+        boxShadow: "0 1px 0 var(--panel-border), 0 14px 36px rgba(20,14,53,0.14)",
         flexShrink: 0,
       }}
     >
@@ -78,8 +93,8 @@ export default function Navbar() {
             width: 32,
             height: 32,
             borderRadius: 10,
-            background: "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
-            boxShadow: "0 2px 10px rgba(37,99,235,0.4)",
+            background: "var(--brand-gradient)",
+            boxShadow: "0 10px 24px rgba(20,14,53,0.22)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -92,12 +107,12 @@ export default function Navbar() {
             style={{
               fontSize: 13.5,
               fontWeight: 700,
-              letterSpacing: "-0.01em",
+              letterSpacing: 0,
               color: "var(--foreground)",
               lineHeight: 1.1,
             }}
           >
-            kdext_doc_parser
+            TechDexAI
           </div>
           <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>
             Admin Portal
@@ -108,32 +123,12 @@ export default function Navbar() {
       {/* ── Nav links ── */}
       <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
-        <NavLink href="/analyzer"       label="Analyzer"        icon={FileSearch}   active={pathname === "/analyzer"} />
-        <NavLink href="/dexai"          label="ClientsAudit"     icon={Users}        active={pathname.startsWith("/dexai")} />
+        <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
+        <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
       </nav>
 
       {/* ── Right controls ── */}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        {/* Admin badge */}
-        <span
-          style={{
-            fontSize: 10.5,
-            fontWeight: 700,
-            padding: "4px 10px",
-            borderRadius: 99,
-            display: "flex",
-            alignItems: "center",
-            gap: 5,
-            background: "var(--tag-green-bg)",
-            color: "var(--tag-green-color)",
-            border: "1px solid var(--tag-green-color)33",
-            letterSpacing: "0.05em",
-          }}
-        >
-          <ShieldCheck size={10} />
-          ADMIN
-        </span>
-
         {/* Theme toggle */}
         <div
           onClick={toggleTheme}
@@ -177,6 +172,130 @@ export default function Navbar() {
           </div>
           <Moon size={12} style={{ color: "var(--text-muted)" }} />
         </div>
+
+        {/* User menu */}
+        {!loading && user && (
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setShowUserMenu(!showUserMenu)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "6px 12px",
+                borderRadius: 99,
+                cursor: "pointer",
+                background: "var(--input-bg)",
+                border: "1px solid var(--panel-border)",
+                fontSize: 12,
+                color: "var(--foreground)",
+                fontWeight: 500,
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = "var(--accent)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = "var(--panel-border)";
+              }}
+            >
+              <div
+                style={{
+                  width: 24,
+                  height: 24,
+                  borderRadius: "50%",
+                  background: "var(--brand-gradient)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: "#fff",
+                }}
+              >
+                {user.email.charAt(0).toUpperCase()}
+              </div>
+              <ChevronDown size={12} />
+            </button>
+
+            {/* Dropdown menu */}
+            {showUserMenu && (
+              <div
+                style={{
+                  position: "absolute",
+                  top: "calc(100% + 6px)",
+                  right: 0,
+                  background: "var(--menu-bg)",
+                  border: "1px solid var(--panel-border)",
+                  borderRadius: 10,
+                  boxShadow: "0 10px 40px rgba(0,0,0,0.15)",
+                  minWidth: 200,
+                  zIndex: 1000,
+                }}
+              >
+                {/* User info */}
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    borderBottom: "1px solid var(--panel-border)",
+                  }}
+                >
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "var(--foreground)",
+                    }}
+                  >
+                    {user.email}
+                  </p>
+                  <p
+                    style={{
+                      margin: "4px 0 0",
+                      fontSize: 11,
+                      color: "var(--text-muted)",
+                    }}
+                  >
+                    {user.roles.join(", ")}
+                  </p>
+                </div>
+
+                {/* Logout button */}
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    handleLogout();
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: 0,
+                    fontSize: 13,
+                    color: "#dc2626",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "background 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--input-bg)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <LogOut size={14} />
+                  Logout
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );

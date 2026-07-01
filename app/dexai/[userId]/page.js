@@ -18,9 +18,11 @@ import {
   Clock,
   Calendar,
   FileText,
+  Pencil,
 } from "lucide-react";
-import { useThemeStore } from "@/lib/store";
+import { useThemeStore, useDocumentStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
+import ValidationDot from "@/components/Results/ValidationDot";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -125,7 +127,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
               top: "calc(100% + 4px)",
               left: 0,
               minWidth: 200,
-              background: "var(--panel-bg)",
+              background: "var(--menu-bg)",
               border: "1px solid var(--panel-border)",
               borderRadius: 8,
               boxShadow: "var(--shadow-md)",
@@ -174,7 +176,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function ResultRow({ record, onView }) {
+function ResultRow({ record, onView, onEdit }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -183,7 +185,7 @@ function ResultRow({ record, onView }) {
       style={{
         display: "grid",
         gridTemplateColumns:
-          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 150px 150px 100px 80px",
+          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 160px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -256,6 +258,8 @@ function ResultRow({ record, onView }) {
 
       <StatusBadge status={record.status} />
 
+      <ValidationDot validation={record.validation} />
+
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
         {formatDate(record.created_at || record.submitted_at)}
       </span>
@@ -278,28 +282,55 @@ function ResultRow({ record, onView }) {
         {formatDuration(record.processing_duration_ms)}
       </span>
 
-      <button
-        onClick={() => onView(record.request_id)}
-        style={{
-          display: "inline-flex",
-          alignItems: "center",
-          gap: 6,
-          padding: "6px 12px",
-          borderRadius: 8,
-          fontSize: 12,
-          fontWeight: 600,
-          border: "none",
-          background:
-            "linear-gradient(135deg, #2563eb 0%, #6366f1 100%)",
-          color: "#fff",
-          cursor: "pointer",
-          boxShadow: hovered ? "0 4px 14px rgba(37,99,235,0.4)" : "0 2px 6px rgba(37,99,235,0.25)",
-          transition: "all 0.15s ease",
-        }}
-      >
-        <Eye size={12} />
-        View
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+        {record.validation === false && record.result_id != null && (
+          <button
+            onClick={() => onEdit(record.result_id)}
+            title="Open result in HITL Edit"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              border: "1px solid #c2410c",
+              background: "#ea580c",
+              color: "#fff",
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(124,45,18,0.35)",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <Pencil size={12} />
+            Edit
+          </button>
+        )}
+
+        <button
+          onClick={() => onView(record.request_id)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 12px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            border: "none",
+            background:
+              "var(--brand-gradient)",
+            color: "#fff",
+            cursor: "pointer",
+            boxShadow: hovered ? "0 4px 14px rgba(20,14,53,0.26)" : "0 2px 6px rgba(20,14,53,0.18)",
+            transition: "all 0.15s ease",
+          }}
+        >
+          <Eye size={12} />
+          View
+        </button>
+      </div>
     </div>
   );
 }
@@ -307,6 +338,7 @@ function ResultRow({ record, onView }) {
 export default function UserResultsPage({ params }) {
   const { userId } = use(params);
   const { initTheme } = useThemeStore();
+  const { setActiveId } = useDocumentStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [docType, setDocType] = useState("");
@@ -381,6 +413,14 @@ export default function UserResultsPage({ params }) {
     router.push(`/dexai/result/${encodeURIComponent(requestId)}`);
   };
 
+  // "To be tested" rows → open the result directly in the HITL edit view.
+  // The view route resolves a document by its result_id.
+  const handleEdit = (resultId) => {
+    if (!resultId) return;
+    setActiveId(resultId);
+    router.push(`/view/${encodeURIComponent(resultId)}`);
+  };
+
   return (
     <div
       style={{
@@ -396,8 +436,6 @@ export default function UserResultsPage({ params }) {
         style={{
           flex: 1,
           padding: "32px 40px",
-          maxWidth: 1500,
-          margin: "0 auto",
           width: "100%",
         }}
       >
@@ -442,7 +480,7 @@ export default function UserResultsPage({ params }) {
               width: 52,
               height: 52,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #0891b2 0%, #2563eb 100%)",
+              background: "var(--brand-gradient)",
               color: "#fff",
               display: "flex",
               alignItems: "center",
@@ -606,7 +644,7 @@ export default function UserResultsPage({ params }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 150px 150px 100px 80px",
+                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 160px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -619,6 +657,7 @@ export default function UserResultsPage({ params }) {
               "Transaction ID",
               "Document Type",
               "Status",
+              "Validation",
               "Created At",
               "Updated At",
               "Processing",
@@ -679,7 +718,7 @@ export default function UserResultsPage({ params }) {
               </div>
             ) : (
               visibleRecords.map((r) => (
-                <ResultRow key={r.request_id} record={r} onView={handleView} />
+                <ResultRow key={r.request_id} record={r} onView={handleView} onEdit={handleEdit} />
               ))
             )}
           </div>
