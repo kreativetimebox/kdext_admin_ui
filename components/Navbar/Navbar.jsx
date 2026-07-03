@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
@@ -125,6 +125,10 @@ export default function Navbar() {
         <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
         <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
         <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
+        {/* User Logs tab - visible only to super users */}
+        {!loading && user && user.roles?.includes("SUPER_ADMIN") && (
+          <NavLink href="/user-logs"      label="User Logs"       icon={Activity}     active={pathname === "/user-logs"} />
+        )}
       </nav>
 
       {/* ── Right controls ── */}
