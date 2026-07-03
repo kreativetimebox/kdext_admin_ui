@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
@@ -128,6 +128,10 @@ export default function Navbar() {
         {/* User Logs tab - visible only to super users */}
         {!loading && user && user.roles?.includes("SUPER_ADMIN") && (
           <NavLink href="/user-logs"      label="User Logs"       icon={Activity}     active={pathname === "/user-logs"} />
+        )}
+        {/* Server Monitoring tab - visible only to super users */}
+        {!loading && user && user.roles?.includes("SUPER_ADMIN") && (
+          <NavLink href="/server-monitor" label="Servers"         icon={Server}       active={pathname === "/server-monitor"} />
         )}
       </nav>
 
