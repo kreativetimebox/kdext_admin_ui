@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -24,6 +24,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import Navbar from "@/components/Navbar/Navbar";
 import JsonPanel from "@/components/Results/JsonPanel";
 import FormattedResultView from "@/components/Results/FormattedResultView";
+import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -354,6 +355,7 @@ export default function DexaiResultPage({ params }) {
   const { requestId } = use(params);
   const { initTheme } = useThemeStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Result tabs: "original" = formatted_result, "hitl" = hitl_updated_result.
   const [resultTab, setResultTab] = useState("original");
@@ -700,6 +702,18 @@ export default function DexaiResultPage({ params }) {
                   minWidth: 0,
                 }}
               >
+                {/* Reprocess: re-run the pipeline and overwrite this result in
+                    place (keeps the original request_id). */}
+                <ReprocessControl
+                  docId={data.request_id || requestId}
+                  currentType={data.document_type}
+                  onReprocessed={() =>
+                    queryClient.invalidateQueries({
+                      queryKey: ["dexai", "result", requestId],
+                    })
+                  }
+                />
+
                 {/* Tabs: Original Result vs HITL Updated (both read-only) */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   {[

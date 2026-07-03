@@ -26,6 +26,7 @@ export async function GET(_request, { params }) {
     return NextResponse.json(
       {
         id: doc.id,
+        request_id: doc.request_id,
         ocr_document_type: doc.ocr_document_type,
         source_file: doc.source_file,
         signed_url: signedUrl,

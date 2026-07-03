@@ -13,6 +13,7 @@ import EditableResultView, { EditHistory } from "@/components/Results/EditableRe
 import FormattedResultView from "@/components/Results/FormattedResultView";
 import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
+import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 
 export default function ViewDocumentPage() {
   const { id } = useParams();
@@ -127,6 +128,16 @@ export default function ViewDocumentPage() {
 
                 {/* Data panel */}
                 <div className="flex-1 min-w-0 p-8 flex flex-col gap-8">
+                  {/* Reprocess: re-run the pipeline and overwrite this result in
+                      place (keeps the original request_id). */}
+                  <ReprocessControl
+                    docId={id}
+                    currentType={doc?.ocr_document_type}
+                    onReprocessed={() =>
+                      queryClient.invalidateQueries({ queryKey: ["document", id] })
+                    }
+                  />
+
                   {/* Tabs: HITL Updated (editable) vs Original Result (read-only) */}
                   <div className="flex items-center gap-2">
                     {[
