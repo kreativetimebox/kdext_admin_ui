@@ -130,7 +130,8 @@ export default function ServerMonitorPage() {
   }, [logs]);
 
   const doAction = async (container, action) => {
-    if ((action === "remove" || action === "stop") &&
+    // Confirm before any disruptive action (stop / restart / remove).
+    if (action !== "start" &&
         !window.confirm(`${action.toUpperCase()} container "${container.name}"?`)) return;
     setBusy(container.id);
     try {
