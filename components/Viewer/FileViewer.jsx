@@ -39,6 +39,22 @@ function FileViewer({ document, isLoading, onRefresh }) {
   const [imgRefreshing, setImgRefreshing] = useState(false);
   const refreshTimerRef             = useRef(null);
   const { activeId } = useDocumentStore();
+  // The document can be opened two ways: selected from the sidebar (activeId set
+  // in the store) or navigated to directly via /view/[id] (no sidebar, so the
+  // store's activeId is empty and the doc arrives purely as a prop). Prefer the
+  // prop's id so the viewer works in both flows.
+  const docId = document?.id ?? activeId;
+
+  const signedUrl  = document?.signed_url;
+  const sourceFile = document?.source_file;
+
+  // once a fresh signed URL arrives after a refresh, clear the refreshing state.
+  // Kept above the early returns so the hook order stays stable across renders.
+  const prevUrlRef = useRef(signedUrl);
+  if (signedUrl !== prevUrlRef.current) {
+    prevUrlRef.current = signedUrl;
+    if (imgRefreshing) setImgRefreshing(false);
+  }
 
   // Auto-schedule a refresh just before the signed URL expires (1 hour = 3600s).
   // We refresh at 55 minutes so there's a 5-minute buffer.
@@ -56,7 +72,7 @@ function FileViewer({ document, isLoading, onRefresh }) {
   const zoomReset = () => setZoom(1);
 
 
-  if (!activeId) {
+  if (!docId) {
     return (
       <div className="flex items-center justify-center h-full py-12">
         <div className="text-center">
@@ -72,15 +88,6 @@ function FileViewer({ document, isLoading, onRefresh }) {
 
   if (isLoading) return <FileViewerSkeleton />;
 
-  const signedUrl  = document?.signed_url;
-  const sourceFile = document?.source_file;
-
-  // once a fresh signed URL arrives after a refresh, clear the refreshing state
-  const prevUrlRef = useRef(signedUrl);
-  if (signedUrl !== prevUrlRef.current) {
-    prevUrlRef.current = signedUrl;
-    if (imgRefreshing) setImgRefreshing(false);
-  }
   const pathOnly   = getPathPart(sourceFile);
   const displayName = getDisplayName(sourceFile);
 
@@ -124,7 +131,7 @@ function FileViewer({ document, isLoading, onRefresh }) {
           {/* download */}
           {signedUrl && (
             <a
-              href={`/api/document/${activeId}/download`}
+              href={`/api/document/${docId}/download`}
               className="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-[var(--text-muted)] hover:text-[var(--foreground)] hover:bg-[var(--panel-border)] transition-colors"
               title="Download file"
             >
