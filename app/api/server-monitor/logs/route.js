@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req) {
   const user = await verifyAuthToken(req);
   if (!user) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  if (!user.roles?.includes("SUPER_ADMIN"))
+  if (!user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r)))
     return Response.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);

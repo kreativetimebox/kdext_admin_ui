@@ -5,8 +5,13 @@ const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || "your-secret-key-change-in-production"
 );
 
-const ALLOWED_ROLES = ["SUPER_ADMIN", "HITL", "ADMIN"];
+const ALLOWED_ROLES = ["SUPER_ADMIN", "HITL", "ADMIN", "SERVER_MONITOR"];
 const PUBLIC_ROUTES = ["/auth/login"];
+
+// Full-access admin roles. A user who has none of these but DOES have
+// SERVER_MONITOR is a restricted account that may only reach the server pages.
+const ADMIN_ROLES = ["SUPER_ADMIN", "HITL", "ADMIN"];
+const SERVER_ONLY_PREFIXES = ["/server-monitor", "/api/server-monitor", "/api/auth"];
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;
@@ -43,6 +48,18 @@ export async function middleware(request) {
     if (!hasRequiredRole) {
       // Redirect to unauthorized page or login
       return NextResponse.redirect(new URL("/auth/login", request.url));
+    }
+
+    // Restricted server-monitor accounts (SERVER_MONITOR without any admin role)
+    // may only reach the server pages/APIs; everything else bounces there.
+    const isAdmin = userRoles.some((role) => ADMIN_ROLES.includes(role));
+    if (!isAdmin) {
+      const allowed = SERVER_ONLY_PREFIXES.some(
+        (p) => pathname === p || pathname.startsWith(p + "/")
+      );
+      if (!allowed) {
+        return NextResponse.redirect(new URL("/server-monitor", request.url));
+      }
     }
 
     // Add user info to request headers for use in API routes
