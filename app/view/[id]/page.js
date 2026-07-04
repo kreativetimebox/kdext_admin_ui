@@ -185,7 +185,7 @@ export default function ViewDocumentPage() {
                         <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
                           HITL Updated Result (JSON)
                         </p>
-                        <OCRResults data={doc?.hitl_updated_result} />
+                        <OCRResults data={doc?.validation === true ? doc?.hitl_updated_result : doc?.ocr_ui_results} />
                       </div>
 
                       <EditHistory data={doc?.hitl_updated_result} />
