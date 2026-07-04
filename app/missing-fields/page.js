@@ -659,6 +659,7 @@ export default function MissingFieldsPage() {
   const [businessName, setBusinessName] = useState("");
   const [hitlUserId, setHitlUserId] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [validationFilter, setValidationFilter] = useState("");
   const [showAll, setShowAll] = useState(true);
   const [docs, setDocs] = useState([]);
 
@@ -722,6 +723,7 @@ export default function MissingFieldsPage() {
       if (businessName && doc.business_name !== businessName) return false;
       if (hitlUserId && doc.hitl_assigned_to !== hitlUserId) return false;
       if (statusFilter && (doc.hitl_status || "") !== statusFilter) return false;
+      if (validationFilter && String(doc.validation) !== validationFilter) return false;
       if (!showAll && (doc.missing_count || 0) === 0) return false;
       if (!q) return true;
       return (
@@ -734,7 +736,7 @@ export default function MissingFieldsPage() {
         matchesDate(doc.updated_at, q)
       );
     });
-  }, [documents, search, docType, clientId, businessName, hitlUserId, statusFilter, showAll]);
+  }, [documents, search, docType, clientId, businessName, hitlUserId, statusFilter, validationFilter, showAll]);
 
   const handleView = (docId) => {
     setActiveId(docId);
@@ -759,7 +761,7 @@ export default function MissingFieldsPage() {
     queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
   };
 
-  const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter;
+  const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
@@ -879,6 +881,18 @@ export default function MissingFieldsPage() {
             value={statusFilter}
             onChange={setStatusFilter}
           />
+          {/* Validation */}
+          <SearchableDropdown
+            placeholder="All Validations"
+            searchPlaceholder="Search validation..."
+            emptyText="No validations"
+            options={[
+              { value: "true",  label: "Valid" },
+              { value: "false", label: "To Be Tested" },
+            ]}
+            value={validationFilter}
+            onChange={setValidationFilter}
+          />
 
           {/* HITL */}
           <SearchableDropdown
@@ -917,7 +931,7 @@ export default function MissingFieldsPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); }}
+              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); setValidationFilter(""); }}
               style={{
                 display: "flex",
                 alignItems: "center",
