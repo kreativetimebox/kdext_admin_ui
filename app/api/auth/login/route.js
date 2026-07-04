@@ -87,7 +87,7 @@ export async function POST(req) {
     const userRoles = user.roles
       ? user.roles.split(",").map(r => r.trim()).filter(r => r.length > 0)
       : [];
-    const allowedRoles = ["SUPER_ADMIN", "HITL", "ADMIN"];
+    const allowedRoles = ["SUPER_ADMIN", "HITL", "ADMIN", "SERVER_MONITOR"];
     const hasRequiredRole = userRoles.some(role => allowedRoles.includes(role));
 
     // Debug log

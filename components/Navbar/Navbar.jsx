@@ -58,6 +58,8 @@ export default function Navbar() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  // Full-access admin (vs. a restricted server-monitor-only account).
+  const isAdmin = !loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "HITL", "ADMIN"].includes(r));
 
   const handleLogout = async () => {
     try {
@@ -122,15 +124,20 @@ export default function Navbar() {
 
       {/* ── Nav links ── */}
       <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
-        <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
-        <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
+        {/* Core admin tabs — hidden from restricted (server-only) accounts */}
+        {isAdmin && (
+          <>
+            <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
+            <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
+            <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
+          </>
+        )}
         {/* User Logs tab - visible only to super users */}
         {!loading && user && user.roles?.includes("SUPER_ADMIN") && (
           <NavLink href="/user-logs"      label="User Logs"       icon={Activity}     active={pathname === "/user-logs"} />
         )}
-        {/* Server Monitoring tab - visible only to super users */}
-        {!loading && user && user.roles?.includes("SUPER_ADMIN") && (
+        {/* Server Monitoring tab - super users and the restricted server-monitor role */}
+        {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r)) && (
           <NavLink href="/server-monitor" label="Servers"         icon={Server}       active={pathname === "/server-monitor"} />
         )}
       </nav>

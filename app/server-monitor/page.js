@@ -66,7 +66,10 @@ function Bar({ percent }) {
 
 export default function ServerMonitorPage() {
   const { user, loading: authLoading } = useAuth();
-  const isSuperUser = user && user.roles?.includes("SUPER_ADMIN");
+  // SUPER_ADMIN and the restricted SERVER_MONITOR role may both view this page.
+  const canView = user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r));
+  // Only full admins may perform container actions; SERVER_MONITOR is read-only.
+  const canControl = user && user.roles?.includes("SUPER_ADMIN");
 
   const [server, setServer] = useState("1");
   const [selected, setSelected] = useState(null); // container for log view
@@ -79,7 +82,7 @@ export default function ServerMonitorPage() {
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["server-monitor", server],
     queryFn: async () => (await axios.get("/api/server-monitor/dashboard", { params: { server } })).data,
-    enabled: isSuperUser === true && authLoading === false,
+    enabled: canView === true && authLoading === false,
     refetchInterval: 10000,
   });
 
@@ -150,11 +153,11 @@ export default function ServerMonitorPage() {
   };
 
   useEffect(() => {
-    if (!authLoading && !isSuperUser) {
-      toast.error("Access denied. Super user privileges required.");
+    if (!authLoading && !canView) {
+      toast.error("Access denied.");
       window.location.href = "/";
     }
-  }, [authLoading, isSuperUser]);
+  }, [authLoading, canView]);
 
   if (authLoading) {
     return (
@@ -166,7 +169,7 @@ export default function ServerMonitorPage() {
       </div>
     );
   }
-  if (!isSuperUser) return null;
+  if (!canView) return null;
 
   const sys = data?.system;
   const mem = sys?.memory;
@@ -324,14 +327,14 @@ export default function ServerMonitorPage() {
                   <button title="Logs" onClick={() => openLogs(c)} style={iconBtn}>
                     <FileText size={15} />
                   </button>
-                  {isRunning(c) ? (
+                  {canControl && (isRunning(c) ? (
                     <>
                       <button title="Restart" disabled={busy === c.id} onClick={() => doAction(c, "restart")} style={iconBtn}><RotateCw size={15} /></button>
                       <button title="Stop" disabled={busy === c.id} onClick={() => doAction(c, "stop")} style={iconBtn}><Square size={15} /></button>
                     </>
                   ) : (
                     <button title="Start" disabled={busy === c.id} onClick={() => doAction(c, "start")} style={iconBtn}><Play size={15} /></button>
-                  )}
+                  ))}
                 </div>
               ))
             )}
