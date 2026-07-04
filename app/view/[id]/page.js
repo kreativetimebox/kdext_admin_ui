@@ -171,7 +171,7 @@ export default function ViewDocumentPage() {
                     <>
                       <EditableResultView
                         resultId={id}
-                        data={doc?.hitl_updated_result}
+                        data={doc?.validation === true ? doc?.hitl_updated_result : doc?.ocr_ui_results}
                         onSaved={(res) => {
                           if (res?.hitl_updated_result !== undefined) {
                             queryClient.setQueryData(["document", id], (prev) =>
