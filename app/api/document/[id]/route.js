@@ -30,6 +30,13 @@ export async function GET(_request, { params }) {
         ocr_document_type: doc.ocr_document_type,
         source_file: doc.source_file,
         signed_url: signedUrl,
+        // Whether a HITL reviewer has validated/published edits. The viewer uses
+        // this to decide whether the "HITL Updated Result" panel shows the saved
+        // result or falls back to the original extraction. Must be returned or
+        // the panel always renders the original.
+        validation: doc.validation === true,
+        status: doc.status,
+        hitl_status: doc.hitl_status,
         // formatted_result is the original (immutable) extraction, mapped onto
         // the names the frontend already speaks — shown in the "Original Result"
         // tab.
