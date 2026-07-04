@@ -175,7 +175,17 @@ export default function ViewDocumentPage() {
                         onSaved={(res) => {
                           if (res?.hitl_updated_result !== undefined) {
                             queryClient.setQueryData(["document", id], (prev) =>
-                              prev ? { ...prev, hitl_updated_result: res.hitl_updated_result } : prev
+                              prev
+                                ? {
+                                    ...prev,
+                                    hitl_updated_result: res.hitl_updated_result,
+                                    // A successful HITL save flips validation=true
+                                    // server-side; mirror it so the "HITL Updated
+                                    // Result (JSON)" panel (gated on validation)
+                                    // renders the saved result instead of the original.
+                                    validation: true,
+                                  }
+                                : prev
                             );
                           }
                         }}
