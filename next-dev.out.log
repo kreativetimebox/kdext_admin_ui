@@ -1,0 +1,13 @@
+
+> manual-result-analyzer@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.29.234:3000
+- Environments: .env
+✓ Ready in 526ms
+
+Login attempt: zarina@financeai.com, roles: [ADMIN, HITL], allowed: true
+ POST /api/auth/login 200 in 2.8s (next.js: 450ms, proxy.ts: 100ms, application-code: 2.2s)
+ GET /api/document/PDR-101706 200 in 2.1s (next.js: 1236ms, proxy.ts: 10ms, application-code: 849ms)
