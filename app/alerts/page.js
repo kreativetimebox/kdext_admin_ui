@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
+import Link from "next/link";
 import {
   AlertTriangle,
   CheckCircle2,
@@ -13,6 +14,8 @@ import {
   Server,
   Box,
   FileText,
+  FileWarning,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
@@ -23,6 +26,7 @@ const CATEGORY_ICON = {
   container_down: Box,
   log_error: FileText,
   unreachable: Server,
+  document_failed: FileWarning,
 };
 
 const SEVERITY_COLOR = {
@@ -223,7 +227,22 @@ export default function AlertsPage() {
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                      {a.server_name} {a.container_name ? `· ${a.container_name}` : ""} · {a.detail}
+                      {a.category === "document_failed" ? (
+                        <>
+                          {a.detail}
+                          {" · "}
+                          <Link
+                            href={`/dexai/result/${encodeURIComponent(a.container_name)}`}
+                            style={{ color: "var(--accent)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}
+                          >
+                            View document <ExternalLink size={11} />
+                          </Link>
+                        </>
+                      ) : (
+                        <>
+                          {a.server_name} {a.container_name ? `· ${a.container_name}` : ""} · {a.detail}
+                        </>
+                      )}
                     </div>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       <Clock size={11} />
