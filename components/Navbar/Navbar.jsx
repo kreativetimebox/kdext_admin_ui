@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
@@ -139,6 +139,10 @@ export default function Navbar() {
         {/* Server Monitoring tab - super users and the restricted server-monitor role */}
         {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r)) && (
           <NavLink href="/server-monitor" label="Servers"         icon={Server}       active={pathname === "/server-monitor"} />
+        )}
+        {/* Alerts tab - same audience as Servers: proactive error detection for the same infra */}
+        {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r)) && (
+          <NavLink href="/alerts"         label="Alerts"          icon={AlertTriangle} active={pathname === "/alerts"} />
         )}
       </nav>
 

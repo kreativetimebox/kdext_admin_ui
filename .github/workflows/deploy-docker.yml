@@ -75,11 +75,21 @@ jobs:
           MAIN_FINANCE_DB_URL_VALUE="${{ env.MAIN_FINANCE_DB_URL }}"
           # Same broker as the Gateway — used to publish document.corrected on HITL publish.
           RABBITMQ_URL_VALUE="${{ secrets.RABBITMQ_URL }}"
+          # Alerts tab — background error monitor + email notifications (lib/alertMonitor.js).
+          # SMTP_* / ALERT_EMAIL_* must be added as repo secrets (Settings > Secrets and
+          # variables > Actions), same as AWS_ACCESS_KEY_ID above, before alerts will email.
+          SMTP_HOST_VALUE="${{ secrets.SMTP_HOST }}"
+          SMTP_PORT_VALUE="${{ secrets.SMTP_PORT }}"
+          SMTP_SECURE_VALUE="${{ secrets.SMTP_SECURE }}"
+          SMTP_USER_VALUE="${{ secrets.SMTP_USER }}"
+          SMTP_PASS_VALUE="${{ secrets.SMTP_PASS }}"
+          ALERT_EMAIL_FROM_VALUE="${{ secrets.ALERT_EMAIL_FROM }}"
+          ALERT_EMAIL_TO_VALUE="${{ secrets.ALERT_EMAIL_TO }}"
 
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             -o ServerAliveInterval=60 -o ServerAliveCountMax=30 \
             -T \
-            "$SSH_USER@$SSH_HOST" "DB_HOST_VALUE='$DB_HOST_VALUE' DB_PORT_VALUE='$DB_PORT_VALUE' DB_NAME_VALUE='$DB_NAME_VALUE' DB_PASSWORD_VALUE='$DB_PASSWORD_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' RABBITMQ_URL_VALUE='$RABBITMQ_URL_VALUE' bash -s" << 'EOF'
+            "$SSH_USER@$SSH_HOST" "DB_HOST_VALUE='$DB_HOST_VALUE' DB_PORT_VALUE='$DB_PORT_VALUE' DB_NAME_VALUE='$DB_NAME_VALUE' DB_PASSWORD_VALUE='$DB_PASSWORD_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' RABBITMQ_URL_VALUE='$RABBITMQ_URL_VALUE' SMTP_HOST_VALUE='$SMTP_HOST_VALUE' SMTP_PORT_VALUE='$SMTP_PORT_VALUE' SMTP_SECURE_VALUE='$SMTP_SECURE_VALUE' SMTP_USER_VALUE='$SMTP_USER_VALUE' SMTP_PASS_VALUE='$SMTP_PASS_VALUE' ALERT_EMAIL_FROM_VALUE='$ALERT_EMAIL_FROM_VALUE' ALERT_EMAIL_TO_VALUE='$ALERT_EMAIL_TO_VALUE' bash -s" << 'EOF'
           set -euo pipefail
           cd /home/balabantaray-user/kdext
 
@@ -118,6 +128,14 @@ jobs:
             -e DB_PASSWORD="$DB_PASSWORD_VALUE" \
             -e RABBITMQ_URL="$RABBITMQ_URL_VALUE" \
             -e RABBITMQ_EVENTS_EXCHANGE="document.events" \
+            -e SMTP_HOST="$SMTP_HOST_VALUE" \
+            -e SMTP_PORT="${SMTP_PORT_VALUE:-587}" \
+            -e SMTP_SECURE="${SMTP_SECURE_VALUE:-false}" \
+            -e SMTP_USER="$SMTP_USER_VALUE" \
+            -e SMTP_PASS="$SMTP_PASS_VALUE" \
+            -e ALERT_EMAIL_FROM="$ALERT_EMAIL_FROM_VALUE" \
+            -e ALERT_EMAIL_TO="$ALERT_EMAIL_TO_VALUE" \
+            -e ALERT_WATCHED_CONTAINERS="lightonocr,kdext-qwen,kdext-document-api,kdext-api,kdext-worker,kdext-webhook-worker" \
             ${IMAGE}:latest
 
           echo "⏳ Health check..."
