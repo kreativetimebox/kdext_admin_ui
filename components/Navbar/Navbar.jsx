@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
@@ -10,11 +11,12 @@ import axios from "axios";
 import toast from "react-hot-toast";
 
 /* ── Nav link ──────────────────────────────────────────────── */
-function NavLink({ href, label, icon: Icon, active }) {
+function NavLink({ href, label, icon: Icon, active, badge, badgeColor }) {
   return (
     <Link
       href={href}
       style={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
         gap: 6,
@@ -47,6 +49,26 @@ function NavLink({ href, label, icon: Icon, active }) {
     >
       <Icon size={13} />
       {label}
+      {badge > 0 && (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minWidth: 16,
+            height: 16,
+            padding: "0 4px",
+            borderRadius: 99,
+            background: badgeColor,
+            color: "#fff",
+            fontSize: 10,
+            fontWeight: 700,
+            lineHeight: 1,
+          }}
+        >
+          {badge}
+        </span>
+      )}
     </Link>
   );
 }
@@ -60,6 +82,23 @@ export default function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   // Full-access admin (vs. a restricted server-monitor-only account).
   const isAdmin = !loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "HITL", "ADMIN"].includes(r));
+  // Same audience as the Servers/Alerts tabs below.
+  const canSeeAlerts = !loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r));
+
+  // Polled independently of the Alerts page itself, so the badge shows on
+  // every page, not just while the Alerts tab is open.
+  const { data: alertSummary } = useQuery({
+    queryKey: ["alerts-summary-badge"],
+    queryFn: async () => (await axios.get("/api/alerts/summary")).data,
+    enabled: canSeeAlerts === true,
+    refetchInterval: 30000,
+  });
+  // Critical takes priority — only fall back to the warning count when there's
+  // nothing critical active, per the "notification badge" behavior requested.
+  const activeCritical = alertSummary?.activeCritical || 0;
+  const activeWarning = alertSummary?.activeWarning || 0;
+  const alertBadgeCount = activeCritical > 0 ? activeCritical : activeWarning;
+  const alertBadgeColor = activeCritical > 0 ? "#ef4444" : "#f59e0b";
 
   const handleLogout = async () => {
     try {
@@ -137,12 +176,21 @@ export default function Navbar() {
           <NavLink href="/user-logs"      label="User Logs"       icon={Activity}     active={pathname === "/user-logs"} />
         )}
         {/* Server Monitoring tab - super users and the restricted server-monitor role */}
-        {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r)) && (
+        {canSeeAlerts && (
           <NavLink href="/server-monitor" label="Servers"         icon={Server}       active={pathname === "/server-monitor"} />
         )}
-        {/* Alerts tab - same audience as Servers: proactive error detection for the same infra */}
-        {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r)) && (
-          <NavLink href="/alerts"         label="Alerts"          icon={AlertTriangle} active={pathname === "/alerts"} />
+        {/* Alerts tab - same audience as Servers: proactive error detection for the same infra.
+            Badge: red = active critical count, amber = active warning count (only shown when
+            there's no critical), nothing when everything's clear. */}
+        {canSeeAlerts && (
+          <NavLink
+            href="/alerts"
+            label="Alerts"
+            icon={AlertTriangle}
+            active={pathname === "/alerts"}
+            badge={alertBadgeCount}
+            badgeColor={alertBadgeColor}
+          />
         )}
       </nav>
 

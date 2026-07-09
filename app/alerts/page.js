@@ -27,7 +27,13 @@ const CATEGORY_ICON = {
   log_error: FileText,
   unreachable: Server,
   document_failed: FileWarning,
+  document_stuck: FileWarning,
 };
+
+// Categories that are about a specific document/request, so their alert row
+// links straight to that document's result page (container_name holds the
+// request_id for these — see lib/alertMonitor.js).
+const DOCUMENT_CATEGORIES = new Set(["document_failed", "document_stuck"]);
 
 const SEVERITY_COLOR = {
   critical: "#ef4444",
@@ -227,7 +233,7 @@ export default function AlertsPage() {
                       </span>
                     </div>
                     <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
-                      {a.category === "document_failed" ? (
+                      {DOCUMENT_CATEGORIES.has(a.category) ? (
                         <>
                           {a.detail}
                           {" · "}
