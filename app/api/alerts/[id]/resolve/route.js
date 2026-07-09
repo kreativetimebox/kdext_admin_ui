@@ -18,8 +18,11 @@ export async function POST(req, { params }) {
   if (!id || Number.isNaN(Number(id)))
     return Response.json({ error: "Invalid alert id" }, { status: 400 });
 
+  // Clearing notified_at too means if this exact problem recurs later, it's
+  // treated as a fresh incident and emails immediately rather than staying
+  // silent until the prior episode's hourly cooldown would have expired.
   const result = await dexaiQuery(
-    "UPDATE monitor_alerts SET resolved_at = now() WHERE id = $1 AND resolved_at IS NULL RETURNING id",
+    "UPDATE monitor_alerts SET resolved_at = now(), notified_at = NULL WHERE id = $1 AND resolved_at IS NULL RETURNING id",
     [Number(id)]
   );
 
