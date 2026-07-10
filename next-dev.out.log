@@ -14,3 +14,4 @@ Login attempt: zarina@financeai.com, roles: [ADMIN, HITL], allowed: true
 Login attempt: zarina@financeai.com, roles: [ADMIN, HITL], allowed: true
  POST /api/auth/login 200 in 3.5s (next.js: 22ms, proxy.ts: 53ms, application-code: 3.4s)
  GET /api/document/PDR-101706 200 in 888ms (next.js: 27ms, proxy.ts: 7ms, application-code: 853ms)
+[?25h
