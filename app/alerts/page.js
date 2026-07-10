@@ -105,6 +105,10 @@ export default function AlertsPage() {
       await axios.post(`/api/alerts/${id}/resolve`);
       toast.success("Alert acknowledged");
       queryClient.invalidateQueries({ queryKey: ["alerts-all"] });
+      // The navbar badge polls a separate query (components/Navbar/Navbar.jsx)
+      // — invalidate it too so the badge count drops instantly instead of
+      // waiting for its own 30s refetch interval.
+      queryClient.invalidateQueries({ queryKey: ["alerts-summary-badge"] });
     } catch (e) {
       toast.error(e.response?.data?.error || "Failed to resolve alert");
     } finally {
