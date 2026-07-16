@@ -11,7 +11,7 @@ const PUBLIC_ROUTES = ["/auth/login"];
 // Full-access admin roles. A user who has none of these but DOES have
 // SERVER_MONITOR is a restricted account that may only reach the server pages.
 const ADMIN_ROLES = ["SUPER_ADMIN", "HITL", "ADMIN"];
-const SERVER_ONLY_PREFIXES = ["/server-monitor", "/api/server-monitor", "/api/auth"];
+const SERVER_ONLY_PREFIXES = ["/server-monitor", "/api/server-monitor", "/alerts", "/api/alerts", "/api/auth"];
 
 export async function middleware(request) {
   const { pathname } = request.nextUrl;

@@ -171,7 +171,7 @@ export default function ViewDocumentPage() {
                     <>
                       <EditableResultView
                         resultId={id}
-                        data={doc?.validation === true ? doc?.hitl_updated_result : doc?.ocr_ui_results}
+                        data={doc?.validation === false ? doc?.ocr_ui_results : doc?.hitl_updated_result}
                         onSaved={(res) => {
                           if (res?.hitl_updated_result !== undefined) {
                             queryClient.setQueryData(["document", id], (prev) =>
@@ -195,7 +195,7 @@ export default function ViewDocumentPage() {
                         <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
                           HITL Updated Result (JSON)
                         </p>
-                        <OCRResults data={doc?.validation === true ? doc?.hitl_updated_result : doc?.ocr_ui_results} />
+                        <OCRResults data={doc?.validation === false ? doc?.ocr_ui_results : doc?.hitl_updated_result} />
                       </div>
 
                       <EditHistory data={doc?.hitl_updated_result} />
