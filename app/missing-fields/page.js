@@ -16,6 +16,7 @@ import {
   Building2,
   UserCircle,
   ShieldCheck,
+  Layers,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
@@ -507,6 +508,37 @@ function StatusDropCell({ docId, currentStatus, onStatusChanged }) {
   );
 }
 
+function KeyEnvBadge({ env }) {
+  if (!env) return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
+  const colors = {
+    production: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
+    sandbox: { bg: "var(--tag-amber-bg)", color: "var(--tag-amber-color)" },
+    test: { bg: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" },
+    testing: { bg: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" },
+  };
+  const c = colors[String(env).toLowerCase()] || { bg: "var(--tag-bg)", color: "var(--tag-color)" };
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "3px 8px",
+        borderRadius: 6,
+        background: c.bg,
+        color: c.color,
+        textTransform: "capitalize",
+        justifySelf: "start",
+        maxWidth: "100%",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {env}
+    </span>
+  );
+}
+
 /* ── Missing fields row ───────────────────────────────────── */
 function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, canAssign }) {
   const [hovered, setHovered] = useState(false);
@@ -518,7 +550,7 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(200px, 1.2fr) 180px 1fr 130px 140px 130px 180px 90px",
+        gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 180px 90px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -572,6 +604,8 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
       >
         {doc.ocr_document_type || "Unknown"}
       </span>
+
+      <KeyEnvBadge env={doc.key_environment} />
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
         <FileWarning size={14} style={{ color: "var(--text-muted)" }} />
@@ -660,6 +694,7 @@ export default function MissingFieldsPage() {
   const [hitlUserId, setHitlUserId] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [validationFilter, setValidationFilter] = useState("");
+  const [keyEnvironment, setKeyEnvironment] = useState("");
   const [showAll, setShowAll] = useState(true);
   const [docs, setDocs] = useState([]);
 
@@ -715,6 +750,10 @@ export default function MissingFieldsPage() {
     return [...new Set(documents.map((d) => d.ocr_document_type).filter(Boolean))];
   }, [documents]);
 
+  const keyEnvironments = useMemo(() => {
+    return [...new Set(documents.map((d) => d.key_environment).filter(Boolean))];
+  }, [documents]);
+
   const visibleDocuments = useMemo(() => {
     const q = search.trim().toLowerCase();
     return documents.filter((doc) => {
@@ -724,6 +763,7 @@ export default function MissingFieldsPage() {
       if (hitlUserId && doc.hitl_assigned_to !== hitlUserId) return false;
       if (statusFilter && (doc.hitl_status || "") !== statusFilter) return false;
       if (validationFilter && String(doc.validation) !== validationFilter) return false;
+      if (keyEnvironment && doc.key_environment !== keyEnvironment) return false;
       if (!showAll && (doc.missing_count || 0) === 0) return false;
       if (!q) return true;
       return (
@@ -736,7 +776,7 @@ export default function MissingFieldsPage() {
         matchesDate(doc.updated_at, q)
       );
     });
-  }, [documents, search, docType, clientId, businessName, hitlUserId, statusFilter, validationFilter, showAll]);
+  }, [documents, search, docType, clientId, businessName, hitlUserId, statusFilter, validationFilter, keyEnvironment, showAll]);
 
   const handleView = (docId) => {
     setActiveId(docId);
@@ -761,7 +801,7 @@ export default function MissingFieldsPage() {
     queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
   };
 
-  const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter;
+  const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter || keyEnvironment;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
@@ -894,6 +934,17 @@ export default function MissingFieldsPage() {
             onChange={setValidationFilter}
           />
 
+          {/* Key Environment */}
+          <SearchableDropdown
+            icon={Layers}
+            placeholder="All Key Environments"
+            searchPlaceholder="Search environment..."
+            emptyText="No environments"
+            options={keyEnvironments.map((e) => ({ value: e, label: e }))}
+            value={keyEnvironment}
+            onChange={setKeyEnvironment}
+          />
+
           {/* HITL */}
           <SearchableDropdown
             icon={ShieldCheck}
@@ -931,7 +982,7 @@ export default function MissingFieldsPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); setValidationFilter(""); }}
+              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); setValidationFilter(""); setKeyEnvironment(""); }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -965,14 +1016,14 @@ export default function MissingFieldsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(200px, 1.2fr) 180px 1fr 130px 140px 130px 180px 90px",
+              gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 180px 90px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Result ID", "Document Type", "Missing Fields", "HITL Status", "Validation", "Created At", "HITL", "Action"].map((h, i) => (
+            {["Result ID", "Document Type", "Key Environment", "Missing Fields", "HITL Status", "Validation", "Created At", "HITL", "Action"].map((h, i) => (
               <span
                 key={i}
                 style={{
@@ -981,7 +1032,7 @@ export default function MissingFieldsPage() {
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
                   color: "var(--text-muted)",
-                  textAlign: i === 6 ? "center" : "left",
+                  textAlign: i === 7 ? "center" : "left",
                 }}
               >
                 {h}

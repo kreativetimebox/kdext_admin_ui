@@ -216,7 +216,7 @@ function ResultRow({ record, onView, onEdit }) {
       style={{
         display: "grid",
         gridTemplateColumns:
-          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 120px 100px 140px 150px 150px 100px 160px",
+          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 120px 100px 140px 150px 150px 100px 160px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -252,20 +252,6 @@ function ResultRow({ record, onView, onEdit }) {
         title={record.result_id ? String(record.result_id) : ""}
       >
         {record.result_id ?? "—"}
-      </span>
-
-      <span
-        style={{
-          fontSize: 12,
-          color: "var(--foreground)",
-          fontFamily: "ui-monospace, SFMono-Regular, monospace",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={record.transaction_id || ""}
-      >
-        {record.transaction_id || "—"}
       </span>
 
       <span
@@ -706,7 +692,6 @@ export default function UserResultsPage({ params }) {
             {[
               "Request ID",
               "Result ID",
-              "Transaction ID",
               "Document Type",
               "Key Environment",
               "Status",

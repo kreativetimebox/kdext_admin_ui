@@ -10,8 +10,9 @@ export async function GET(req) {
     const clientId = searchParams.get("clientId") || "";
     const businessName = searchParams.get("businessName") || "";
     const status = searchParams.get("status") || "";
+    const keyEnvironment = searchParams.get("keyEnvironment") || "";
 
-    const documents = await getDocumentsWithMissingFields({ search, docType, showAll, clientId, businessName, status });
+    const documents = await getDocumentsWithMissingFields({ search, docType, showAll, clientId, businessName, status, keyEnvironment });
 
     return NextResponse.json(
       { documents, total: documents.length },
