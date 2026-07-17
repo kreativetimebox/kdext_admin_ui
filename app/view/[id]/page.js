@@ -90,6 +90,15 @@ export default function ViewDocumentPage() {
                 {doc.ocr_document_type}
               </span>
             )}
+            {doc?.key_environment && (
+              <span
+                className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase"
+                style={{ background: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" }}
+                title="Key environment"
+              >
+                {doc.key_environment}
+              </span>
+            )}
           </div>
 
           {isLoading ? (

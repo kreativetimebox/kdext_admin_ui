@@ -12,8 +12,9 @@ export async function GET(request, { params }) {
     const search = searchParams.get("search") || "";
     const docType = searchParams.get("docType") || "";
     const status = searchParams.get("status") || "";
+    const keyEnvironment = searchParams.get("keyEnvironment") || "";
 
-    const records = await getDexaiUserResults(id, { search, docType, status });
+    const records = await getDexaiUserResults(id, { search, docType, status, keyEnvironment });
     return NextResponse.json({ records }, { status: 200 });
   } catch (error) {
     console.error("GET /api/dexai/users/[userId]/results error:", error);

@@ -61,6 +61,37 @@ function matchesDate(value, q) {
   }
 }
 
+function KeyEnvBadge({ env }) {
+  if (!env) return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
+  const colors = {
+    production: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
+    sandbox: { bg: "var(--tag-amber-bg)", color: "var(--tag-amber-color)" },
+    test: { bg: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" },
+    testing: { bg: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" },
+  };
+  const c = colors[String(env).toLowerCase()] || { bg: "var(--tag-bg)", color: "var(--tag-color)" };
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "3px 8px",
+        borderRadius: 6,
+        background: c.bg,
+        color: c.color,
+        textTransform: "capitalize",
+        justifySelf: "start",
+        maxWidth: "100%",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+        whiteSpace: "nowrap",
+      }}
+    >
+      {env}
+    </span>
+  );
+}
+
 function StatusBadge({ status }) {
   const colors = {
     COMPLETED: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
@@ -185,7 +216,7 @@ function ResultRow({ record, onView, onEdit }) {
       style={{
         display: "grid",
         gridTemplateColumns:
-          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 160px",
+          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 120px 100px 140px 150px 150px 100px 160px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -255,6 +286,8 @@ function ResultRow({ record, onView, onEdit }) {
       >
         {record.document_type || "—"}
       </span>
+
+      <KeyEnvBadge env={record.key_environment} />
 
       <StatusBadge status={record.status} />
 
@@ -343,6 +376,7 @@ export default function UserResultsPage({ params }) {
   const [search, setSearch] = useState("");
   const [docType, setDocType] = useState("");
   const [status, setStatus] = useState("");
+  const [keyEnv, setKeyEnv] = useState("");
 
   useEffect(() => {
     initTheme();
@@ -390,11 +424,20 @@ export default function UserResultsPage({ params }) {
     return Array.from(set).sort();
   }, [records]);
 
+  const keyEnvOptions = useMemo(() => {
+    const set = new Set();
+    for (const r of records) {
+      if (r.key_environment) set.add(r.key_environment);
+    }
+    return Array.from(set).sort();
+  }, [records]);
+
   const visibleRecords = useMemo(() => {
     const q = search.trim().toLowerCase();
     return records.filter((r) => {
       if (docType && r.document_type !== docType) return false;
       if (status && r.status !== status) return false;
+      if (keyEnv && r.key_environment !== keyEnv) return false;
       if (!q) return true;
       return (
         (r.request_id || "").toLowerCase().includes(q) ||
@@ -402,12 +445,13 @@ export default function UserResultsPage({ params }) {
         (r.transaction_id || "").toLowerCase().includes(q) ||
         (r.original_filename || "").toLowerCase().includes(q) ||
         (r.document_type || "").toLowerCase().includes(q) ||
+        (r.key_environment || "").toLowerCase().includes(q) ||
         matchesDate(r.created_at, q) ||
         matchesDate(r.submitted_at, q) ||
         matchesDate(r.updated_at, q)
       );
     });
-  }, [records, search, docType, status]);
+  }, [records, search, docType, status, keyEnv]);
 
   const handleView = (requestId) => {
     router.push(`/dexai/result/${encodeURIComponent(requestId)}`);
@@ -603,12 +647,20 @@ export default function UserResultsPage({ params }) {
             onChange={setStatus}
           />
 
-          {(search || docType || status) && (
+          <FilterDropdown
+            label="Key Environment"
+            value={keyEnv}
+            options={keyEnvOptions}
+            onChange={setKeyEnv}
+          />
+
+          {(search || docType || status || keyEnv) && (
             <button
               onClick={() => {
                 setSearch("");
                 setDocType("");
                 setStatus("");
+                setKeyEnv("");
               }}
               style={{
                 display: "flex",
@@ -656,6 +708,7 @@ export default function UserResultsPage({ params }) {
               "Result ID",
               "Transaction ID",
               "Document Type",
+              "Key Environment",
               "Status",
               "Validation",
               "Created At",
@@ -711,7 +764,7 @@ export default function UserResultsPage({ params }) {
                   No results found
                 </p>
                 <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                  {search || docType || status
+                  {search || docType || status || keyEnv
                     ? "Try adjusting your filters"
                     : "This user has no document processing requests"}
                 </p>

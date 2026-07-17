@@ -37,6 +37,7 @@ export async function GET(_request, { params }) {
         validation: doc.validation === true,
         status: doc.status,
         hitl_status: doc.hitl_status,
+        key_environment: doc.key_environment,
         // formatted_result is the original (immutable) extraction, mapped onto
         // the names the frontend already speaks — shown in the "Original Result"
         // tab.
