@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import axios from "axios";
-import toast from "react-hot-toast";
+import { useState } from "react";
 import { RefreshCw } from "lucide-react";
+import { useReprocessStore } from "@/lib/store";
+import { startReprocess } from "@/lib/reprocessRunner";
 
 // Types the pipeline supports — mirrors the API's _VALID_DOCUMENT_TYPES.
 const DOCUMENT_TYPES = [
@@ -14,105 +14,30 @@ const DOCUMENT_TYPES = [
   "BankStatementPDF",
 ];
 
-const POLL_INTERVAL_MS = 4000;
-// process-document is async (worker + external extraction). Give it a generous
-// window before we stop actively polling and tell the user to check back.
-const POLL_TIMEOUT_MS = 10 * 60 * 1000;
-
 /**
  * Reprocess control: a document-type dropdown + a button that re-runs the
  * pipeline for this document and overwrites its result in place (the original
- * request_id is preserved). Runs a start -> poll -> commit cycle because the
- * OCR pipeline is asynchronous.
+ * request_id is preserved).
+ *
+ * The actual start -> poll -> commit cycle runs in lib/reprocessRunner.js,
+ * independent of this component's lifecycle, so navigating away (or even a
+ * hard refresh) doesn't abandon an in-flight reprocess. This component just
+ * reflects whether a job for docId is currently running.
  *
  * @param {object} props
  * @param {string} props.docId          - result_id OR request_id (used in the API route path)
  * @param {string} [props.currentType]  - the document's current type (dropdown default)
- * @param {() => void} [props.onReprocessed] - called after the result is applied
+ * @param {Array} [props.queryKey]      - react-query key to invalidate once the reprocess commits
  */
-export default function ReprocessControl({ docId, currentType, onReprocessed }) {
-  const encodedId = encodeURIComponent(docId);
+export default function ReprocessControl({ docId, currentType, queryKey }) {
   const [documentType, setDocumentType] = useState(
     DOCUMENT_TYPES.includes(currentType) ? currentType : DOCUMENT_TYPES[0]
   );
-  const [busy, setBusy] = useState(false);
-  const cancelledRef = useRef(false);
+  const busy = useReprocessStore((state) => !!state.jobs[docId]);
 
-  useEffect(() => {
-    // If the component unmounts mid-run, stop the poll loop from touching state.
-    return () => {
-      cancelledRef.current = true;
-    };
-  }, []);
-
-  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-  async function pollUntilDone(newRequestId) {
-    const deadline = Date.now() + POLL_TIMEOUT_MS;
-    while (Date.now() < deadline) {
-      if (cancelledRef.current) return null;
-      await sleep(POLL_INTERVAL_MS);
-      const { data } = await axios.get(
-        `/api/document/${encodedId}/reprocess`,
-        { params: { newRequestId } }
-      );
-      if (data.done) return data; // COMPLETED or FAILED
-    }
-    return { status: "TIMEOUT", done: false };
-  }
-
-  async function handleReprocess() {
+  function handleReprocess() {
     if (busy) return;
-    setBusy(true);
-    cancelledRef.current = false;
-
-    const runToast = toast.loading("Starting reprocessing…");
-    try {
-      // 1. Kick off — creates a transient request against the OCR pipeline.
-      const { data: started } = await axios.post(
-        `/api/document/${encodedId}/reprocess`,
-        { documentType }
-      );
-
-      toast.loading(
-        `Request ${started.old_request_id} is reprocessing as ${documentType}…`,
-        { id: runToast }
-      );
-
-      // 2. Poll the transient request to completion.
-      const final = await pollUntilDone(started.new_request_id);
-      if (cancelledRef.current) return;
-
-      if (!final || !final.done) {
-        toast.error(
-          "Reprocessing is taking longer than expected — check back shortly.",
-          { id: runToast }
-        );
-        return;
-      }
-      if (final.status === "FAILED") {
-        toast.error(final.error_message || "Reprocessing failed.", { id: runToast });
-        return;
-      }
-
-      // 3. Commit — overwrite the original document's result in place.
-      await axios.put(`/api/document/${encodedId}/reprocess`, {
-        newRequestId: started.new_request_id,
-        documentType,
-      });
-
-      toast.success(
-        `Request ${started.old_request_id} reprocessed as ${documentType}.`,
-        { id: runToast }
-      );
-      onReprocessed?.();
-    } catch (err) {
-      const msg =
-        err?.response?.data?.error || err?.message || "Reprocessing failed.";
-      toast.error(msg, { id: runToast });
-    } finally {
-      if (!cancelledRef.current) setBusy(false);
-    }
+    startReprocess(docId, documentType, queryKey);
   }
 
   return (

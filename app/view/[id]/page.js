@@ -133,9 +133,7 @@ export default function ViewDocumentPage() {
                   <ReprocessControl
                     docId={id}
                     currentType={doc?.ocr_document_type}
-                    onReprocessed={() =>
-                      queryClient.invalidateQueries({ queryKey: ["document", id] })
-                    }
+                    queryKey={["document", id]}
                   />
 
                   {/* Tabs: HITL Updated (editable) vs Original Result (read-only) */}
