@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -11,6 +11,8 @@ import {
   AlertCircle,
   FileWarning,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
   ListFilter,
   Building2,
@@ -200,12 +202,6 @@ function SearchableDropdown({
 function formatDate(value) {
   if (!value) return "—";
   try { return new Date(value).toLocaleString(); } catch { return String(value); }
-}
-
-function matchesDate(value, q) {
-  if (!value) return false;
-  if (String(value).toLowerCase().includes(q)) return true;
-  try { return new Date(value).toLocaleString().toLowerCase().includes(q); } catch { return false; }
 }
 
 /* ── HITL assignee cell ───────────────────────────────────── */
@@ -678,6 +674,9 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
   );
 }
 
+const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 350;
+
 /* ── Main page ────────────────────────────────────────────── */
 export default function MissingFieldsPage() {
   const { initTheme } = useThemeStore();
@@ -689,6 +688,7 @@ export default function MissingFieldsPage() {
   const canAssign = emailCanAssign(user?.email || "");
 
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
   const [clientId, setClientId] = useState("");
   const [businessName, setBusinessName] = useState("");
@@ -697,17 +697,43 @@ export default function MissingFieldsPage() {
   const [validationFilter, setValidationFilter] = useState("");
   const [keyEnvironment, setKeyEnvironment] = useState("");
   const [showAll, setShowAll] = useState(true);
+  const [page, setPage] = useState(1);
   const [docs, setDocs] = useState([]);
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
+  // Keep the input feeling instant while the network request trails behind.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  // A filter change can strand the user on a page number past the new
+  // filtered total, so jump back to page 1 whenever any filter changes.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, showAll]);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["missing-fields", "all"],
+    queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, showAll, page }],
     queryFn: async () => {
-      const res = await axios.get(`/api/missing-fields?showAll=true`);
-      return res.data.documents || [];
+      const res = await axios.get("/api/missing-fields", {
+        params: {
+          showAll,
+          search: debouncedSearch,
+          docType,
+          clientId,
+          businessName,
+          status: statusFilter,
+          keyEnvironment,
+          page,
+          pageSize: PAGE_SIZE,
+        },
+      });
+      return res.data;
     },
-    staleTime: 0,
+    placeholderData: keepPreviousData,
+    staleTime: 15 * 1000,
     refetchInterval: 20 * 1000,
     refetchOnWindowFocus: true,
     onError: () => toast.error("Failed to load documents"),
@@ -734,9 +760,11 @@ export default function MissingFieldsPage() {
   const hitlUsers = hitlData || [];
 
   // seed local docs state from query result so we can update assignments optimistically
-  useEffect(() => { if (data) setDocs(data); }, [data]);
+  useEffect(() => { if (data) setDocs(data.documents || []); }, [data]);
 
-  const documents = docs.length ? docs : (data || []);
+  const documents = docs.length ? docs : (data?.documents || []);
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const clientOptions = (filterOptions?.clients || []).map((c) => ({
     value: c.id,
     label: c.label,
@@ -746,38 +774,20 @@ export default function MissingFieldsPage() {
     value: b,
     label: b,
   }));
+  const docTypes = filterOptions?.docTypes || [];
+  const keyEnvironments = filterOptions?.keyEnvironments || [];
 
-  const docTypes = useMemo(() => {
-    return [...new Set(documents.map((d) => d.ocr_document_type).filter(Boolean))];
-  }, [documents]);
-
-  const keyEnvironments = useMemo(() => {
-    return [...new Set(documents.map((d) => d.key_environment).filter(Boolean))];
-  }, [documents]);
-
+  // docType/clientId/businessName/statusFilter/keyEnvironment/showAll/search
+  // are now applied server-side (see the useQuery above). hitlUserId and
+  // validationFilter have no DB/API support, so they stay client-side —
+  // cheap since `documents` is just the current ~50-row page.
   const visibleDocuments = useMemo(() => {
-    const q = search.trim().toLowerCase();
     return documents.filter((doc) => {
-      if (docType && doc.ocr_document_type !== docType) return false;
-      if (clientId && doc.client_id !== clientId) return false;
-      if (businessName && doc.business_name !== businessName) return false;
       if (hitlUserId && doc.hitl_assigned_to !== hitlUserId) return false;
-      if (statusFilter && (doc.hitl_status || "") !== statusFilter) return false;
       if (validationFilter && String(doc.validation) !== validationFilter) return false;
-      if (keyEnvironment && doc.key_environment !== keyEnvironment) return false;
-      if (!showAll && (doc.missing_count || 0) === 0) return false;
-      if (!q) return true;
-      return (
-        String(doc.result_id ?? doc.id ?? "").toLowerCase().includes(q) ||
-        String(doc.transaction_id || "").toLowerCase().includes(q) ||
-        String(doc.request_id || "").toLowerCase().includes(q) ||
-        String(doc.ocr_document_type || "").toLowerCase().includes(q) ||
-        matchesDate(doc.created_at, q) ||
-        matchesDate(doc.submitted_at, q) ||
-        matchesDate(doc.updated_at, q)
-      );
+      return true;
     });
-  }, [documents, search, docType, clientId, businessName, hitlUserId, statusFilter, validationFilter, keyEnvironment, showAll]);
+  }, [documents, hitlUserId, validationFilter]);
 
   const handleView = (docId) => {
     setActiveId(docId);
@@ -1076,17 +1086,61 @@ export default function MissingFieldsPage() {
           {visibleDocuments.length > 0 && (
             <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 16,
                 padding: "12px 20px",
                 background: "var(--input-bg)",
                 borderTop: "1px solid var(--panel-border)",
                 fontSize: 12,
                 color: "var(--text-muted)",
-                textAlign: "center",
               }}
             >
-              Showing {visibleDocuments.length} of {documents.length} document
-              {documents.length !== 1 ? "s" : ""}
-              {!showAll && " with missing fields"}
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--panel-border)",
+                  background: "var(--panel-bg)",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  cursor: page <= 1 ? "not-allowed" : "pointer",
+                  opacity: page <= 1 ? 0.4 : 1,
+                }}
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
+
+              <span>
+                Page {page} of {totalPages} · {total} document{total !== 1 ? "s" : ""}
+                {!showAll && " with missing fields"}
+              </span>
+
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--panel-border)",
+                  background: "var(--panel-bg)",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  cursor: page >= totalPages ? "not-allowed" : "pointer",
+                  opacity: page >= totalPages ? 0.4 : 1,
+                }}
+              >
+                Next <ChevronRight size={14} />
+              </button>
             </div>
           )}
         </div>

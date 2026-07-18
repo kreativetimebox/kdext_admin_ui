@@ -11,11 +11,23 @@ export async function GET(req) {
     const businessName = searchParams.get("businessName") || "";
     const status = searchParams.get("status") || "";
     const keyEnvironment = searchParams.get("keyEnvironment") || "";
+    const page = Number(searchParams.get("page")) || 1;
+    const pageSize = Number(searchParams.get("pageSize")) || 50;
 
-    const documents = await getDocumentsWithMissingFields({ search, docType, showAll, clientId, businessName, status, keyEnvironment });
+    const { rows, total } = await getDocumentsWithMissingFields({
+      search,
+      docType,
+      showAll,
+      clientId,
+      businessName,
+      status,
+      keyEnvironment,
+      page,
+      pageSize,
+    });
 
     return NextResponse.json(
-      { documents, total: documents.length },
+      { documents: rows, total, page, pageSize },
       { status: 200 }
     );
   } catch (error) {

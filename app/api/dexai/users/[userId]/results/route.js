@@ -13,9 +13,11 @@ export async function GET(request, { params }) {
     const docType = searchParams.get("docType") || "";
     const status = searchParams.get("status") || "";
     const keyEnvironment = searchParams.get("keyEnvironment") || "";
+    const page = Number(searchParams.get("page")) || 1;
+    const pageSize = Number(searchParams.get("pageSize")) || 50;
 
-    const records = await getDexaiUserResults(id, { search, docType, status, keyEnvironment });
-    return NextResponse.json({ records }, { status: 200 });
+    const { rows, total } = await getDexaiUserResults(id, { search, docType, status, keyEnvironment, page, pageSize });
+    return NextResponse.json({ records: rows, total, page, pageSize }, { status: 200 });
   } catch (error) {
     console.error("GET /api/dexai/users/[userId]/results error:", error);
     return NextResponse.json(

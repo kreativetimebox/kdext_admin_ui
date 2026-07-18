@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -10,6 +10,7 @@ import {
   AlertCircle,
   Receipt,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Filter,
   X,
@@ -235,48 +236,57 @@ function TransactionRow({ record, onOpen }) {
   );
 }
 
+const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 350;
+
 export default function TransactionsPage() {
   const { initTheme } = useThemeStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     initTheme();
   }, [initTheme]);
 
+  // Keep the input feeling instant while the network request trails behind.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, docType]);
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ["transactions"],
+    queryKey: ["transactions", { debouncedSearch, docType, page }],
     queryFn: async () => {
-      const res = await axios.get("/api/transactions");
-      return res.data.records || [];
+      const res = await axios.get("/api/transactions", {
+        params: { search: debouncedSearch, docType, page, pageSize: PAGE_SIZE },
+      });
+      return res.data;
     },
+    placeholderData: keepPreviousData,
     staleTime: 2 * 60 * 1000,
     onError: () => toast.error("Failed to load transactions"),
   });
 
-  const records = data || [];
+  const { data: filterOptions } = useQuery({
+    queryKey: ["filter-options"],
+    queryFn: async () => {
+      const res = await axios.get("/api/filter-options");
+      return res.data;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
 
-  const docTypeOptions = useMemo(() => {
-    const set = new Set();
-    for (const r of records) {
-      if (r.document_type) set.add(r.document_type);
-    }
-    return Array.from(set).sort();
-  }, [records]);
-
-  const visibleRecords = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return records.filter((r) => {
-      if (docType && r.document_type !== docType) return false;
-      if (!q) return true;
-      return (
-        (r.result_id || "").toLowerCase().includes(q) ||
-        (r.transaction_id || "").toLowerCase().includes(q) ||
-        (r.request_id || "").toLowerCase().includes(q)
-      );
-    });
-  }, [records, search, docType]);
+  const records = data?.records || [];
+  const total = data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const docTypeOptions = filterOptions?.docTypes || [];
 
   const handleOpen = (resultId) => {
     router.push(`/transactions/${encodeURIComponent(resultId)}`);
@@ -323,7 +333,7 @@ export default function TransactionsPage() {
               border: "1px solid var(--panel-border)",
             }}
           >
-            {visibleRecords.length} of {records.length}
+            {total} total
           </span>
         </div>
 
@@ -454,7 +464,7 @@ export default function TransactionsPage() {
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load transactions</p>
               </div>
-            ) : visibleRecords.length === 0 ? (
+            ) : records.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center" }}>
                 <Receipt size={40} style={{ color: "var(--text-muted)", marginBottom: 12 }} />
                 <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>
@@ -467,26 +477,68 @@ export default function TransactionsPage() {
                 </p>
               </div>
             ) : (
-              visibleRecords.map((record) => (
+              records.map((record) => (
                 <TransactionRow key={record.result_id} record={record} onOpen={handleOpen} />
               ))
             )}
           </div>
 
           {/* Footer */}
-          {visibleRecords.length > 0 && (
+          {records.length > 0 && (
             <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 16,
                 padding: "12px 20px",
                 background: "var(--input-bg)",
                 borderTop: "1px solid var(--panel-border)",
                 fontSize: 12,
                 color: "var(--text-muted)",
-                textAlign: "center",
               }}
             >
-              Showing {visibleRecords.length} of {records.length} transaction
-              {records.length !== 1 ? "s" : ""}
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--panel-border)",
+                  background: "var(--panel-bg)",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  cursor: page <= 1 ? "not-allowed" : "pointer",
+                  opacity: page <= 1 ? 0.4 : 1,
+                }}
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
+              <span>
+                Page {page} of {totalPages} · {total} transaction{total !== 1 ? "s" : ""}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--panel-border)",
+                  background: "var(--panel-bg)",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  cursor: page >= totalPages ? "not-allowed" : "pointer",
+                  opacity: page >= totalPages ? 0.4 : 1,
+                }}
+              >
+                Next <ChevronRight size={14} />
+              </button>
             </div>
           )}
         </div>

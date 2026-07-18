@@ -24,9 +24,12 @@ function fullName(u) {
   return parts.length ? parts.join(" ") : "—";
 }
 
+const SEARCH_DEBOUNCE_MS = 350;
+
 export default function UserLogsPage() {
   const { user, loading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("last_login_at");
   const [sortOrder, setSortOrder] = useState("DESC");
   const searchInputRef = useRef(null);
@@ -34,11 +37,18 @@ export default function UserLogsPage() {
   // Check if user is super user
   const isSuperUser = user && user.roles?.includes("SUPER_ADMIN");
 
+  // Keep the input feeling instant while the network request trails behind —
+  // otherwise every keystroke fires a brand-new request.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search]);
+
   const { data: users = [], isLoading, error } = useQuery({
-    queryKey: ["user-logs", search, sortBy, sortOrder],
+    queryKey: ["user-logs", debouncedSearch, sortBy, sortOrder],
     queryFn: async () => {
       const res = await axios.get("/api/user-logs", {
-        params: { search, sortBy, sortOrder },
+        params: { search: debouncedSearch, sortBy, sortOrder },
       });
       return res.data.users || [];
     },

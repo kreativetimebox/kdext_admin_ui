@@ -1,8 +1,8 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -11,6 +11,8 @@ import {
   AlertCircle,
   Receipt,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Filter,
   X,
   Mail,
@@ -46,19 +48,6 @@ function formatDuration(ms) {
 function fullName(u) {
   const parts = [u?.first_name, u?.last_name].filter(Boolean);
   return parts.length ? parts.join(" ") : "—";
-}
-
-/* Returns true if the query substring matches any of the record's timestamp
-   fields, checked against both the raw ISO value and the localized display
-   string (so "2026-06" and "6/1/2026" both work). */
-function matchesDate(value, q) {
-  if (!value) return false;
-  if (String(value).toLowerCase().includes(q)) return true;
-  try {
-    return new Date(value).toLocaleString().toLowerCase().includes(q);
-  } catch {
-    return false;
-  }
 }
 
 function KeyEnvBadge({ env }) {
@@ -354,19 +343,35 @@ function ResultRow({ record, onView, onEdit }) {
   );
 }
 
+const PAGE_SIZE = 50;
+const SEARCH_DEBOUNCE_MS = 350;
+const STATUS_OPTIONS = ["COMPLETED", "PENDING", "PROCESSING", "TO_BE_TESTED", "FAILED"];
+
 export default function UserResultsPage({ params }) {
   const { userId } = use(params);
   const { initTheme } = useThemeStore();
   const { setActiveId } = useDocumentStore();
   const router = useRouter();
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
   const [status, setStatus] = useState("");
   const [keyEnv, setKeyEnv] = useState("");
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     initTheme();
   }, [initTheme]);
+
+  // Keep the input feeling instant while the network request trails behind.
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, docType, status, keyEnv]);
 
   const userQuery = useQuery({
     queryKey: ["dexai", "user", userId],
@@ -379,65 +384,38 @@ export default function UserResultsPage({ params }) {
   });
 
   const resultsQuery = useQuery({
-    queryKey: ["dexai", "user-results", userId],
+    queryKey: ["dexai", "user-results", userId, { debouncedSearch, docType, status, keyEnv, page }],
     queryFn: async () => {
       const res = await axios.get(
-        `/api/dexai/users/${encodeURIComponent(userId)}/results`
+        `/api/dexai/users/${encodeURIComponent(userId)}/results`,
+        { params: { search: debouncedSearch, docType, status, keyEnvironment: keyEnv, page, pageSize: PAGE_SIZE } }
       );
-      return res.data.records || [];
+      return res.data;
     },
     enabled: !!userId,
+    placeholderData: keepPreviousData,
     staleTime: 2 * 60 * 1000,
     onError: () => toast.error("Failed to load results"),
   });
 
+  const { data: filterOptions } = useQuery({
+    queryKey: ["filter-options"],
+    queryFn: async () => {
+      const res = await axios.get("/api/filter-options");
+      return res.data;
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
   const user = userQuery.data;
-  const records = resultsQuery.data || [];
+  const records = resultsQuery.data?.records || [];
+  const total = resultsQuery.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const docTypeOptions = useMemo(() => {
-    const set = new Set();
-    for (const r of records) {
-      if (r.document_type) set.add(r.document_type);
-    }
-    return Array.from(set).sort();
-  }, [records]);
-
-  const statusOptions = useMemo(() => {
-    const set = new Set();
-    for (const r of records) {
-      if (r.status) set.add(r.status);
-    }
-    return Array.from(set).sort();
-  }, [records]);
-
-  const keyEnvOptions = useMemo(() => {
-    const set = new Set();
-    for (const r of records) {
-      if (r.key_environment) set.add(r.key_environment);
-    }
-    return Array.from(set).sort();
-  }, [records]);
-
-  const visibleRecords = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    return records.filter((r) => {
-      if (docType && r.document_type !== docType) return false;
-      if (status && r.status !== status) return false;
-      if (keyEnv && r.key_environment !== keyEnv) return false;
-      if (!q) return true;
-      return (
-        (r.request_id || "").toLowerCase().includes(q) ||
-        String(r.result_id ?? "").toLowerCase().includes(q) ||
-        (r.transaction_id || "").toLowerCase().includes(q) ||
-        (r.original_filename || "").toLowerCase().includes(q) ||
-        (r.document_type || "").toLowerCase().includes(q) ||
-        (r.key_environment || "").toLowerCase().includes(q) ||
-        matchesDate(r.created_at, q) ||
-        matchesDate(r.submitted_at, q) ||
-        matchesDate(r.updated_at, q)
-      );
-    });
-  }, [records, search, docType, status, keyEnv]);
+  // docType/status/keyEnv/search are all applied server-side now (see the
+  // useQuery above), so `records` is already exactly what should render.
+  const docTypeOptions = filterOptions?.docTypes || [];
+  const keyEnvOptions = filterOptions?.keyEnvironments || [];
 
   const handleView = (requestId) => {
     router.push(`/dexai/result/${encodeURIComponent(requestId)}`);
@@ -556,7 +534,7 @@ export default function UserResultsPage({ params }) {
               </span>
               <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
                 <FileText size={12} />
-                {records.length} results
+                {total} results
               </span>
             </div>
           </div>
@@ -629,7 +607,7 @@ export default function UserResultsPage({ params }) {
           <FilterDropdown
             label="Status"
             value={status}
-            options={statusOptions}
+            options={STATUS_OPTIONS}
             onChange={setStatus}
           />
 
@@ -732,7 +710,7 @@ export default function UserResultsPage({ params }) {
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load results</p>
               </div>
-            ) : visibleRecords.length === 0 ? (
+            ) : records.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center" }}>
                 <Receipt
                   size={40}
@@ -755,25 +733,67 @@ export default function UserResultsPage({ params }) {
                 </p>
               </div>
             ) : (
-              visibleRecords.map((r) => (
+              records.map((r) => (
                 <ResultRow key={r.request_id} record={r} onView={handleView} onEdit={handleEdit} />
               ))
             )}
           </div>
 
-          {visibleRecords.length > 0 && (
+          {records.length > 0 && (
             <div
               style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 16,
                 padding: "12px 20px",
                 background: "var(--input-bg)",
                 borderTop: "1px solid var(--panel-border)",
                 fontSize: 12,
                 color: "var(--text-muted)",
-                textAlign: "center",
               }}
             >
-              Showing {visibleRecords.length} of {records.length} result
-              {records.length !== 1 ? "s" : ""}
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--panel-border)",
+                  background: "var(--panel-bg)",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  cursor: page <= 1 ? "not-allowed" : "pointer",
+                  opacity: page <= 1 ? 0.4 : 1,
+                }}
+              >
+                <ChevronLeft size={14} /> Prev
+              </button>
+              <span>
+                Page {page} of {totalPages} · {total} result{total !== 1 ? "s" : ""}
+              </span>
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: "1px solid var(--panel-border)",
+                  background: "var(--panel-bg)",
+                  color: "var(--foreground)",
+                  fontSize: 12,
+                  cursor: page >= totalPages ? "not-allowed" : "pointer",
+                  opacity: page >= totalPages ? 0.4 : 1,
+                }}
+              >
+                Next <ChevronRight size={14} />
+              </button>
             </div>
           )}
         </div>
