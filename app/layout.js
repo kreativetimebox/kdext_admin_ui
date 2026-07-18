@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "react-hot-toast";
 import { useRef } from "react";
+import ReprocessRunnerProvider from "@/components/Reprocess/ReprocessRunnerProvider";
 
 export default function RootLayout({ children }) {
   const queryClientRef = useRef(null);
@@ -26,6 +27,7 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <QueryClientProvider client={queryClientRef.current}>
+          <ReprocessRunnerProvider />
           {children}
           <Toaster
             position="top-right"

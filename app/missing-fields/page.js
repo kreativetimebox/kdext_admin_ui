@@ -385,6 +385,7 @@ const STATUS_OPTIONS = [
   { value: "PENDING",      label: "Pending" },
   { value: "PROCESSING",   label: "Processing" },
   { value: "TO_BE_TESTED", label: "To Be Tested" },
+  { value: "FAILED",       label: "Failed" },
 ];
 
 /* ── Per-row HITL status dropdown ────────────────────────── */
@@ -929,6 +930,7 @@ export default function MissingFieldsPage() {
             options={[
               { value: "true",  label: "Valid" },
               { value: "false", label: "To Be Tested" },
+              { value: "null",  label: "Unknown"}
             ]}
             value={validationFilter}
             onChange={setValidationFilter}

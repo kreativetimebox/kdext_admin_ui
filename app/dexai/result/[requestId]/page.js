@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -355,7 +355,6 @@ export default function DexaiResultPage({ params }) {
   const { requestId } = use(params);
   const { initTheme } = useThemeStore();
   const router = useRouter();
-  const queryClient = useQueryClient();
 
   // Result tabs: "original" = formatted_result, "hitl" = hitl_updated_result.
   const [resultTab, setResultTab] = useState("original");
@@ -707,11 +706,7 @@ export default function DexaiResultPage({ params }) {
                 <ReprocessControl
                   docId={data.request_id || requestId}
                   currentType={data.document_type}
-                  onReprocessed={() =>
-                    queryClient.invalidateQueries({
-                      queryKey: ["dexai", "result", requestId],
-                    })
-                  }
+                  queryKey={["dexai", "result", requestId]}
                 />
 
                 {/* Tabs: Original Result vs HITL Updated (both read-only) */}
