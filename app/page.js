@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import axios from "axios";
@@ -19,9 +19,12 @@ import {
   Sparkles,
   Building,
   Store,
+  Bug,
+  UserCircle,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import Navbar from "@/components/Navbar/Navbar";
+import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 
 function formatNumber(n) {
   if (n == null) return "—";
@@ -258,6 +261,181 @@ function StatusBadge({ status }) {
   );
 }
 
+/* ── Bug tracker stats ────────────────────────────────────── */
+const BUG_STATS_GRID = "1.4fr 0.8fr 0.8fr";
+const DOC_TYPE_STATS_GRID = "1.6fr 0.8fr 0.9fr 0.8fr 0.7fr";
+
+function BugStatsSection({ clientIds, onClientIdsChange, clientOptions }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["bug-tracker-stats", clientIds],
+    queryFn: async () => {
+      const res = await axios.get("/api/bug-tracker/stats", {
+        params: { clientIds: clientIds.join(",") },
+      });
+      return res.data;
+    },
+    staleTime: 30 * 1000,
+  });
+
+  const totals = data?.totals || { open: 0, toBeTested: 0, closed: 0 };
+  const byDocType = data?.byDocType || [];
+  const totalIssues = totals.open + totals.toBeTested + totals.closed;
+  const pct = (n) => (totalIssues > 0 ? `${Math.round((n / totalIssues) * 100)}%` : "—");
+
+  const totalsRows = [
+    { label: "Open", value: totals.open, color: "#ef4444" },
+    { label: "To Be Tested", value: totals.toBeTested, color: "#f97316" },
+    { label: "Closed", value: totals.closed, color: "#22c55e" },
+  ];
+
+  return (
+    <>
+      <div style={{ display: "flex", alignItems: "center", gap: 14, margin: "0 0 16px", flexWrap: "wrap" }}>
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            color: "var(--text-muted)",
+          }}
+        >
+          Bug Tracker
+        </span>
+        <div style={{ flex: 1, height: 1, background: "var(--panel-border)" }} />
+        <MultiSelectDropdown
+          icon={UserCircle}
+          placeholder="All Clients"
+          searchPlaceholder="Search client..."
+          emptyText="No clients"
+          options={clientOptions}
+          values={clientIds}
+          onChange={onClientIdsChange}
+        />
+      </div>
+
+      <section
+        style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(280px, 1fr) minmax(360px, 2fr)",
+          gap: 16,
+          marginBottom: 36,
+        }}
+      >
+        {/* Totals table */}
+        <div
+          style={{
+            background: "var(--panel-bg)",
+            border: "1px solid var(--panel-border)",
+            borderRadius: 14,
+            boxShadow: "var(--shadow-sm)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: BUG_STATS_GRID,
+              gap: 12,
+              padding: "11px 20px",
+              background: "var(--input-bg)",
+              borderBottom: "1px solid var(--panel-border)",
+            }}
+          >
+            {["Status", "Count", "% of Issues"].map((h) => (
+              <span
+                key={h}
+                style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
+          ) : (
+            <>
+              {totalsRows.map((r) => (
+                <div
+                  key={r.label}
+                  style={{ display: "grid", gridTemplateColumns: BUG_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: r.color, flexShrink: 0 }} />
+                    {r.label}
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{formatNumber(r.value)}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{pct(r.value)}</span>
+                </div>
+              ))}
+              <div style={{ display: "grid", gridTemplateColumns: BUG_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>Total</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{formatNumber(totalIssues)}</span>
+                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{totalIssues > 0 ? "100%" : "—"}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* By document type table */}
+        <div
+          style={{
+            background: "var(--panel-bg)",
+            border: "1px solid var(--panel-border)",
+            borderRadius: 14,
+            boxShadow: "var(--shadow-sm)",
+            overflow: "hidden",
+          }}
+        >
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: DOC_TYPE_STATS_GRID,
+              gap: 12,
+              padding: "11px 20px",
+              background: "var(--input-bg)",
+              borderBottom: "1px solid var(--panel-border)",
+            }}
+          >
+            {["Document Type", "Open", "To Be Tested", "Closed", "Total"].map((h) => (
+              <span
+                key={h}
+                style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
+              >
+                {h}
+              </span>
+            ))}
+          </div>
+
+          {isLoading ? (
+            <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
+          ) : byDocType.length === 0 ? (
+            <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No tracked issues</div>
+          ) : (
+            byDocType.map((r) => (
+              <div
+                key={r.document_type}
+                style={{ display: "grid", gridTemplateColumns: DOC_TYPE_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {r.document_type}
+                </span>
+                <span style={{ fontSize: 13, color: "#ef4444" }}>{formatNumber(r.open)}</span>
+                <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.toBeTested)}</span>
+                <span style={{ fontSize: 13, color: "#22c55e" }}>{formatNumber(r.closed)}</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
+                  {formatNumber(r.open + r.toBeTested + r.closed)}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
+    </>
+  );
+}
+
 /* ── Home page ────────────────────────────────────────────── */
 export default function HomePage() {
   const { initTheme } = useThemeStore();
@@ -275,6 +453,33 @@ export default function HomePage() {
     },
     staleTime: 60 * 1000,
   });
+
+  const [bugStatsClientIds, setBugStatsClientIds] = useState([]);
+  const { data: filterOptions } = useQuery({
+    queryKey: ["filter-options"],
+    queryFn: async () => (await axios.get("/api/filter-options")).data,
+    staleTime: 10 * 60 * 1000,
+  });
+  const clientOptions = useMemo(
+    () =>
+      (filterOptions?.clients || []).map((c) => ({
+        value: c.id,
+        label: c.label,
+        sublabel: c.email,
+      })),
+    [filterOptions?.clients]
+  );
+
+  // Default the filter to "everyone selected" once the client list loads.
+  // Only runs once (via the ref guard) so a user manually clearing the
+  // selection afterward isn't immediately reset back to all-selected.
+  const clientFilterInitialized = useRef(false);
+  useEffect(() => {
+    if (!clientFilterInitialized.current && clientOptions.length > 0) {
+      setBugStatsClientIds(clientOptions.map((c) => c.value));
+      clientFilterInitialized.current = true;
+    }
+  }, [clientOptions]);
 
   const overview = data?.overview;
   const recent = data?.recent || [];
@@ -472,6 +677,13 @@ export default function HomePage() {
           />
         </section>
 
+        {/* ── Bug tracker stats ── */}
+        <BugStatsSection
+          clientIds={bugStatsClientIds}
+          onClientIdsChange={setBugStatsClientIds}
+          clientOptions={clientOptions}
+        />
+
         {/* ── Action cards ── */}
         <div
           style={{
@@ -524,6 +736,13 @@ export default function HomePage() {
             title="Missing Fields"
             description="Find documents whose parsed result is missing mandatory fields and needs manual correction."
             href="/missing-fields"
+          />
+          <ActionCard
+            icon={Bug}
+            color="#ef4444"
+            title="Bug Tracker"
+            description="See every document with an issue logged against it, across all companies, and triage bug status."
+            href="/bug-tracker"
           />
         </section>
 

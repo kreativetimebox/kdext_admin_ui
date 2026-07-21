@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -21,8 +21,10 @@ import {
   Calendar,
   FileText,
   Pencil,
+  Download,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
+import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
 
@@ -104,6 +106,80 @@ function StatusBadge({ status }) {
     >
       {status || "UNKNOWN"}
     </span>
+  );
+}
+
+const BUG_STATUS_COLORS = {
+  Open: { bg: "rgba(239,68,68,0.12)", color: "#ef4444" },
+  TO_BE_TESTED: { bg: "rgba(249,115,22,0.12)", color: "#f97316" },
+  Closed: { bg: "rgba(34,197,94,0.12)", color: "#22c55e" },
+};
+
+function BugStatusCell({ resultId, bugStatus, onChanged }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const c = BUG_STATUS_COLORS[bugStatus] || { bg: "var(--input-bg)", color: "var(--text-muted)" };
+
+  async function choose(val) {
+    setOpen(false);
+    if (val === bugStatus || !resultId) return;
+    setSaving(true);
+    try {
+      const res = await axios.post(`/api/document/${encodeURIComponent(resultId)}/update-bug-tracking`, { bugStatus: val });
+      if (res.data?.ok === false) {
+        toast.error(res.data.error || "Failed to update bug status");
+        return;
+      }
+      onChanged(resultId, val);
+      toast.success("Bug status updated");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to update bug status");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving || !resultId}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 99,
+          fontSize: 10.5, fontWeight: 700, letterSpacing: "0.05em", background: c.bg, color: c.color,
+          border: "none", cursor: saving ? "wait" : "pointer", whiteSpace: "nowrap", opacity: saving ? 0.6 : 1,
+        }}
+      >
+        {saving ? "…" : (bugStatus || "—")}
+        <ChevronDown size={9} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.12s" }} />
+      </button>
+      {open && (
+        <>
+          <div onClick={() => setOpen(false)} style={{ position: "fixed", inset: 0, zIndex: 40 }} />
+          <div
+            style={{
+              position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 50, minWidth: 150,
+              background: "var(--menu-bg)", border: "1px solid var(--panel-border)", borderRadius: 8,
+              boxShadow: "var(--shadow-md)", padding: 4,
+            }}
+          >
+            {BUG_STATUSES.map((val) => (
+              <div
+                key={val}
+                onClick={() => choose(val)}
+                style={{
+                  padding: "8px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer",
+                  color: "var(--foreground)", background: val === bugStatus ? "var(--input-bg)" : "transparent",
+                }}
+              >
+                {val}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
   );
 }
 
@@ -196,7 +272,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function ResultRow({ record, onView, onEdit }) {
+function ResultRow({ record, onView, onEdit, onBugStatusChanged }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -205,7 +281,7 @@ function ResultRow({ record, onView, onEdit }) {
       style={{
         display: "grid",
         gridTemplateColumns:
-          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 120px 100px 140px 150px 150px 100px 160px",
+          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 120px 100px 140px 130px 160px 150px 150px 100px 160px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -267,6 +343,25 @@ function ResultRow({ record, onView, onEdit }) {
       <StatusBadge status={record.status} />
 
       <ValidationDot validation={record.validation} />
+
+      <BugStatusCell
+        resultId={record.result_id}
+        bugStatus={record.bug_status}
+        onChanged={onBugStatusChanged}
+      />
+
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--foreground)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={record.issue_type || ""}
+      >
+        {record.issue_type || "—"}
+      </span>
 
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
         {formatDate(record.created_at || record.submitted_at)}
@@ -352,11 +447,14 @@ export default function UserResultsPage({ params }) {
   const { initTheme } = useThemeStore();
   const { setActiveId } = useDocumentStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
   const [status, setStatus] = useState("");
   const [keyEnv, setKeyEnv] = useState("");
+  const [bugStatus, setBugStatus] = useState("");
+  const [issueType, setIssueType] = useState("");
   const [page, setPage] = useState(1);
 
   useEffect(() => {
@@ -371,7 +469,7 @@ export default function UserResultsPage({ params }) {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, docType, status, keyEnv]);
+  }, [debouncedSearch, docType, status, keyEnv, bugStatus, issueType]);
 
   const userQuery = useQuery({
     queryKey: ["dexai", "user", userId],
@@ -384,11 +482,11 @@ export default function UserResultsPage({ params }) {
   });
 
   const resultsQuery = useQuery({
-    queryKey: ["dexai", "user-results", userId, { debouncedSearch, docType, status, keyEnv, page }],
+    queryKey: ["dexai", "user-results", userId, { debouncedSearch, docType, status, keyEnv, bugStatus, issueType, page }],
     queryFn: async () => {
       const res = await axios.get(
         `/api/dexai/users/${encodeURIComponent(userId)}/results`,
-        { params: { search: debouncedSearch, docType, status, keyEnvironment: keyEnv, page, pageSize: PAGE_SIZE } }
+        { params: { search: debouncedSearch, docType, status, keyEnvironment: keyEnv, bugStatus, issueType, page, pageSize: PAGE_SIZE } }
       );
       return res.data;
     },
@@ -420,6 +518,19 @@ export default function UserResultsPage({ params }) {
   const handleView = (requestId) => {
     router.push(`/dexai/result/${encodeURIComponent(requestId)}`);
   };
+
+  const handleBugStatusChanged = () => {
+    queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
+  };
+
+  const exportUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/export?${new URLSearchParams({
+    search: debouncedSearch,
+    docType,
+    status,
+    keyEnvironment: keyEnv,
+    bugStatus,
+    issueType,
+  }).toString()}`;
 
   // "To be tested" rows → open the result directly in the HITL edit view.
   // The view route resolves a document by its result_id.
@@ -618,13 +729,29 @@ export default function UserResultsPage({ params }) {
             onChange={setKeyEnv}
           />
 
-          {(search || docType || status || keyEnv) && (
+          <FilterDropdown
+            label="Bug Status"
+            value={bugStatus}
+            options={BUG_STATUSES}
+            onChange={setBugStatus}
+          />
+
+          <FilterDropdown
+            label="Issue Type"
+            value={issueType}
+            options={ISSUE_TYPES}
+            onChange={setIssueType}
+          />
+
+          {(search || docType || status || keyEnv || bugStatus || issueType) && (
             <button
               onClick={() => {
                 setSearch("");
                 setDocType("");
                 setStatus("");
                 setKeyEnv("");
+                setBugStatus("");
+                setIssueType("");
               }}
               style={{
                 display: "flex",
@@ -644,6 +771,27 @@ export default function UserResultsPage({ params }) {
               Clear
             </button>
           )}
+
+          <a
+            href={exportUrl}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              border: "1px solid var(--panel-border)",
+              background: "var(--brand-gradient)",
+              color: "#fff",
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+          >
+            <Download size={13} />
+            Export CSV
+          </a>
         </div>
 
         {/* Table */}
@@ -660,7 +808,7 @@ export default function UserResultsPage({ params }) {
             style={{
               display: "grid",
               gridTemplateColumns:
-                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 150px 150px 100px 160px",
+                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 100px 160px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -674,6 +822,8 @@ export default function UserResultsPage({ params }) {
               "Key Environment",
               "Status",
               "Validation",
+              "Bug Status",
+              "Issue Type",
               "Created At",
               "Updated At",
               "Processing",
@@ -734,7 +884,13 @@ export default function UserResultsPage({ params }) {
               </div>
             ) : (
               records.map((r) => (
-                <ResultRow key={r.request_id} record={r} onView={handleView} onEdit={handleEdit} />
+                <ResultRow
+                  key={r.request_id}
+                  record={r}
+                  onView={handleView}
+                  onEdit={handleEdit}
+                  onBugStatusChanged={handleBugStatusChanged}
+                />
               ))
             )}
           </div>

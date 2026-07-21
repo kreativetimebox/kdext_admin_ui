@@ -19,9 +19,11 @@ import {
   UserCircle,
   ShieldCheck,
   Layers,
+  Download,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
+import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
 
@@ -505,6 +507,95 @@ function StatusDropCell({ docId, currentStatus, onStatusChanged }) {
   );
 }
 
+/* ── Bug status styles + per-row dropdown ────────────────────────────── */
+const BUG_STATUS_STYLES = {
+  OPEN:          { label: "Open",         bg: "rgba(239,68,68,0.12)",  color: "#ef4444" },
+  TO_BE_TESTED:  { label: "To Be Tested", bg: "rgba(249,115,22,0.12)", color: "#f97316" },
+  CLOSED:        { label: "Closed",       bg: "rgba(34,197,94,0.12)",  color: "#22c55e" },
+};
+
+function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  const s = BUG_STATUS_STYLES[currentStatus?.toUpperCase().replace(/\s+/g, "_")] || { label: currentStatus || "—", bg: "var(--tag-bg)", color: "var(--text-muted)" };
+
+  async function choose(val) {
+    if (val === currentStatus) { setOpen(false); return; }
+    setSaving(true);
+    setOpen(false);
+    try {
+      const res = await axios.post(`/api/document/${encodeURIComponent(docId)}/update-bug-tracking`, { bugStatus: val });
+      if (res.data?.ok === false) {
+        toast.error(res.data.error || "Failed to update bug status");
+        return;
+      }
+      onBugStatusChanged(docId, val);
+      toast.success("Bug status updated");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to update bug status");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving}
+        style={{
+          display: "inline-flex", alignItems: "center", gap: 5, padding: "4px 9px", borderRadius: 6,
+          fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", background: s.bg, color: s.color,
+          border: `1px solid ${s.color}33`, cursor: saving ? "wait" : "pointer", whiteSpace: "nowrap",
+          outline: "none", transition: "opacity 0.15s", opacity: saving ? 0.6 : 1,
+        }}
+      >
+        {saving ? "…" : s.label}
+        <ChevronDown size={10} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.12s" }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 70, width: 150,
+            background: "var(--menu-bg)", border: "1px solid var(--panel-border)", borderRadius: 8,
+            boxShadow: "var(--shadow-sm)", padding: 4,
+          }}
+        >
+          {BUG_STATUSES.map((val) => {
+            const ss = BUG_STATUS_STYLES[val.toUpperCase().replace(/\s+/g, "_")];
+            const active = val === currentStatus;
+            return (
+              <div
+                key={val}
+                role="button"
+                onClick={() => choose(val)}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = active ? "var(--input-bg)" : "transparent"; }}
+                style={{ ...menuItemBaseStyle(active), display: "flex", alignItems: "center", gap: 8 }}
+              >
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: ss?.color || "var(--text-muted)", flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: "var(--foreground)" }}>{ss?.label || val}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function KeyEnvBadge({ env }) {
   if (!env) return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
   const colors = {
@@ -537,7 +628,7 @@ function KeyEnvBadge({ env }) {
 }
 
 /* ── Missing fields row ───────────────────────────────────── */
-function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, canAssign }) {
+function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, onBugStatusChanged, canAssign }) {
   const [hovered, setHovered] = useState(false);
   const nullFields = doc.missing_fields || [];
 
@@ -547,7 +638,7 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 180px 90px",
+        gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 160px 130px 180px 90px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -626,6 +717,25 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
 
       <ValidationDot validation={doc.validation} />
 
+      <BugStatusDropCell
+        docId={doc.id}
+        currentStatus={doc.bug_status}
+        onBugStatusChanged={onBugStatusChanged}
+      />
+
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--foreground)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={doc.issue_type || ""}
+      >
+        {doc.issue_type || "—"}
+      </span>
+
       <span
         style={{
           fontSize: 12,
@@ -696,6 +806,8 @@ export default function MissingFieldsPage() {
   const [statusFilter, setStatusFilter] = useState("");
   const [validationFilter, setValidationFilter] = useState("");
   const [keyEnvironment, setKeyEnvironment] = useState("");
+  const [bugStatusFilter, setBugStatusFilter] = useState("");
+  const [issueTypeFilter, setIssueTypeFilter] = useState("");
   const [showAll, setShowAll] = useState(true);
   const [page, setPage] = useState(1);
   const [docs, setDocs] = useState([]);
@@ -712,10 +824,10 @@ export default function MissingFieldsPage() {
   // filtered total, so jump back to page 1 whenever any filter changes.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, showAll]);
+  }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, showAll, page }],
+    queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll, page }],
     queryFn: async () => {
       const res = await axios.get("/api/missing-fields", {
         params: {
@@ -726,6 +838,8 @@ export default function MissingFieldsPage() {
           businessName,
           status: statusFilter,
           keyEnvironment,
+          bugStatus: bugStatusFilter,
+          issueType: issueTypeFilter,
           page,
           pageSize: PAGE_SIZE,
         },
@@ -812,7 +926,26 @@ export default function MissingFieldsPage() {
     queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
   };
 
-  const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter || keyEnvironment;
+  const handleBugStatusChanged = (docId, newStatus) => {
+    setDocs((prev) =>
+      prev.map((d) => d.id === docId ? { ...d, bug_status: newStatus } : d)
+    );
+    queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
+  };
+
+  const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter || keyEnvironment || bugStatusFilter || issueTypeFilter;
+
+  const exportUrl = `/api/missing-fields/export?${new URLSearchParams({
+    showAll: String(showAll),
+    search: debouncedSearch,
+    docType,
+    clientId,
+    businessName,
+    status: statusFilter,
+    keyEnvironment,
+    bugStatus: bugStatusFilter,
+    issueType: issueTypeFilter,
+  }).toString()}`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
@@ -968,6 +1101,26 @@ export default function MissingFieldsPage() {
             onChange={setHitlUserId}
           />
 
+          {/* Bug Status */}
+          <SearchableDropdown
+            placeholder="All Bug Statuses"
+            searchPlaceholder="Search bug status..."
+            emptyText="No bug statuses"
+            options={BUG_STATUSES.map((s) => ({ value: s, label: s }))}
+            value={bugStatusFilter}
+            onChange={setBugStatusFilter}
+          />
+
+          {/* Issue Type */}
+          <SearchableDropdown
+            placeholder="All Issue Types"
+            searchPlaceholder="Search issue type..."
+            emptyText="No issue types"
+            options={ISSUE_TYPES.map((t) => ({ value: t, label: t }))}
+            value={issueTypeFilter}
+            onChange={setIssueTypeFilter}
+          />
+
           {/* Search */}
           <div style={{ flex: 1, minWidth: 220, position: "relative" }}>
             <Search
@@ -994,7 +1147,7 @@ export default function MissingFieldsPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); setValidationFilter(""); setKeyEnvironment(""); }}
+              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); setValidationFilter(""); setKeyEnvironment(""); setBugStatusFilter(""); setIssueTypeFilter(""); }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1013,6 +1166,27 @@ export default function MissingFieldsPage() {
               Clear
             </button>
           )}
+
+          <a
+            href={exportUrl}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              border: "1px solid var(--panel-border)",
+              background: "var(--brand-gradient)",
+              color: "#fff",
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+          >
+            <Download size={13} />
+            Export CSV
+          </a>
         </div>
 
         {/* Table */}
@@ -1028,14 +1202,14 @@ export default function MissingFieldsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 180px 90px",
+              gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 160px 130px 180px 90px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Result ID", "Document Type", "Key Environment", "Missing Fields", "HITL Status", "Validation", "Created At", "HITL", "Action"].map((h, i) => (
+            {["Result ID", "Document Type", "Key Environment", "Missing Fields", "HITL Status", "Validation", "Bug Status", "Issue Type", "Created At", "HITL", "Action"].map((h, i) => (
               <span
                 key={i}
                 style={{
@@ -1044,7 +1218,7 @@ export default function MissingFieldsPage() {
                   textTransform: "uppercase",
                   letterSpacing: "0.05em",
                   color: "var(--text-muted)",
-                  textAlign: i === 7 ? "center" : "left",
+                  textAlign: i === 9 ? "center" : "left",
                 }}
               >
                 {h}
@@ -1078,7 +1252,7 @@ export default function MissingFieldsPage() {
               </div>
             ) : (
               visibleDocuments.map((doc) => (
-                <MissingFieldRow key={doc.id} doc={doc} onView={handleView} hitlUsers={hitlUsers} onAssigned={handleAssigned} onStatusChanged={handleStatusChanged} canAssign={canAssign} />
+                <MissingFieldRow key={doc.id} doc={doc} onView={handleView} hitlUsers={hitlUsers} onAssigned={handleAssigned} onStatusChanged={handleStatusChanged} onBugStatusChanged={handleBugStatusChanged} canAssign={canAssign} />
               ))
             )}
           </div>

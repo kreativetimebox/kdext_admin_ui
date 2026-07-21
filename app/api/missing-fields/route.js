@@ -11,6 +11,8 @@ export async function GET(req) {
     const businessName = searchParams.get("businessName") || "";
     const status = searchParams.get("status") || "";
     const keyEnvironment = searchParams.get("keyEnvironment") || "";
+    const bugStatus = searchParams.get("bugStatus") || "";
+    const issueType = searchParams.get("issueType") || "";
     const page = Number(searchParams.get("page")) || 1;
     const pageSize = Number(searchParams.get("pageSize")) || 50;
 
@@ -22,6 +24,8 @@ export async function GET(req) {
       businessName,
       status,
       keyEnvironment,
+      bugStatus,
+      issueType,
       page,
       pageSize,
     });

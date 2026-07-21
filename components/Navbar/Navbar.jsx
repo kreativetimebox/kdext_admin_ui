@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle, Bug } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
@@ -169,6 +169,7 @@ export default function Navbar() {
             <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
             <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
             <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
+            <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />
           </>
         )}
         {/* User Logs tab - visible only to super users */}

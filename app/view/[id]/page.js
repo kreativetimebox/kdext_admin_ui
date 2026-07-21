@@ -7,6 +7,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { ArrowLeft, Database } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import FileViewer from "@/components/Viewer/FileViewer";
 import EditableResultView, { EditHistory } from "@/components/Results/EditableResultView";
@@ -14,6 +15,102 @@ import FormattedResultView from "@/components/Results/FormattedResultView";
 import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
+
+function BugTrackingPanel({ docId, doc, onSaved }) {
+  const [issueType, setIssueType] = useState(doc?.issue_type || "");
+  const [issueDescription, setIssueDescription] = useState(doc?.issue_description || "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setIssueType(doc?.issue_type || "");
+    setIssueDescription(doc?.issue_description || "");
+  }, [doc?.issue_type, doc?.issue_description]);
+
+  async function save(patch) {
+    setSaving(true);
+    try {
+      const res = await axios.post(`/api/document/${docId}/update-bug-tracking`, patch);
+      if (res.data?.ok === false) {
+        toast.error(res.data.error || "Failed to save");
+        return;
+      }
+      onSaved(res.data);
+      toast.success("Saved");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
+        Bug Tracking
+      </p>
+      <div className="flex flex-col gap-4 p-4 rounded-lg border" style={{ borderColor: "var(--panel-border)", background: "var(--panel-bg)" }}>
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+            Issue Type
+          </label>
+          <select
+            value={issueType}
+            disabled={saving}
+            onChange={(e) => {
+              const val = e.target.value;
+              setIssueType(val);
+              save({ issueType: val || null });
+            }}
+            className="text-sm px-2 py-1.5 rounded border"
+            style={{ borderColor: "var(--input-border)", background: "var(--input-bg)", color: "var(--foreground)" }}
+          >
+            <option value="">—</option>
+            {ISSUE_TYPES.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+            Issue Description
+          </label>
+          <textarea
+            value={issueDescription}
+            disabled={saving}
+            onChange={(e) => setIssueDescription(e.target.value)}
+            onBlur={() => {
+              if (issueDescription !== (doc?.issue_description || "")) {
+                save({ issueDescription: issueDescription || null });
+              }
+            }}
+            rows={2}
+            className="text-sm px-2 py-1.5 rounded border resize-y"
+            style={{ borderColor: "var(--input-border)", background: "var(--input-bg)", color: "var(--foreground)" }}
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+            Bug Status
+          </label>
+          <select
+            value={doc?.bug_status || ""}
+            disabled={saving}
+            onChange={(e) => save({ bugStatus: e.target.value })}
+            className="text-sm px-2 py-1.5 rounded border"
+            style={{ borderColor: "var(--input-border)", background: "var(--input-bg)", color: "var(--foreground)" }}
+          >
+            <option value="" disabled>—</option>
+            {BUG_STATUSES.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function ViewDocumentPage() {
   const { id } = useParams();
@@ -132,6 +229,27 @@ export default function ViewDocumentPage() {
                     isLoading={isLoading}
                     onRefresh={() => queryClient.invalidateQueries({ queryKey: ["document", id] })}
                   />
+                    <div className="p-4 border-t" style={{ borderColor: "var(--panel-border)" }}>
+                      <BugTrackingPanel
+                        docId={id}
+                        doc={doc}
+                        onSaved={(res) => {
+                          // The route's RETURNING clause always reflects the
+                          // current row, including fields cleared to null, so
+                          // these can be assigned directly (no ?? fallback).
+                          queryClient.setQueryData(["document", id], (prev) =>
+                            prev
+                              ? {
+                                  ...prev,
+                                  issue_type: res.issue_type,
+                                  issue_description: res.issue_description,
+                                  bug_status: res.bug_status,
+                                }
+                              : prev
+                          );
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
 

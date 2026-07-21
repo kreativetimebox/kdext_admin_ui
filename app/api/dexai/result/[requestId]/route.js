@@ -29,6 +29,7 @@ export async function GET(_request, { params }) {
     return NextResponse.json(
       {
         request_id: row.request_id,
+        result_id: row.result_id,
         user_id: row.user_id,
         transaction_id: row.transaction_id,
         document_path: row.document_path,
@@ -50,6 +51,9 @@ export async function GET(_request, { params }) {
         formatted_result: row.formatted_result ?? null,
         hitl_updated_result: row.hitl_updated_result ?? null,
         processing_result: row.processing_result ?? null,
+        issue_type: row.issue_type ?? null,
+        issue_description: row.issue_description ?? null,
+        bug_status: row.bug_status ?? null,
         user: {
           user_id: row.user_id,
           email: row.user_email,

@@ -2,7 +2,7 @@
 
 import { use, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
 import {
@@ -20,6 +20,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/clipboard";
 import Navbar from "@/components/Navbar/Navbar";
 import JsonPanel from "@/components/Results/JsonPanel";
@@ -129,6 +130,132 @@ function StatusBadge({ status }) {
     >
       {status || "UNKNOWN"}
     </span>
+  );
+}
+
+function BugTrackingPanel({ resultId, data, onSaved }) {
+  const [issueType, setIssueType] = useState(data?.issue_type || "");
+  const [issueDescription, setIssueDescription] = useState(data?.issue_description || "");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setIssueType(data?.issue_type || "");
+    setIssueDescription(data?.issue_description || "");
+  }, [data?.issue_type, data?.issue_description]);
+
+  async function save(patch) {
+    if (!resultId) {
+      toast.error("This document has no result_id yet — bug tracking isn't available until processing completes");
+      return;
+    }
+    setSaving(true);
+    try {
+      const res = await axios.post(`/api/document/${encodeURIComponent(resultId)}/update-bug-tracking`, patch);
+      if (res.data?.ok === false) {
+        toast.error(res.data.error || "Failed to save");
+        return;
+      }
+      onSaved(res.data);
+      toast.success("Saved");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to save");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const fieldStyle = {
+    fontSize: 13,
+    padding: "8px 10px",
+    borderRadius: 8,
+    border: "1px solid var(--input-border)",
+    background: "var(--input-bg)",
+    color: "var(--foreground)",
+    width: "100%",
+  };
+
+  return (
+    <div
+      style={{
+        background: "var(--panel-bg)",
+        border: "1px solid var(--panel-border)",
+        borderRadius: 12,
+        padding: "12px 16px 16px",
+        boxShadow: "var(--shadow-sm)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+      }}
+    >
+      <h3
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          color: "var(--text-muted)",
+          margin: 0,
+        }}
+      >
+        Bug Tracking
+      </h3>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Issue Type
+        </label>
+        <select
+          value={issueType}
+          disabled={saving}
+          onChange={(e) => {
+            const val = e.target.value;
+            setIssueType(val);
+            save({ issueType: val || null });
+          }}
+          style={fieldStyle}
+        >
+          <option value="">—</option>
+          {ISSUE_TYPES.map((t) => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Issue Description
+        </label>
+        <textarea
+          value={issueDescription}
+          disabled={saving}
+          onChange={(e) => setIssueDescription(e.target.value)}
+          onBlur={() => {
+            if (issueDescription !== (data?.issue_description || "")) {
+              save({ issueDescription: issueDescription || null });
+            }
+          }}
+          rows={2}
+          style={{ ...fieldStyle, resize: "vertical" }}
+        />
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Bug Status
+        </label>
+        <select
+          value={data?.bug_status || ""}
+          disabled={saving}
+          onChange={(e) => save({ bugStatus: e.target.value })}
+          style={fieldStyle}
+        >
+          <option value="" disabled>—</option>
+          {BUG_STATUSES.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+    </div>
   );
 }
 
@@ -355,6 +482,7 @@ export default function DexaiResultPage({ params }) {
   const { requestId } = use(params);
   const { initTheme } = useThemeStore();
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   // Result tabs: "original" = formatted_result, "hitl" = hitl_updated_result.
   const [resultTab, setResultTab] = useState("original");
@@ -690,6 +818,26 @@ export default function DexaiResultPage({ params }) {
                     </MetaRow>
                   )}
                 </div>
+
+                <BugTrackingPanel
+                  resultId={data.result_id}
+                  data={data}
+                  onSaved={(res) => {
+                    // The route's RETURNING clause always reflects the
+                    // current row, including fields cleared to null, so
+                    // these can be assigned directly (no ?? fallback).
+                    queryClient.setQueryData(["dexai", "result", requestId], (prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            issue_type: res.issue_type,
+                            issue_description: res.issue_description,
+                            bug_status: res.bug_status,
+                          }
+                        : prev
+                    );
+                  }}
+                />
               </div>
 
               {/* Right: results */}

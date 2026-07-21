@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, memo, useCallback } from "react";
-import { ChevronDown, ChevronRight, Braces, Copy, Check } from "lucide-react";
+import { ChevronDown, ChevronRight, Braces, Copy, Check, Download } from "lucide-react";
 import SyntaxHighlighter from "react-syntax-highlighter";
 import { atomOneDark, atomOneLight } from "react-syntax-highlighter/dist/cjs/styles/hljs";
 import { useThemeStore } from "@/lib/store";
@@ -34,6 +34,19 @@ function JsonPanel({ title, data, defaultOpen = false, variant = "default" }) {
       setTimeout(() => setCopied(false), 2000);
     }
   }, [jsonString]);
+
+  const handleDownload = useCallback((e) => {
+    e.stopPropagation();
+    if (!jsonString) return;
+    const slug = (title || "data").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+    const blob = new Blob([jsonString], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${slug || "data"}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }, [jsonString, title]);
 
   return (
     <div
@@ -88,6 +101,17 @@ function JsonPanel({ title, data, defaultOpen = false, variant = "default" }) {
                 ? <Check size={11} className="text-green-500" />
                 : <Copy size={11} style={{ color: "var(--text-muted)" }} />
               }
+            </button>
+          )}
+          {!isEmpty && isOpen && (
+            <button
+              type="button"
+              onClick={handleDownload}
+              className="flex items-center justify-center w-6 h-6 rounded-md transition-colors"
+              style={{ background: "var(--panel-border)" }}
+              title="Download JSON"
+            >
+              <Download size={11} style={{ color: "var(--text-muted)" }} />
             </button>
           )}
           <span style={{ color: "var(--text-muted)" }}>
