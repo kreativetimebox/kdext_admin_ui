@@ -16,7 +16,9 @@ import {
   AlertTriangle,
   History,
   User as UserIcon,
+  Download,
 } from "lucide-react";
+import { rowsToCsv } from "@/lib/csv";
 
 /* ── Meta keys we attach to the JSON to record publish/audit state.
    They are hidden from the editable view and ignored when diffing. ── */
@@ -363,7 +365,7 @@ const EDITABLE_CSS = `
 `;
 
 /* ── Editable items table (column headers + text-style cells) ── */
-function EditableItemsTable({ rows, columns, onCellChange, onAddRow, onDeleteRow }) {
+function EditableItemsTable({ requestId, arrKey, rows, columns, onCellChange, onAddRow, onDeleteRow }) {
   return (
     <div>
       <div style={{ overflowX: "auto" }}>
@@ -455,7 +457,7 @@ function EditableItemsTable({ rows, columns, onCellChange, onAddRow, onDeleteRow
           </tbody>
         </table>
       </div>
-      <div style={{ padding: "12px 14px" }}>
+      <div style={{ padding: "12px 14px", display: "flex", gap: 8 }}>
         <button
           type="button"
           onClick={onAddRow}
@@ -474,6 +476,29 @@ function EditableItemsTable({ rows, columns, onCellChange, onAddRow, onDeleteRow
           }}
         >
           <Plus size={13} /> Add row
+        </button>
+
+        <button
+          type="button"
+          onClick={() => downloadTableCsv(requestId, arrKey, rows, columns)}
+          disabled={rows.length === 0}
+          title={rows.length === 0 ? "No rows to export" : undefined}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "7px 12px",
+            fontSize: 12,
+            fontWeight: 600,
+            borderRadius: 7,
+            border: "1px solid var(--panel-border)",
+            background: "var(--input-bg)",
+            color: rows.length === 0 ? "var(--text-muted)" : "var(--foreground)",
+            cursor: rows.length === 0 ? "not-allowed" : "pointer",
+            opacity: rows.length === 0 ? 0.6 : 1,
+          }}
+        >
+          <Download size={13} /> Export CSV
         </button>
       </div>
     </div>
@@ -494,8 +519,23 @@ function tableColumns(rows) {
   return cols;
 }
 
+/* Download the current (possibly edited) rows of one items table as CSV. */
+function downloadTableCsv(requestId, arrKey, rows, columns) {
+  // Header row uses the raw JSON keys (e.g. "unit_price"), not the
+  // prettified display labels (e.g. "Unit Price") shown in the UI.
+  const csvColumns = columns.map((c) => ({ key: c, label: c }));
+  const csv = rowsToCsv(rows, csvColumns);
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${requestId || arrKey || "table"}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ── Main editable view ──────────────────────────────────── */
-export default function EditableResultView({ resultId, data, onSaved }) {
+export default function EditableResultView({ resultId, requestId, data, onSaved }) {
   const [draft, setDraft] = useState({});
   // Sections are open unless explicitly collapsed, so editing never reopens
   // what the user closed.
@@ -948,6 +988,8 @@ export default function EditableResultView({ resultId, data, onSaved }) {
             onToggle={toggleSection}
           >
             <EditableItemsTable
+              requestId={requestId}
+              arrKey={arrKey}
               rows={rows}
               columns={columns}
               onCellChange={(ri, col, raw) => setCell(arrKey, ri, col, raw)}

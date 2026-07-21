@@ -15,10 +15,12 @@ export async function GET(request, { params }) {
     const keyEnvironment = searchParams.get("keyEnvironment") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
     const issueType = searchParams.get("issueType") || "";
+    const sortBy = searchParams.get("sortBy") || "";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
     const page = Number(searchParams.get("page")) || 1;
     const pageSize = Number(searchParams.get("pageSize")) || 50;
 
-    const { rows, total } = await getDexaiUserResults(id, { search, docType, status, keyEnvironment, bugStatus, issueType, page, pageSize });
+    const { rows, total } = await getDexaiUserResults(id, { search, docType, status, keyEnvironment, bugStatus, issueType, sortBy, sortOrder, page, pageSize });
     return NextResponse.json({ records: rows, total, page, pageSize }, { status: 200 });
   } catch (error) {
     console.error("GET /api/dexai/users/[userId]/results error:", error);

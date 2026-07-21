@@ -22,11 +22,60 @@ import {
   FileText,
   Pencil,
   Download,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
+
+/* ── Sortable column header — click toggles asc/desc; sorts the full
+   server-paginated result set, not just the rows on screen. ── */
+const TABLE_HEADER_COLUMNS = [
+  { label: "Request ID", key: "request_id" },
+  { label: "Result ID", key: "result_id" },
+  { label: "Document Type", key: "document_type" },
+  { label: "Key Environment", key: "key_environment" },
+  { label: "Status", key: "status" },
+  { label: "Validation", key: "validation" },
+  { label: "Bug Status", key: "bug_status" },
+  { label: "Issue Type", key: "issue_type" },
+  { label: "Created At", key: "created_at" },
+  { label: "Updated At", key: "updated_at" },
+  { label: "Processing", key: "processing_duration_ms" },
+  { label: "", key: null },
+];
+
+function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
+  const active = sortKey && sortBy === sortKey;
+  return (
+    <span
+      role={sortKey ? "button" : undefined}
+      onClick={sortKey ? () => onSort(sortKey) : undefined}
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        color: active ? "var(--foreground)" : "var(--text-muted)",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        cursor: sortKey ? "pointer" : "default",
+        userSelect: "none",
+      }}
+    >
+      {label}
+      {sortKey && (active ? (
+        sortOrder === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />
+      ) : (
+        <ArrowUpDown size={11} style={{ opacity: 0.4 }} />
+      ))}
+    </span>
+  );
+}
 
 function formatDate(value) {
   if (!value) return "—";
@@ -456,6 +505,17 @@ export default function UserResultsPage({ params }) {
   const [bugStatus, setBugStatus] = useState("");
   const [issueType, setIssueType] = useState("");
   const [page, setPage] = useState(1);
+  const [sortBy, setSortBy] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  const handleSort = (key) => {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+  };
 
   useEffect(() => {
     initTheme();
@@ -469,7 +529,7 @@ export default function UserResultsPage({ params }) {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, docType, status, keyEnv, bugStatus, issueType]);
+  }, [debouncedSearch, docType, status, keyEnv, bugStatus, issueType, sortBy, sortOrder]);
 
   const userQuery = useQuery({
     queryKey: ["dexai", "user", userId],
@@ -482,11 +542,11 @@ export default function UserResultsPage({ params }) {
   });
 
   const resultsQuery = useQuery({
-    queryKey: ["dexai", "user-results", userId, { debouncedSearch, docType, status, keyEnv, bugStatus, issueType, page }],
+    queryKey: ["dexai", "user-results", userId, { debouncedSearch, docType, status, keyEnv, bugStatus, issueType, sortBy, sortOrder, page }],
     queryFn: async () => {
       const res = await axios.get(
         `/api/dexai/users/${encodeURIComponent(userId)}/results`,
-        { params: { search: debouncedSearch, docType, status, keyEnvironment: keyEnv, bugStatus, issueType, page, pageSize: PAGE_SIZE } }
+        { params: { search: debouncedSearch, docType, status, keyEnvironment: keyEnv, bugStatus, issueType, sortBy, sortOrder, page, pageSize: PAGE_SIZE } }
       );
       return res.data;
     },
@@ -530,6 +590,8 @@ export default function UserResultsPage({ params }) {
     keyEnvironment: keyEnv,
     bugStatus,
     issueType,
+    sortBy,
+    sortOrder,
   }).toString()}`;
 
   // "To be tested" rows → open the result directly in the HITL edit view.
@@ -815,32 +877,15 @@ export default function UserResultsPage({ params }) {
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {[
-              "Request ID",
-              "Result ID",
-              "Document Type",
-              "Key Environment",
-              "Status",
-              "Validation",
-              "Bug Status",
-              "Issue Type",
-              "Created At",
-              "Updated At",
-              "Processing",
-              "",
-            ].map((h, i) => (
-              <span
-                key={i}
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  color: "var(--text-muted)",
-                }}
-              >
-                {h}
-              </span>
+            {TABLE_HEADER_COLUMNS.map((col) => (
+              <SortableHeaderCell
+                key={col.label || "actions"}
+                label={col.label}
+                sortKey={col.key}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+              />
             ))}
           </div>
 

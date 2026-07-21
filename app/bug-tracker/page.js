@@ -16,11 +16,58 @@ import {
   ChevronRight,
   X,
   Download,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
+
+/* ── Sortable column header — click toggles asc/desc; sorts the full
+   server-paginated result set, not just the rows on screen. ── */
+const TABLE_HEADER_COLUMNS = [
+  { label: "Company", key: "business_name" },
+  { label: "User Email", key: "client_email" },
+  { label: "Request ID", key: "request_id" },
+  { label: "Result ID", key: "result_id" },
+  { label: "Document Type", key: "ocr_document_type" },
+  { label: "Bug Status", key: "bug_status" },
+  { label: "Issue Type", key: "issue_type" },
+  { label: "Issue Description", key: "issue_description" },
+  { label: "Edit", key: null },
+  { label: "View", key: null },
+];
+
+function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
+  const active = sortKey && sortBy === sortKey;
+  return (
+    <span
+      role={sortKey ? "button" : undefined}
+      onClick={sortKey ? () => onSort(sortKey) : undefined}
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        color: active ? "var(--foreground)" : "var(--text-muted)",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        cursor: sortKey ? "pointer" : "default",
+        userSelect: "none",
+      }}
+    >
+      {label}
+      {sortKey && (active ? (
+        sortOrder === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />
+      ) : (
+        <ArrowUpDown size={11} style={{ opacity: 0.4 }} />
+      ))}
+    </span>
+  );
+}
 
 /* ── Single-select dropdown (same pattern already duplicated per-page
    in missing-fields/page.js and dexai/[userId]/page.js) ────────────── */
@@ -435,6 +482,17 @@ export default function BugTrackerPage() {
   const [page, setPage] = useState(1);
   const [docs, setDocs] = useState([]);
   const [editingRow, setEditingRow] = useState(null);
+  const [sortBy, setSortBy] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  const handleSort = (key) => {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+  };
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
@@ -445,10 +503,10 @@ export default function BugTrackerPage() {
 
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, companies, docType, issueType, bugStatusFilter]);
+  }, [debouncedSearch, companies, docType, issueType, bugStatusFilter, sortBy, sortOrder]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["bug-tracker", { debouncedSearch, companies, docType, issueType, bugStatusFilter, page }],
+    queryKey: ["bug-tracker", { debouncedSearch, companies, docType, issueType, bugStatusFilter, sortBy, sortOrder, page }],
     queryFn: async () => {
       const res = await axios.get("/api/bug-tracker", {
         params: {
@@ -457,6 +515,8 @@ export default function BugTrackerPage() {
           docType,
           issueType,
           bugStatus: bugStatusFilter,
+          sortBy,
+          sortOrder,
           page,
           pageSize: PAGE_SIZE,
         },
@@ -516,6 +576,8 @@ export default function BugTrackerPage() {
     docType,
     issueType,
     bugStatus: bugStatusFilter,
+    sortBy,
+    sortOrder,
   }).toString()}`;
 
   return (
@@ -606,10 +668,15 @@ export default function BugTrackerPage() {
         {/* Table */}
         <div style={{ background: "var(--panel-bg)", border: "1px solid var(--panel-border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
           <div style={{ display: "grid", gridTemplateColumns: ROW_GRID, gap: 16, padding: "12px 20px", background: "var(--input-bg)", borderBottom: "1px solid var(--panel-border)" }}>
-            {["Company", "User Email", "Request ID", "Result ID", "Document Type", "Bug Status", "Issue Type", "Issue Description", "Edit", "View"].map((h, i) => (
-              <span key={i} style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}>
-                {h}
-              </span>
+            {TABLE_HEADER_COLUMNS.map((col) => (
+              <SortableHeaderCell
+                key={col.label}
+                label={col.label}
+                sortKey={col.key}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+              />
             ))}
           </div>
 

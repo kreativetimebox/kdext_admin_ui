@@ -32,6 +32,8 @@ export async function GET(req, { params }) {
     const keyEnvironment = searchParams.get("keyEnvironment") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
     const issueType = searchParams.get("issueType") || "";
+    const sortBy = searchParams.get("sortBy") || "";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
 
     const rows = await getDexaiUserResultsForExport(id, {
       search,
@@ -40,6 +42,8 @@ export async function GET(req, { params }) {
       keyEnvironment,
       bugStatus,
       issueType,
+      sortBy,
+      sortOrder,
     });
 
     const csv = rowsToCsv(rows, COLUMNS);

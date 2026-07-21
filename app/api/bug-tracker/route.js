@@ -11,6 +11,8 @@ export async function GET(req) {
     const docType = searchParams.get("docType") || "";
     const issueType = searchParams.get("issueType") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
+    const sortBy = searchParams.get("sortBy") || "";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
     const page = Number(searchParams.get("page")) || 1;
     const pageSize = Number(searchParams.get("pageSize")) || 50;
 
@@ -20,6 +22,8 @@ export async function GET(req) {
       docType,
       issueType,
       bugStatus,
+      sortBy,
+      sortOrder,
       page,
       pageSize,
     });

@@ -22,6 +22,8 @@ export async function GET(req) {
     const docType = searchParams.get("docType") || "";
     const issueType = searchParams.get("issueType") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
+    const sortBy = searchParams.get("sortBy") || "";
+    const sortOrder = searchParams.get("sortOrder") || "desc";
 
     const rows = await getBugTrackerRowsForExport({
       search,
@@ -29,6 +31,8 @@ export async function GET(req) {
       docType,
       issueType,
       bugStatus,
+      sortBy,
+      sortOrder,
     });
 
     const csv = rowsToCsv(rows, COLUMNS);

@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { Database, ListOrdered } from "lucide-react";
+import { Database, ListOrdered, Download } from "lucide-react";
+import { rowsToCsv } from "@/lib/csv";
 
 /* ── Helpers ─────────────────────────────────────────────── */
 
@@ -79,6 +80,20 @@ function isMultiReceipt(fields) {
   );
 }
 
+/* Download the rows of one items table as CSV. Header row uses the raw
+   JSON keys (e.g. "unit_price"), not the prettified display labels. */
+function downloadTableCsv(requestId, arrKey, rows, columns) {
+  const csvColumns = columns.map((c) => ({ key: c, label: c }));
+  const csv = rowsToCsv(rows, csvColumns);
+  const blob = new Blob([csv], { type: "text/csv" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${requestId || arrKey || "table"}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /* ── Sub-components ──────────────────────────────────────── */
 
 function FieldCell({ fieldKey, value, accent }) {
@@ -116,7 +131,7 @@ function FieldCell({ fieldKey, value, accent }) {
   );
 }
 
-function ItemsTable({ rows, title }) {
+function ItemsTable({ rows, title, requestId }) {
   const columns = useMemo(() => {
     const seen = new Set();
     const cols = [];
@@ -176,6 +191,27 @@ function ItemsTable({ rows, title }) {
         >
           {toLabel(title)} ({rows.length})
         </span>
+
+        <button
+          type="button"
+          onClick={() => downloadTableCsv(requestId, title, rows, columns)}
+          style={{
+            marginLeft: "auto",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+            padding: "6px 11px",
+            fontSize: 12,
+            fontWeight: 600,
+            borderRadius: 7,
+            border: "1px solid var(--panel-border)",
+            background: "var(--input-bg)",
+            color: "var(--foreground)",
+            cursor: "pointer",
+          }}
+        >
+          <Download size={13} /> Export CSV
+        </button>
       </div>
 
       <div style={{ overflowX: "auto" }}>
@@ -256,7 +292,7 @@ function ItemsTable({ rows, title }) {
 
 /* ── Main view ──────────────────────────────────────────── */
 
-function FormattedResultView({ data, title = "Formatted Result" }) {
+function FormattedResultView({ data, title = "Formatted Result", requestId }) {
   const fields = unwrapFields(data);
 
   if (!fields || Object.keys(fields).length === 0) {
@@ -285,6 +321,7 @@ function FormattedResultView({ data, title = "Formatted Result" }) {
             key={i}
             data={receipt}
             title={`Receipt ${i + 1}`}
+            requestId={requestId}
           />
         ))}
       </div>
@@ -427,7 +464,7 @@ function FormattedResultView({ data, title = "Formatted Result" }) {
 
       {/* Items tables (one per array-of-objects field) */}
       {arrayEntries.map(([k, rows]) => (
-        <ItemsTable key={k} rows={rows} title={k} />
+        <ItemsTable key={k} rows={rows} title={k} requestId={requestId} />
       ))}
     </div>
   );

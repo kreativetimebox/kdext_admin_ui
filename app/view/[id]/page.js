@@ -296,6 +296,7 @@ export default function ViewDocumentPage() {
                     <>
                       <EditableResultView
                         resultId={id}
+                        requestId={doc?.request_id}
                         data={doc?.validation === false ? doc?.ocr_ui_results : doc?.hitl_updated_result}
                         onSaved={(res) => {
                           if (res?.hitl_updated_result !== undefined) {
@@ -330,7 +331,7 @@ export default function ViewDocumentPage() {
                       <p className="text-xs font-bold uppercase tracking-widest px-0.5" style={{ color: "var(--section-title)" }}>
                         Original Result (Formatted)
                       </p>
-                      <FormattedResultView data={doc?.ocr_ui_results} title="OCR Results" />
+                      <FormattedResultView data={doc?.ocr_ui_results} title="OCR Results" requestId={doc?.request_id} />
                       <OCRResults data={doc?.ocr_ui_results} />
                     </div>
                   )}

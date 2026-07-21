@@ -20,6 +20,9 @@ import {
   ShieldCheck,
   Layers,
   Download,
+  ArrowUp,
+  ArrowDown,
+  ArrowUpDown,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
@@ -30,6 +33,54 @@ import ValidationDot from "@/components/Results/ValidationDot";
 const HITL_ASSIGN_ALLOWED = ["financeai@financeai.com", "rashika@financeai.com"];
 function emailCanAssign(email = "") {
   return HITL_ASSIGN_ALLOWED.includes(email.toLowerCase());
+}
+
+/* ── Sortable column header — click toggles asc/desc; sorts the full
+   server-paginated result set, not just the rows on screen. ── */
+const TABLE_HEADER_COLUMNS = [
+  { label: "Result ID", key: "result_id" },
+  { label: "Document Type", key: "ocr_document_type" },
+  { label: "Key Environment", key: "key_environment" },
+  { label: "Missing Fields", key: "missing_count" },
+  { label: "HITL Status", key: "hitl_status" },
+  { label: "Validation", key: "validation" },
+  { label: "Bug Status", key: "bug_status" },
+  { label: "Issue Type", key: "issue_type" },
+  { label: "Created At", key: "created_at" },
+  { label: "HITL", key: null },
+  { label: "Action", key: null },
+];
+
+function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
+  const active = sortKey && sortBy === sortKey;
+  return (
+    <span
+      role={sortKey ? "button" : undefined}
+      onClick={sortKey ? () => onSort(sortKey) : undefined}
+      style={{
+        fontSize: 11,
+        fontWeight: 700,
+        textTransform: "uppercase",
+        letterSpacing: "0.05em",
+        color: active ? "var(--foreground)" : "var(--text-muted)",
+        textAlign: align,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: align === "center" ? "center" : "flex-start",
+        gap: 4,
+        width: "100%",
+        cursor: sortKey ? "pointer" : "default",
+        userSelect: "none",
+      }}
+    >
+      {label}
+      {sortKey && (active ? (
+        sortOrder === "asc" ? <ArrowUp size={11} /> : <ArrowDown size={11} />
+      ) : (
+        <ArrowUpDown size={11} style={{ opacity: 0.4 }} />
+      ))}
+    </span>
+  );
 }
 
 /* ── Shared with Business Audit ───────────────────────────── */
@@ -811,6 +862,17 @@ export default function MissingFieldsPage() {
   const [showAll, setShowAll] = useState(true);
   const [page, setPage] = useState(1);
   const [docs, setDocs] = useState([]);
+  const [sortBy, setSortBy] = useState("");
+  const [sortOrder, setSortOrder] = useState("desc");
+
+  const handleSort = (key) => {
+    if (sortBy === key) {
+      setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
+    } else {
+      setSortBy(key);
+      setSortOrder("asc");
+    }
+  };
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
@@ -824,10 +886,10 @@ export default function MissingFieldsPage() {
   // filtered total, so jump back to page 1 whenever any filter changes.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll]);
+  }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll, sortBy, sortOrder]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll, page }],
+    queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll, sortBy, sortOrder, page }],
     queryFn: async () => {
       const res = await axios.get("/api/missing-fields", {
         params: {
@@ -840,6 +902,8 @@ export default function MissingFieldsPage() {
           keyEnvironment,
           bugStatus: bugStatusFilter,
           issueType: issueTypeFilter,
+          sortBy,
+          sortOrder,
           page,
           pageSize: PAGE_SIZE,
         },
@@ -1209,20 +1273,16 @@ export default function MissingFieldsPage() {
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Result ID", "Document Type", "Key Environment", "Missing Fields", "HITL Status", "Validation", "Bug Status", "Issue Type", "Created At", "HITL", "Action"].map((h, i) => (
-              <span
-                key={i}
-                style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.05em",
-                  color: "var(--text-muted)",
-                  textAlign: i === 9 ? "center" : "left",
-                }}
-              >
-                {h}
-              </span>
+            {TABLE_HEADER_COLUMNS.map((col, i) => (
+              <SortableHeaderCell
+                key={col.label}
+                label={col.label}
+                sortKey={col.key}
+                sortBy={sortBy}
+                sortOrder={sortOrder}
+                onSort={handleSort}
+                align={i === 9 ? "center" : "left"}
+              />
             ))}
           </div>
 

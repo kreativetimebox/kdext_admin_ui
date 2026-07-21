@@ -891,6 +891,7 @@ export default function DexaiResultPage({ params }) {
                     <FormattedResultView
                       data={data.formatted_result}
                       title="OCR Results"
+                      requestId={data.request_id}
                     />
                     <JsonPanel
                       title="Formatted Result (JSON)"
@@ -903,6 +904,7 @@ export default function DexaiResultPage({ params }) {
                     <FormattedResultView
                       data={data.hitl_updated_result}
                       title="HITL Updated Result"
+                      requestId={data.request_id}
                     />
                     <JsonPanel
                       title="HITL Updated Result (JSON)"
