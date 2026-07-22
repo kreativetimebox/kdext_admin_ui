@@ -54,6 +54,7 @@ export async function GET(_request, { params }) {
         issue_type: row.issue_type ?? null,
         issue_description: row.issue_description ?? null,
         bug_status: row.bug_status ?? null,
+        comments: row.comments ?? [],
         user: {
           user_id: row.user_id,
           email: row.user_email,

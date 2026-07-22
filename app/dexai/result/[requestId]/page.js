@@ -23,6 +23,7 @@ import { useThemeStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/clipboard";
 import Navbar from "@/components/Navbar/Navbar";
+import CommentsPanel from "@/components/Comments/CommentsPanel";
 import JsonPanel from "@/components/Results/JsonPanel";
 import FormattedResultView from "@/components/Results/FormattedResultView";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
@@ -133,7 +134,7 @@ function StatusBadge({ status }) {
   );
 }
 
-function BugTrackingPanel({ resultId, data, onSaved }) {
+function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
   const [issueType, setIssueType] = useState(data?.issue_type || "");
   const [issueDescription, setIssueDescription] = useState(data?.issue_description || "");
   const [saving, setSaving] = useState(false);
@@ -255,6 +256,13 @@ function BugTrackingPanel({ resultId, data, onSaved }) {
           ))}
         </select>
       </div>
+
+      <CommentsPanel
+        resultId={resultId}
+        comments={data?.comments || []}
+        onCommentsChanged={onCommentsChanged}
+        height={240}
+      />
     </div>
   );
 }
@@ -835,6 +843,11 @@ export default function DexaiResultPage({ params }) {
                             bug_status: res.bug_status,
                           }
                         : prev
+                    );
+                  }}
+                  onCommentsChanged={(updated) => {
+                    queryClient.setQueryData(["dexai", "result", requestId], (prev) =>
+                      prev ? { ...prev, comments: updated } : prev
                     );
                   }}
                 />

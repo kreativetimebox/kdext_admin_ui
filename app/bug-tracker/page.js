@@ -19,11 +19,13 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  MessageSquare,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
+import CommentsPanel from "@/components/Comments/CommentsPanel";
 
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
@@ -36,6 +38,7 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Bug Status", key: "bug_status" },
   { label: "Issue Type", key: "issue_type" },
   { label: "Issue Description", key: "issue_description" },
+  { label: "Comments", key: null },
   { label: "Edit", key: null },
   { label: "View", key: null },
 ];
@@ -407,10 +410,58 @@ function EditBugModal({ row, onClose, onSaved }) {
   );
 }
 
-/* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px minmax(150px, 1fr) minmax(180px, 1.2fr) 64px 64px";
+/* ── Comments modal ───────────────────────────────────────────────── */
+function CommentsModal({ row, onClose, onCommentsChanged }) {
+  return (
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.4)" }} />
+      <div
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 100,
+          width: "min(520px, calc(100vw - 40px))",
+          maxHeight: "calc(100vh - 60px)",
+          overflowY: "auto",
+          background: "var(--panel-bg)",
+          border: "1px solid var(--panel-border)",
+          borderRadius: 14,
+          boxShadow: "var(--shadow-md)",
+          padding: 24,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <div>
+            <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Comments</h2>
+            <p style={{ fontSize: 12, color: "var(--text-muted)", margin: "4px 0 0", fontFamily: "ui-monospace, SFMono-Regular, monospace" }}>
+              {row.request_id}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 28, height: 28, borderRadius: 8, border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--text-muted)", cursor: "pointer" }}
+          >
+            <X size={14} />
+          </button>
+        </div>
 
-function BugTrackerRow({ doc, onView, onEdit, onBugStatusChanged }) {
+        <CommentsPanel
+          resultId={row.result_id}
+          comments={row.comments || []}
+          onCommentsChanged={(updated) => onCommentsChanged(row.id, updated)}
+          height={300}
+        />
+      </div>
+    </>
+  );
+}
+
+/* ── Table row ────────────────────────────────────────────────────── */
+const ROW_GRID = "minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px minmax(150px, 1fr) minmax(180px, 1.2fr) 96px 64px 64px";
+
+function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -442,6 +493,15 @@ function BugTrackerRow({ doc, onView, onEdit, onBugStatusChanged }) {
       <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.issue_description || ""}>
         {doc.issue_description || "—"}
       </span>
+
+      <button
+        onClick={() => onViewComments(doc)}
+        title="View comments"
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "6px 10px", borderRadius: 8, border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--foreground)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+      >
+        <MessageSquare size={13} />
+        {Array.isArray(doc.comments) && doc.comments.length > 0 ? doc.comments.length : ""}
+      </button>
 
       <button
         onClick={() => onEdit(doc)}
@@ -482,6 +542,7 @@ export default function BugTrackerPage() {
   const [page, setPage] = useState(1);
   const [docs, setDocs] = useState([]);
   const [editingRow, setEditingRow] = useState(null);
+  const [viewingCommentsRow, setViewingCommentsRow] = useState(null);
   const [sortBy, setSortBy] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
 
@@ -565,6 +626,12 @@ export default function BugTrackerPage() {
           : d
       )
     );
+    queryClient.invalidateQueries({ queryKey: ["bug-tracker"] });
+  };
+
+  const handleCommentsChanged = (rowId, updatedComments) => {
+    setDocs((prev) => prev.map((d) => (d.id === rowId ? { ...d, comments: updatedComments } : d)));
+    setViewingCommentsRow((prev) => (prev && prev.id === rowId ? { ...prev, comments: updatedComments } : prev));
     queryClient.invalidateQueries({ queryKey: ["bug-tracker"] });
   };
 
@@ -703,6 +770,7 @@ export default function BugTrackerPage() {
                   doc={doc}
                   onView={handleView}
                   onEdit={setEditingRow}
+                  onViewComments={setViewingCommentsRow}
                   onBugStatusChanged={handleBugStatusChanged}
                 />
               ))
@@ -728,6 +796,14 @@ export default function BugTrackerPage() {
           row={editingRow}
           onClose={() => setEditingRow(null)}
           onSaved={handleEditSaved}
+        />
+      )}
+
+      {viewingCommentsRow && (
+        <CommentsModal
+          row={viewingCommentsRow}
+          onClose={() => setViewingCommentsRow(null)}
+          onCommentsChanged={handleCommentsChanged}
         />
       )}
     </div>

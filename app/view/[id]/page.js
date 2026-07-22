@@ -9,6 +9,7 @@ import { ArrowLeft, Database } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
+import CommentsPanel from "@/components/Comments/CommentsPanel";
 import FileViewer from "@/components/Viewer/FileViewer";
 import EditableResultView, { EditHistory } from "@/components/Results/EditableResultView";
 import FormattedResultView from "@/components/Results/FormattedResultView";
@@ -16,7 +17,7 @@ import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 
-function BugTrackingPanel({ docId, doc, onSaved }) {
+function BugTrackingPanel({ docId, doc, onSaved, onCommentsChanged }) {
   const [issueType, setIssueType] = useState(doc?.issue_type || "");
   const [issueDescription, setIssueDescription] = useState(doc?.issue_description || "");
   const [saving, setSaving] = useState(false);
@@ -107,6 +108,13 @@ function BugTrackingPanel({ docId, doc, onSaved }) {
             ))}
           </select>
         </div>
+
+        <CommentsPanel
+          resultId={docId}
+          comments={doc?.comments || []}
+          onCommentsChanged={onCommentsChanged}
+          height={240}
+        />
       </div>
     </div>
   );
@@ -246,6 +254,11 @@ export default function ViewDocumentPage() {
                                   bug_status: res.bug_status,
                                 }
                               : prev
+                          );
+                        }}
+                        onCommentsChanged={(updated) => {
+                          queryClient.setQueryData(["document", id], (prev) =>
+                            prev ? { ...prev, comments: updated } : prev
                           );
                         }}
                       />

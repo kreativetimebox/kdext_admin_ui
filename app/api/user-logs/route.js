@@ -1,4 +1,4 @@
-import { getUserLogs } from "@/lib/dexai";
+import { getClients } from "@/lib/dexai";
 import { verifyAuthToken } from "@/lib/auth";
 
 export async function GET(req) {
@@ -19,7 +19,7 @@ export async function GET(req) {
     const sortBy = searchParams.get("sortBy") || "last_login_at";
     const sortOrder = searchParams.get("sortOrder") || "DESC";
 
-    const users = await getUserLogs({ search, sortBy, sortOrder });
+    const users = await getClients({ search, sortBy, sortOrder });
 
     return Response.json({ users });
   } catch (error) {

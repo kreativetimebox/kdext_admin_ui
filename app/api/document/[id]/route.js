@@ -40,6 +40,7 @@ export async function GET(_request, { params }) {
         issue_type: doc.issue_type ?? null,
         issue_description: doc.issue_description ?? null,
         bug_status: doc.bug_status ?? null,
+        comments: doc.comments ?? [],
         key_environment: doc.key_environment,
         // formatted_result is the original (immutable) extraction, mapped onto
         // the names the frontend already speaks — shown in the "Original Result"
