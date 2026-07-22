@@ -38,6 +38,7 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Bug Status", key: "bug_status" },
   { label: "Issue Type", key: "issue_type" },
   { label: "Issue Description", key: "issue_description" },
+  { label: "HITL Assigned", key: "hitl_assigned_to" },
   { label: "Comments", key: null },
   { label: "Edit", key: null },
   { label: "View", key: null },
@@ -459,7 +460,7 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px minmax(150px, 1fr) minmax(180px, 1.2fr) 96px 64px 64px";
+const ROW_GRID = "minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px 64px 64px";
 
 function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged }) {
   const [hovered, setHovered] = useState(false);
@@ -492,6 +493,9 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
       </span>
       <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.issue_description || ""}>
         {doc.issue_description || "—"}
+      </span>
+      <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.hitl_assigned_to || ""}>
+        {doc.hitl_assigned_to || "—"}
       </span>
 
       <button

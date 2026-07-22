@@ -11,6 +11,7 @@ const COLUMNS = [
   { key: "bug_status", label: "Bug Status" },
   { key: "issue_type", label: "Issue Type" },
   { key: "issue_description", label: "Issue Description" },
+  { key: "hitl_assigned_to", label: "HITL Assigned" },
   { key: "created_at", label: "Created At" },
 ];
 

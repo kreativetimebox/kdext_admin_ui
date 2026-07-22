@@ -8,6 +8,7 @@ import { Search, ChevronUp, ChevronDown, Plus, UserX, UserCheck, X, Eye, EyeOff 
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import { TEAM_ROLES } from "@/lib/constants";
+import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +31,7 @@ const SEARCH_DEBOUNCE_MS = 350;
 const TABS = [
   { key: "team", label: "Team Members" },
   { key: "clients", label: "Clients" },
+  { key: "hitlWorkload", label: "HITL Workload" },
 ];
 
 export default function UserLogsPage() {
@@ -96,7 +98,9 @@ export default function UserLogsPage() {
           ))}
         </div>
 
-        {tab === "team" ? <TeamMembersTab currentUserId={user?.id} /> : <ClientsTab />}
+        {tab === "team" && <TeamMembersTab currentUserId={user?.id} />}
+        {tab === "clients" && <ClientsTab />}
+        {tab === "hitlWorkload" && <HitlWorkloadTab />}
       </main>
     </div>
   );
@@ -234,10 +238,15 @@ function TeamMembersTab({ currentUserId }) {
   }
 
   async function handleDeactivate(member) {
-    if (!window.confirm(`Deactivate ${member.email}? They will no longer be able to log in.`)) return;
+    if (!window.confirm(`Deactivate ${member.email}? They will no longer be able to log in, and any files still assigned to them will be unassigned.`)) return;
     try {
-      await axios.delete(`/api/team-members/${member.internal_user_id}`);
-      toast.success("Team member deactivated");
+      const res = await axios.delete(`/api/team-members/${member.internal_user_id}`);
+      const unassignedCount = res.data?.member?.unassignedCount || 0;
+      toast.success(
+        unassignedCount > 0
+          ? `Team member deactivated. ${unassignedCount} assigned file(s) were unassigned and are available to reassign.`
+          : "Team member deactivated"
+      );
       refresh();
     } catch (err) {
       toast.error(err?.response?.data?.error || "Failed to deactivate team member");
@@ -693,6 +702,274 @@ function ClientsTab() {
                   <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.updated_at)}</td>
                   <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.last_login_at)}</td>
                   <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)", textAlign: "right" }}>{u.total_requests}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// HITL Workload tab
+// ---------------------------------------------------------------------------
+
+/* Single-select dropdown (same pattern duplicated per-page in
+   missing-fields/page.js, dexai/[userId]/page.js, and bug-tracker/page.js). */
+function SearchableDropdown({ placeholder, searchPlaceholder = "Search...", options, value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) {
+        setOpen(false);
+        setQuery("");
+      }
+    }
+    if (open) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  const selected = options.find((o) => o.value === value) || null;
+  const q = query.trim().toLowerCase();
+  const filtered = q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+
+  const choose = (val) => {
+    onChange(val);
+    setOpen(false);
+    setQuery("");
+  };
+
+  return (
+    <div ref={ref} style={{ position: "relative", minWidth: 200 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "9px 12px",
+          fontSize: 13,
+          width: "100%",
+          border: "1px solid var(--input-border)",
+          borderRadius: 8,
+          background: "var(--input-bg)",
+          color: selected ? "var(--foreground)" : "var(--text-muted)",
+          cursor: "pointer",
+        }}
+      >
+        <span style={{ flex: 1, textAlign: "left", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          {selected ? selected.label : placeholder}
+        </span>
+        <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none" }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            zIndex: 50,
+            width: "max(100%, 240px)",
+            background: "var(--menu-bg)",
+            border: "1px solid var(--panel-border)",
+            borderRadius: 8,
+            boxShadow: "var(--shadow-sm)",
+            padding: 4,
+          }}
+        >
+          <div style={{ position: "relative", marginBottom: 4 }}>
+            <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={searchPlaceholder}
+              autoComplete="off"
+              style={{ width: "100%", padding: "8px 10px 8px 30px", fontSize: 13, border: "1px solid var(--input-border)", borderRadius: 6, background: "var(--input-bg)", color: "var(--foreground)", outline: "none" }}
+            />
+          </div>
+          <div style={{ maxHeight: 260, overflowY: "auto" }}>
+            <div
+              role="button"
+              onClick={() => choose("")}
+              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 13, cursor: "pointer", color: "var(--text-muted)", background: value === "" ? "var(--input-bg)" : "transparent" }}
+            >
+              {placeholder}
+            </div>
+            {filtered.map((o) => (
+              <div
+                key={o.value}
+                role="button"
+                onClick={() => choose(o.value)}
+                style={{ padding: "8px 10px", borderRadius: 6, fontSize: 13, cursor: "pointer", color: "var(--foreground)", background: value === o.value ? "var(--input-bg)" : "transparent" }}
+              >
+                {o.label}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const dateInputStyle = {
+  padding: "9px 12px",
+  fontSize: 13,
+  border: "1px solid var(--input-border)",
+  borderRadius: 8,
+  background: "var(--input-bg)",
+  color: "var(--foreground)",
+  outline: "none",
+};
+
+function HitlWorkloadTab() {
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [companies, setCompanies] = useState([]);
+  const [email, setEmail] = useState("");
+  const [debouncedEmail, setDebouncedEmail] = useState("");
+  const [docType, setDocType] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedEmail(email), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [email]);
+
+  const { data: filterOptions } = useQuery({
+    queryKey: ["filter-options"],
+    queryFn: async () => (await axios.get("/api/filter-options")).data,
+    staleTime: 10 * 60 * 1000,
+  });
+  const businessOptions = (filterOptions?.businesses || []).map((b) => ({ value: b, label: b }));
+  const docTypeOptions = (filterOptions?.docTypes || []).map((t) => ({ value: t, label: t }));
+
+  const { data: members = [], isLoading, error } = useQuery({
+    queryKey: ["hitl-stats", dateFrom, dateTo, companies, debouncedEmail, docType],
+    queryFn: async () => {
+      const res = await axios.get("/api/hitl-stats", {
+        params: { dateFrom, dateTo, companies: companies.join(","), email: debouncedEmail, docType },
+      });
+      return res.data.members || [];
+    },
+  });
+
+  return (
+    <div>
+      <div
+        style={{
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+          alignItems: "center",
+          marginBottom: 20,
+          padding: 16,
+          background: "var(--panel-bg, var(--card-bg))",
+          border: "1px solid var(--panel-border)",
+          borderRadius: 10,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ fontSize: 11, color: "var(--text-muted)" }}>From</label>
+          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} style={dateInputStyle} />
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <label style={{ fontSize: 11, color: "var(--text-muted)" }}>To</label>
+          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} style={dateInputStyle} />
+        </div>
+
+        <MultiSelectDropdown
+          placeholder="All Companies"
+          searchPlaceholder="Search company..."
+          emptyText="No companies"
+          options={businessOptions}
+          values={companies}
+          onChange={setCompanies}
+        />
+
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", background: "var(--input-bg)", border: "1px solid var(--input-border)", borderRadius: 8, minWidth: 220 }}>
+          <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+          <input
+            type="text"
+            placeholder="Filter by client email..."
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            autoComplete="off"
+            style={{ flex: 1, background: "transparent", border: "none", fontSize: 13, color: "var(--foreground)", outline: "none" }}
+          />
+        </div>
+
+        <SearchableDropdown placeholder="All Document Types" searchPlaceholder="Search type..." options={docTypeOptions} value={docType} onChange={setDocType} />
+      </div>
+
+      <div
+        style={{
+          borderRadius: 10,
+          border: "1px solid var(--panel-border)",
+          overflow: "hidden",
+          background: "var(--card-bg)",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+        }}
+      >
+        {isLoading ? (
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Loading HITL workload...</div>
+        ) : error ? (
+          <div style={{ padding: 40, textAlign: "center", color: "#dc2626" }}>Error loading HITL workload</div>
+        ) : members.length === 0 ? (
+          <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>No HITL members found</div>
+        ) : (
+          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ borderBottom: "1px solid var(--panel-border)", background: "var(--input-bg)" }}>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Name</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Email</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Status</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Pending</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Pending %</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Completed</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Completed %</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m, idx) => (
+                <tr
+                  key={m.internalUserId}
+                  style={{
+                    borderBottom: idx < members.length - 1 ? "1px solid var(--panel-border)" : "none",
+                    background: idx % 2 === 0 ? "transparent" : "var(--input-bg)",
+                    opacity: m.isActive ? 1 : 0.55,
+                  }}
+                >
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>
+                    {fullName({ first_name: m.firstName, last_name: m.lastName })}
+                  </td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{m.email}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 12 }}>
+                    <span
+                      style={{
+                        padding: "3px 9px",
+                        borderRadius: 999,
+                        fontWeight: 600,
+                        background: m.isActive ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+                        color: m.isActive ? "#16a34a" : "#ef4444",
+                      }}
+                    >
+                      {m.isActive ? "Active" : "Inactive"}
+                    </span>
+                  </td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--foreground)", textAlign: "right" }}>{m.pending}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)", textAlign: "right" }}>{m.pendingPct}%</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--foreground)", textAlign: "right" }}>{m.completed}</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)", textAlign: "right" }}>{m.completedPct}%</td>
+                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--foreground)", fontWeight: 600, textAlign: "right" }}>{m.total}</td>
                 </tr>
               ))}
             </tbody>
