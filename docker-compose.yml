@@ -28,14 +28,7 @@ services:
       - AWS_LEGACY_REGION=${AWS_LEGACY_REGION}
       - AWS_LEGACY_ACCESS_KEY_ID=${AWS_LEGACY_ACCESS_KEY_ID}
       - AWS_LEGACY_SECRET_ACCESS_KEY=${AWS_LEGACY_SECRET_ACCESS_KEY}
-      # Alerts tab — background error monitor + email notifications (lib/alertMonitor.js)
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT:-587}
-      - SMTP_SECURE=${SMTP_SECURE:-false}
-      - SMTP_USER=${SMTP_USER}
-      - SMTP_PASS=${SMTP_PASS}
-      - ALERT_EMAIL_FROM=${ALERT_EMAIL_FROM}
-      - ALERT_EMAIL_TO=${ALERT_EMAIL_TO}
+      # Alerts tab — background error monitor (lib/alertMonitor.js), UI-only, no email
       - ALERT_POLL_INTERVAL_MS=${ALERT_POLL_INTERVAL_MS:-30000}
       - ALERT_WATCHED_CONTAINERS=${ALERT_WATCHED_CONTAINERS:-lightonocr,kdext-qwen,kdext-document-api,kdext-api,kdext-worker,kdext-webhook-worker}
       - ALERT_CPU_WARNING_THRESHOLD=${ALERT_CPU_WARNING_THRESHOLD:-75}

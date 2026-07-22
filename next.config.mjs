@@ -12,7 +12,7 @@ const nextConfig = {
       },
     ],
   },
-  serverExternalPackages: ["pg", "nodemailer"],
+  serverExternalPackages: ["pg"],
 };
 
 export default nextConfig;
