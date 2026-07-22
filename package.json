@@ -13,6 +13,7 @@
     "@aws-sdk/s3-request-presigner": "^3.1003.0",
     "@tanstack/react-query": "^5.90.21",
     "amqplib": "^0.10.9",
+    "archiver": "^8.0.0",
     "axios": "^1.13.6",
     "bcryptjs": "^2.4.3",
     "jose": "^5.10.0",

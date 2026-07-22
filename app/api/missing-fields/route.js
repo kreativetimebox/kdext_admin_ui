@@ -13,6 +13,8 @@ export async function GET(req) {
     const keyEnvironment = searchParams.get("keyEnvironment") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
     const issueType = searchParams.get("issueType") || "";
+    const hitlUserId = searchParams.get("hitlUserId") || "";
+    const validation = searchParams.get("validation") || "";
     const sortBy = searchParams.get("sortBy") || "";
     const sortOrder = searchParams.get("sortOrder") || "desc";
     const page = Number(searchParams.get("page")) || 1;
@@ -28,6 +30,8 @@ export async function GET(req) {
       keyEnvironment,
       bugStatus,
       issueType,
+      hitlUserId,
+      validation,
       sortBy,
       sortOrder,
       page,

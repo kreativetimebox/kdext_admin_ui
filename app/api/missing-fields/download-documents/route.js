@@ -1,24 +1,11 @@
+import { Readable } from "node:stream";
 import { getDocumentsWithMissingFieldsForExport } from "@/lib/queries";
-import { rowsToCsv } from "@/lib/csv";
+import { buildDocumentsZip } from "@/lib/documentZip";
 
-const COLUMNS = [
-  { key: "result_id", label: "Result ID" },
-  { key: "request_id", label: "Request ID" },
-  { key: "transaction_id", label: "Transaction ID" },
-  { key: "ocr_document_type", label: "Document Type" },
-  { key: "key_environment", label: "Key Environment" },
-  { key: "hitl_status", label: "HITL Status" },
-  { key: "missing_count", label: "Missing Field Count" },
-  { key: "client_name", label: "Client Name" },
-  { key: "client_email", label: "Client Email" },
-  { key: "business_name", label: "Business" },
-  { key: "issue_type", label: "Issue Type" },
-  { key: "issue_description", label: "Issue Description" },
-  { key: "bug_status", label: "Bug Status" },
-  { key: "formatted_result", label: "Formatted Result" },
-  { key: "hitl_updated_result", label: "HITL Updated Result" },
-  { key: "created_at", label: "Created At" },
-];
+// Downloading real files (not CSV rows) means an S3 fetch per document, so
+// this is capped far below the CSV export's 20000-row cap to keep the
+// request fast and the zip a reasonable size.
+const DOWNLOAD_CAP = 100;
 
 export async function GET(req) {
   try {
@@ -51,20 +38,22 @@ export async function GET(req) {
       validation,
       sortBy,
       sortOrder,
+      limit: DOWNLOAD_CAP,
     });
 
-    const csv = rowsToCsv(rows, COLUMNS);
-    const filename = `hitl-edit-${Date.now()}.csv`;
+    const files = rows.map((r) => ({ name: r.result_id || r.request_id, documentPath: r.document_path }));
+    const archive = buildDocumentsZip(files);
+    const filename = `hitl-edit-documents-${Date.now()}.zip`;
 
-    return new Response(csv, {
+    return new Response(Readable.toWeb(archive), {
       status: 200,
       headers: {
-        "Content-Type": "text/csv; charset=utf-8",
+        "Content-Type": "application/zip",
         "Content-Disposition": `attachment; filename="${filename}"`,
       },
     });
   } catch (error) {
-    console.error("GET /api/missing-fields/export error:", error);
-    return new Response("Failed to export documents", { status: 500 });
+    console.error("GET /api/missing-fields/download-documents error:", error);
+    return new Response("Failed to build document zip", { status: 500 });
   }
 }

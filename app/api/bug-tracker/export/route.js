@@ -12,6 +12,7 @@ const COLUMNS = [
   { key: "issue_type", label: "Issue Type" },
   { key: "issue_description", label: "Issue Description" },
   { key: "hitl_assigned_to", label: "HITL Assigned" },
+  { key: "bug_flagged_at", label: "Bug Added" },
   { key: "created_at", label: "Created At" },
 ];
 

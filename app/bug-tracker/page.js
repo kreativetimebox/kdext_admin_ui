@@ -16,6 +16,7 @@ import {
   ChevronRight,
   X,
   Download,
+  FileArchive,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -27,6 +28,15 @@ import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
 
+function formatDate(value) {
+  if (!value) return "—";
+  try {
+    return new Date(value).toLocaleString();
+  } catch {
+    return String(value);
+  }
+}
+
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
 const TABLE_HEADER_COLUMNS = [
@@ -36,6 +46,7 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Result ID", key: "result_id" },
   { label: "Document Type", key: "ocr_document_type" },
   { label: "Bug Status", key: "bug_status" },
+  { label: "Bug Created At", key: "bug_flagged_at" },
   { label: "Issue Type", key: "issue_type" },
   { label: "Issue Description", key: "issue_description" },
   { label: "HITL Assigned", key: "hitl_assigned_to" },
@@ -460,7 +471,7 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px 64px 64px";
+const ROW_GRID = "minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px 150px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px 64px 64px";
 
 function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged }) {
   const [hovered, setHovered] = useState(false);
@@ -487,6 +498,10 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
       </span>
 
       <BugStatusDropCell docId={doc.result_id} currentStatus={doc.bug_status} onBugStatusChanged={onBugStatusChanged} />
+
+      <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }} title={doc.bug_flagged_at ? formatDate(doc.bug_flagged_at) : "Not tracked (flagged before this column existed)"}>
+        {doc.bug_flagged_at ? formatDate(doc.bug_flagged_at) : "—"}
+      </span>
 
       <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.issue_type || ""}>
         {doc.issue_type || "—"}
@@ -641,7 +656,7 @@ export default function BugTrackerPage() {
 
   const hasFilters = search || companies.length || docType || issueType || bugStatusFilter;
 
-  const exportUrl = `/api/bug-tracker/export?${new URLSearchParams({
+  const exportParams = {
     search: debouncedSearch,
     companies: companies.join(","),
     docType,
@@ -649,7 +664,9 @@ export default function BugTrackerPage() {
     bugStatus: bugStatusFilter,
     sortBy,
     sortOrder,
-  }).toString()}`;
+  };
+  const exportUrl = `/api/bug-tracker/export?${new URLSearchParams(exportParams).toString()}`;
+  const downloadDocumentsUrl = `/api/bug-tracker/download-documents?${new URLSearchParams(exportParams).toString()}`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
@@ -734,10 +751,25 @@ export default function BugTrackerPage() {
             <Download size={13} />
             Export CSV
           </a>
+
+          <a
+            href={downloadDocumentsUrl}
+            title="Downloads a zip of the source documents for up to the first 100 rows matching the current filters"
+            style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--foreground)", cursor: "pointer", textDecoration: "none" }}
+          >
+            <FileArchive size={13} />
+            Download Documents
+          </a>
         </div>
 
         {/* Table */}
         <div style={{ background: "var(--panel-bg)", border: "1px solid var(--panel-border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
+          {/* Header and rows share one horizontal scroll container so a
+              column's header can never drift out of line with its cells —
+              scrolling the body scrolls the header by the same amount since
+              they're the same scroll box, not two independent ones. */}
+          <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: "max-content" }}>
           <div style={{ display: "grid", gridTemplateColumns: ROW_GRID, gap: 16, padding: "12px 20px", background: "var(--input-bg)", borderBottom: "1px solid var(--panel-border)" }}>
             {TABLE_HEADER_COLUMNS.map((col) => (
               <SortableHeaderCell
@@ -779,6 +811,8 @@ export default function BugTrackerPage() {
                 />
               ))
             )}
+          </div>
+          </div>
           </div>
 
           {documents.length > 0 && (

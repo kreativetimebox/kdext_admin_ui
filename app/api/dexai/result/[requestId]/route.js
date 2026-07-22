@@ -49,7 +49,13 @@ export async function GET(_request, { params }) {
         updated_at: row.updated_at,
         signed_url: signedUrl,
         formatted_result: row.formatted_result ?? null,
-        hitl_updated_result: row.hitl_updated_result ?? null,
+        // Seed from the original extraction when this row still needs review
+        // (row.status here is getDexaiResultByRequestId's derived hitl_status
+        // — TO_BE_TESTED covers both missing-fields and hitl_check=1) and
+        // nobody has saved a HITL-edited copy yet. Same fallback as
+        // app/api/document/[id]/route.js, otherwise a freshly reprocessed row
+        // with real issues shows an empty "HITL Updated" tab.
+        hitl_updated_result: row.status === "TO_BE_TESTED" && !row.hitl_updated_result ? row.formatted_result : (row.hitl_updated_result ?? null),
         processing_result: row.processing_result ?? null,
         issue_type: row.issue_type ?? null,
         issue_description: row.issue_description ?? null,

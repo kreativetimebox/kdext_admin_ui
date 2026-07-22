@@ -16,9 +16,13 @@ import {
   FileText,
   FileWarning,
   ExternalLink,
+  Wrench,
 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
+import { bulkReprocessAlerts } from "@/lib/bulkReprocessAlerts";
+
+const BULK_REPROCESS_BATCH_SIZE = 50;
 
 export const dynamic = "force-dynamic";
 
@@ -83,6 +87,8 @@ export default function AlertsPage() {
   const queryClient = useQueryClient();
   const [filter, setFilter] = useState("active"); // "active" | "resolved" | "all"
   const [resolving, setResolving] = useState(null);
+  const [bulkReprocessing, setBulkReprocessing] = useState(false);
+  const [bulkProgress, setBulkProgress] = useState(null); // { done, total }
 
   const { data, isLoading, error, refetch, isFetching } = useQuery({
     queryKey: ["alerts-all"],
@@ -95,6 +101,34 @@ export default function AlertsPage() {
   const activeCritical = alerts.filter((a) => !a.resolved_at && a.severity === "critical").length;
   const activeWarning = alerts.filter((a) => !a.resolved_at && a.severity === "warning").length;
   const resolvedToday = alerts.filter((a) => a.resolved_at && isToday(a.resolved_at)).length;
+  const activeFailedDocs = alerts.filter((a) => !a.resolved_at && a.category === "document_failed");
+
+  const handleBulkReprocess = async () => {
+    const batch = activeFailedDocs.slice(0, BULK_REPROCESS_BATCH_SIZE);
+    if (batch.length === 0) return;
+    if (!window.confirm(`Reprocess ${batch.length} failed document(s) now? Each one that succeeds without error will be auto-resolved.`)) {
+      return;
+    }
+
+    setBulkReprocessing(true);
+    setBulkProgress({ done: 0, total: batch.length });
+    try {
+      const { resolved, failed, skipped } = await bulkReprocessAlerts(batch, {
+        concurrency: 5,
+        onProgress: (done, total) => setBulkProgress({ done, total }),
+      });
+      toast.success(
+        `Reprocess batch done: ${resolved} resolved, ${failed} still failing, ${skipped} skipped (unrecognized document type).`
+      );
+      queryClient.invalidateQueries({ queryKey: ["alerts-all"] });
+      queryClient.invalidateQueries({ queryKey: ["alerts-summary-badge"] });
+    } catch (e) {
+      toast.error(e?.message || "Bulk reprocess failed");
+    } finally {
+      setBulkReprocessing(false);
+      setBulkProgress(null);
+    }
+  };
 
   const visible =
     filter === "all" ? alerts : filter === "active" ? alerts.filter((a) => !a.resolved_at) : alerts.filter((a) => a.resolved_at);
@@ -147,16 +181,38 @@ export default function AlertsPage() {
               Automatic error detection across servers and the document-processing pipeline
             </p>
           </div>
-          <button
-            onClick={() => refetch()}
-            style={{
-              display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
-              background: "var(--input-bg)", border: "1px solid var(--panel-border)",
-              borderRadius: 8, color: "var(--foreground)", cursor: "pointer", fontSize: 13,
-            }}
-          >
-            <RefreshCw size={14} className={isFetching ? "spin" : ""} /> Refresh
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {bulkReprocessing && bulkProgress && (
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+                Reprocessing {bulkProgress.done}/{bulkProgress.total}…
+              </span>
+            )}
+            <button
+              onClick={handleBulkReprocess}
+              disabled={bulkReprocessing || activeFailedDocs.length === 0}
+              title={activeFailedDocs.length === 0 ? "No active document_failed alerts" : `Reprocess up to ${BULK_REPROCESS_BATCH_SIZE} failed documents`}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+                background: bulkReprocessing || activeFailedDocs.length === 0 ? "var(--input-bg)" : "var(--brand-gradient)",
+                border: "1px solid var(--panel-border)",
+                borderRadius: 8, color: bulkReprocessing || activeFailedDocs.length === 0 ? "var(--text-muted)" : "#fff",
+                cursor: bulkReprocessing || activeFailedDocs.length === 0 ? "not-allowed" : "pointer", fontSize: 13, fontWeight: 600,
+              }}
+            >
+              <Wrench size={14} className={bulkReprocessing ? "spin" : ""} />
+              {bulkReprocessing ? "Reprocessing…" : `Reprocess ${Math.min(activeFailedDocs.length, BULK_REPROCESS_BATCH_SIZE)} Failed`}
+            </button>
+            <button
+              onClick={() => refetch()}
+              style={{
+                display: "flex", alignItems: "center", gap: 6, padding: "8px 14px",
+                background: "var(--input-bg)", border: "1px solid var(--panel-border)",
+                borderRadius: 8, color: "var(--foreground)", cursor: "pointer", fontSize: 13,
+              }}
+            >
+              <RefreshCw size={14} className={isFetching ? "spin" : ""} /> Refresh
+            </button>
+          </div>
         </div>
 
         {error && (
@@ -242,7 +298,12 @@ export default function AlertsPage() {
                           {a.detail}
                           {" · "}
                           <Link
-                            href={`/dexai/result/${encodeURIComponent(a.container_name)}`}
+                            // Prefer the result_id-keyed document view (has the
+                            // actual OCR/HITL result); only a document that
+                            // never finished processing lacks a result_id, in
+                            // which case fall back to the request_id-keyed
+                            // audit page, which can still show its error state.
+                            href={a.document_result_id ? `/view/${encodeURIComponent(a.document_result_id)}` : `/dexai/result/${encodeURIComponent(a.container_name)}`}
                             style={{ color: "var(--accent)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 3 }}
                           >
                             View document <ExternalLink size={11} />

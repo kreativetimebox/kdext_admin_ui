@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
@@ -22,14 +22,195 @@ import {
   FileText,
   Pencil,
   Download,
+  FileArchive,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  ShieldCheck,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
+import { useAuth } from "@/lib/useAuth";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
+
+// Same allow-list as app/missing-fields/page.js's assign-hitl gate — kept as
+// a separate copy per this codebase's convention rather than a shared import.
+const HITL_ASSIGN_ALLOWED = ["financeai@financeai.com", "rashika@financeai.com"];
+function emailCanAssign(email = "") {
+  return HITL_ASSIGN_ALLOWED.includes(email.toLowerCase());
+}
+
+function menuItemBaseStyle(active) {
+  return {
+    padding: "8px 10px",
+    borderRadius: 6,
+    cursor: "pointer",
+    fontSize: 13,
+    background: active ? "var(--input-bg)" : "transparent",
+    transition: "background 0.1s ease",
+  };
+}
+
+function HitlAssignCell({ docId, currentId, hitlUsers, onAssigned, canAssign }) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const [saving, setSaving] = useState(false);
+  const ref = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) { setOpen(false); setQuery(""); }
+    }
+    if (open) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  useEffect(() => { if (open && inputRef.current) inputRef.current.focus(); }, [open]);
+
+  const selected = hitlUsers.find((u) => String(u.id) === String(currentId ?? "")) || null;
+
+  if (!canAssign) {
+    return (
+      <span
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          fontSize: 12,
+          fontWeight: 500,
+          borderRadius: 7,
+          border: "1px solid var(--input-border)",
+          background: selected ? "var(--tag-bg)" : "var(--input-bg)",
+          color: selected ? "var(--accent)" : "var(--text-muted)",
+          whiteSpace: "nowrap",
+          maxWidth: 160,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        <ShieldCheck size={12} style={{ flexShrink: 0 }} />
+        {selected ? selected.label : "—"}
+      </span>
+    );
+  }
+
+  const q = query.trim().toLowerCase();
+  const filtered = q ? hitlUsers.filter((u) => u.label.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)) : hitlUsers;
+  const currentIdStr = String(currentId ?? "");
+
+  async function assign(userId) {
+    setSaving(true);
+    setOpen(false);
+    setQuery("");
+    try {
+      const res = await axios.post(`/api/document/${encodeURIComponent(docId)}/assign-hitl`, { hitlUserId: userId || null });
+      if (res.data?.ok === false) {
+        toast.error(res.data.error || "Failed to assign");
+        return;
+      }
+      onAssigned(docId, userId || null);
+      toast.success(userId ? "Assigned" : "Unassigned");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to assign");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "6px 10px",
+          fontSize: 12,
+          fontWeight: 500,
+          borderRadius: 7,
+          border: "1px solid var(--input-border)",
+          background: selected ? "var(--tag-bg)" : "var(--input-bg)",
+          color: selected ? "var(--accent)" : "var(--text-muted)",
+          cursor: saving ? "wait" : "pointer",
+          whiteSpace: "nowrap",
+          maxWidth: 160,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          outline: "none",
+        }}
+      >
+        <ShieldCheck size={12} style={{ flexShrink: 0 }} />
+        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, textAlign: "left" }}>
+          {saving ? "Saving…" : selected ? selected.label : "Assign"}
+        </span>
+        <ChevronDown size={11} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.12s" }} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            left: 0,
+            zIndex: 60,
+            width: "max(100%, 220px)",
+            background: "var(--menu-bg)",
+            border: "1px solid var(--panel-border)",
+            borderRadius: 8,
+            boxShadow: "var(--shadow-sm)",
+            padding: 4,
+          }}
+        >
+          <div style={{ position: "relative", marginBottom: 4 }}>
+            <Search size={12} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search HITL..."
+              style={{ width: "100%", padding: "7px 8px 7px 28px", fontSize: 12, border: "1px solid var(--input-border)", borderRadius: 6, background: "var(--input-bg)", color: "var(--foreground)", outline: "none" }}
+            />
+          </div>
+          <div style={{ maxHeight: 220, overflowY: "auto" }}>
+            <div
+              role="button"
+              onClick={() => assign(null)}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = !currentIdStr ? "var(--input-bg)" : "transparent"; }}
+              style={{ ...menuItemBaseStyle(!currentIdStr), color: "var(--text-muted)", fontSize: 12 }}
+            >
+              Unassign
+            </div>
+            {filtered.length === 0 ? (
+              <div style={{ padding: "8px 10px", fontSize: 12, color: "var(--text-muted)" }}>No HITL users</div>
+            ) : (
+              filtered.map((u) => (
+                <div
+                  key={u.id}
+                  role="button"
+                  onClick={() => assign(u.id)}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = String(u.id) === currentIdStr ? "var(--input-bg)" : "transparent"; }}
+                  style={{ ...menuItemBaseStyle(String(u.id) === currentIdStr), display: "flex", flexDirection: "column", gap: 1 }}
+                >
+                  <span style={{ fontSize: 12, fontWeight: 600, color: "var(--foreground)" }}>{u.label}</span>
+                  <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "ui-monospace, monospace" }}>{u.email}</span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
@@ -44,9 +225,17 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Issue Type", key: "issue_type" },
   { label: "Created At", key: "created_at" },
   { label: "Updated At", key: "updated_at" },
+  { label: "HITL Assign", key: "hitl_assigned_to" },
   { label: "Processing", key: "processing_duration_ms" },
   { label: "", key: null },
 ];
+
+// Single source of truth for both the header row and each ResultRow below —
+// previously these were two independently hand-typed strings that drifted
+// apart (different minmax/fr tokens for the Document Type/Key Environment
+// columns), which misaligned every column since the header's row.
+const ROW_GRID =
+  "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 150px 100px 160px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
   const active = sortKey && sortBy === sortKey;
@@ -321,7 +510,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function ResultRow({ record, onView, onEdit, onBugStatusChanged }) {
+function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAssigned, canAssign }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -329,8 +518,7 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns:
-          "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 120px 100px 140px 130px 160px 150px 150px 100px 160px",
+        gridTemplateColumns: ROW_GRID,
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -420,6 +608,14 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged }) {
         {formatDate(record.updated_at || record.completed_at)}
       </span>
 
+      <HitlAssignCell
+        docId={record.result_id}
+        currentId={record.hitl_assigned_to}
+        hitlUsers={hitlUsers}
+        onAssigned={onAssigned}
+        canAssign={canAssign}
+      />
+
       <span
         style={{
           fontSize: 12,
@@ -495,8 +691,10 @@ export default function UserResultsPage({ params }) {
   const { userId } = use(params);
   const { initTheme } = useThemeStore();
   const { setActiveId } = useDocumentStore();
+  const { user: authUser } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const canAssign = emailCanAssign(authUser?.email || "");
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
@@ -565,6 +763,16 @@ export default function UserResultsPage({ params }) {
     staleTime: 10 * 60 * 1000,
   });
 
+  const { data: hitlData } = useQuery({
+    queryKey: ["hitl-users"],
+    queryFn: async () => {
+      const res = await axios.get("/api/hitl-users");
+      return res.data.users || [];
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+  const hitlUsers = hitlData || [];
+
   const user = userQuery.data;
   const records = resultsQuery.data?.records || [];
   const total = resultsQuery.data?.total ?? 0;
@@ -579,11 +787,15 @@ export default function UserResultsPage({ params }) {
     router.push(`/dexai/result/${encodeURIComponent(requestId)}`);
   };
 
+  const handleAssigned = () => {
+    queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
+  };
+
   const handleBugStatusChanged = () => {
     queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
   };
 
-  const exportUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/export?${new URLSearchParams({
+  const exportParams = {
     search: debouncedSearch,
     docType,
     status,
@@ -592,7 +804,9 @@ export default function UserResultsPage({ params }) {
     issueType,
     sortBy,
     sortOrder,
-  }).toString()}`;
+  };
+  const exportUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/export?${new URLSearchParams(exportParams).toString()}`;
+  const downloadDocumentsUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/download-documents?${new URLSearchParams(exportParams).toString()}`;
 
   // "To be tested" rows → open the result directly in the HITL edit view.
   // The view route resolves a document by its result_id.
@@ -854,6 +1068,28 @@ export default function UserResultsPage({ params }) {
             <Download size={13} />
             Export CSV
           </a>
+
+          <a
+            href={downloadDocumentsUrl}
+            title="Downloads a zip of the source documents for up to the first 100 rows matching the current filters"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              border: "1px solid var(--panel-border)",
+              background: "var(--input-bg)",
+              color: "var(--foreground)",
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+          >
+            <FileArchive size={13} />
+            Download Documents
+          </a>
         </div>
 
         {/* Table */}
@@ -866,11 +1102,16 @@ export default function UserResultsPage({ params }) {
             overflow: "hidden",
           }}
         >
+          {/* Header and rows share one horizontal scroll container so a
+              column's header can never drift out of line with its cells —
+              scrolling the body scrolls the header by the same amount since
+              they're the same scroll box, not two independent ones. */}
+          <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: "max-content" }}>
           <div
             style={{
               display: "grid",
-              gridTemplateColumns:
-                "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 100px 160px",
+              gridTemplateColumns: ROW_GRID,
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -935,9 +1176,14 @@ export default function UserResultsPage({ params }) {
                   onView={handleView}
                   onEdit={handleEdit}
                   onBugStatusChanged={handleBugStatusChanged}
+                  hitlUsers={hitlUsers}
+                  onAssigned={handleAssigned}
+                  canAssign={canAssign}
                 />
               ))
             )}
+          </div>
+          </div>
           </div>
 
           {records.length > 0 && (

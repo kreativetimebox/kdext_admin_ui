@@ -22,11 +22,23 @@ export async function GET(req) {
     "";
 
   const result = await dexaiQuery(
-    `SELECT id, source, severity, server_id, server_name, container_name, category,
-            message, detail, first_seen, last_seen, occurrences, notified_at, resolved_at
-     FROM monitor_alerts
+    `SELECT ma.id, ma.source, ma.severity, ma.server_id, ma.server_name, ma.container_name, ma.category,
+            ma.message, ma.detail, ma.first_seen, ma.last_seen, ma.occurrences, ma.notified_at, ma.resolved_at,
+            d.result_id AS document_result_id,
+            COALESCE(NULLIF(BTRIM(d.ocr_document_type), ''), dt.type_name) AS document_type
+     FROM monitor_alerts ma
+     -- Document-category alerts store the request_id in container_name (see
+     -- alertMonitor.js's checkDocumentFailures/checkStuckDocuments); resolve
+     -- it to a result_id here so the UI can link straight to /view/[id]
+     -- instead of the request_id-keyed /dexai/result page, and to a
+     -- document_type so the bulk-reprocess action knows what to submit. Both
+     -- joins are a no-op for server-category alerts, whose container_name
+     -- never matches a request_id.
+     LEFT JOIN document_processing_requests d
+       ON d.request_id = ma.container_name AND d.is_deleted = false
+     LEFT JOIN document_types dt ON dt.document_type_id = d.document_type_id
      ${where}
-     ORDER BY (resolved_at IS NULL) DESC, severity ASC, last_seen DESC
+     ORDER BY (ma.resolved_at IS NULL) DESC, ma.severity ASC, ma.last_seen DESC
      LIMIT 500`
   );
 

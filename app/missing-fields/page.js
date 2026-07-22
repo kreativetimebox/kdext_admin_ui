@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
@@ -20,6 +20,7 @@ import {
   ShieldCheck,
   Layers,
   Download,
+  FileArchive,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -886,10 +887,10 @@ export default function MissingFieldsPage() {
   // filtered total, so jump back to page 1 whenever any filter changes.
   useEffect(() => {
     setPage(1);
-  }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll, sortBy, sortOrder]);
+  }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, hitlUserId, validationFilter, showAll, sortBy, sortOrder]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, showAll, sortBy, sortOrder, page }],
+    queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, hitlUserId, validationFilter, showAll, sortBy, sortOrder, page }],
     queryFn: async () => {
       const res = await axios.get("/api/missing-fields", {
         params: {
@@ -902,6 +903,8 @@ export default function MissingFieldsPage() {
           keyEnvironment,
           bugStatus: bugStatusFilter,
           issueType: issueTypeFilter,
+          hitlUserId,
+          validation: validationFilter,
           sortBy,
           sortOrder,
           page,
@@ -955,18 +958,6 @@ export default function MissingFieldsPage() {
   const docTypes = filterOptions?.docTypes || [];
   const keyEnvironments = filterOptions?.keyEnvironments || [];
 
-  // docType/clientId/businessName/statusFilter/keyEnvironment/showAll/search
-  // are now applied server-side (see the useQuery above). hitlUserId and
-  // validationFilter have no DB/API support, so they stay client-side —
-  // cheap since `documents` is just the current ~50-row page.
-  const visibleDocuments = useMemo(() => {
-    return documents.filter((doc) => {
-      if (hitlUserId && doc.hitl_assigned_to !== hitlUserId) return false;
-      if (validationFilter && String(doc.validation) !== validationFilter) return false;
-      return true;
-    });
-  }, [documents, hitlUserId, validationFilter]);
-
   const handleView = (docId) => {
     setActiveId(docId);
     router.push(`/view/${encodeURIComponent(docId)}`);
@@ -999,7 +990,7 @@ export default function MissingFieldsPage() {
 
   const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter || keyEnvironment || bugStatusFilter || issueTypeFilter;
 
-  const exportUrl = `/api/missing-fields/export?${new URLSearchParams({
+  const exportParams = {
     showAll: String(showAll),
     search: debouncedSearch,
     docType,
@@ -1009,7 +1000,11 @@ export default function MissingFieldsPage() {
     keyEnvironment,
     bugStatus: bugStatusFilter,
     issueType: issueTypeFilter,
-  }).toString()}`;
+    hitlUserId,
+    validation: validationFilter,
+  };
+  const exportUrl = `/api/missing-fields/export?${new URLSearchParams(exportParams).toString()}`;
+  const downloadDocumentsUrl = `/api/missing-fields/download-documents?${new URLSearchParams(exportParams).toString()}`;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
@@ -1251,6 +1246,28 @@ export default function MissingFieldsPage() {
             <Download size={13} />
             Export CSV
           </a>
+
+          <a
+            href={downloadDocumentsUrl}
+            title="Downloads a zip of the source documents for up to the first 100 rows matching the current filters"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              border: "1px solid var(--panel-border)",
+              background: "var(--input-bg)",
+              color: "var(--foreground)",
+              cursor: "pointer",
+              textDecoration: "none",
+            }}
+          >
+            <FileArchive size={13} />
+            Download Documents
+          </a>
         </div>
 
         {/* Table */}
@@ -1263,6 +1280,12 @@ export default function MissingFieldsPage() {
             overflow: "hidden",
           }}
         >
+          {/* Header and rows share one horizontal scroll container so a
+              column's header can never drift out of line with its cells —
+              scrolling the body scrolls the header by the same amount since
+              they're the same scroll box, not two independent ones. */}
+          <div style={{ overflowX: "auto" }}>
+          <div style={{ minWidth: "max-content" }}>
           <div
             style={{
               display: "grid",
@@ -1296,7 +1319,7 @@ export default function MissingFieldsPage() {
                 <AlertCircle size={32} style={{ marginBottom: 12 }} />
                 <p>Failed to load documents</p>
               </div>
-            ) : visibleDocuments.length === 0 ? (
+            ) : documents.length === 0 ? (
               <div style={{ padding: 60, textAlign: "center" }}>
                 <FileWarning size={40} style={{ color: "var(--text-muted)", marginBottom: 12 }} />
                 <p style={{ fontSize: 15, fontWeight: 600, color: "var(--foreground)", marginBottom: 4 }}>
@@ -1311,13 +1334,15 @@ export default function MissingFieldsPage() {
                 </p>
               </div>
             ) : (
-              visibleDocuments.map((doc) => (
+              documents.map((doc) => (
                 <MissingFieldRow key={doc.id} doc={doc} onView={handleView} hitlUsers={hitlUsers} onAssigned={handleAssigned} onStatusChanged={handleStatusChanged} onBugStatusChanged={handleBugStatusChanged} canAssign={canAssign} />
               ))
             )}
           </div>
+          </div>
+          </div>
 
-          {visibleDocuments.length > 0 && (
+          {documents.length > 0 && (
             <div
               style={{
                 display: "flex",

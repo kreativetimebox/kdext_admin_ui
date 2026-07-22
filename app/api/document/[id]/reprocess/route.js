@@ -181,7 +181,16 @@ export async function PUT(request, { params }) {
     }
 
     return NextResponse.json(
-      { id: committed.id, request_id: committed.request_id, status: "COMPLETED" },
+      {
+        id: committed.id,
+        request_id: committed.request_id,
+        status: "COMPLETED",
+        // hitl_status/validation of the just-committed result — lets the
+        // caller decide whether this document still needs a human (see
+        // lib/reprocessRunner.js's redirect-to-/view/[id] logic).
+        hitl_status: committed.hitl_status,
+        validation: committed.validation,
+      },
       { status: 200 }
     );
   } catch (error) {
