@@ -33,6 +33,8 @@ import { useAuth } from "@/lib/useAuth";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
+import BulkActionBar from "@/components/Grid/BulkActionBar";
+import { bulkSetBugStatus, bulkAssignHitl } from "@/lib/bulkDocumentActions";
 
 // Same allow-list as app/missing-fields/page.js's assign-hitl gate — kept as
 // a separate copy per this codebase's convention rather than a shared import.
@@ -215,6 +217,7 @@ function HitlAssignCell({ docId, currentId, hitlUsers, onAssigned, canAssign }) 
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
 const TABLE_HEADER_COLUMNS = [
+  { label: "", key: null },
   { label: "Request ID", key: "request_id" },
   { label: "Result ID", key: "result_id" },
   { label: "Document Type", key: "document_type" },
@@ -227,7 +230,6 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Updated At", key: "updated_at" },
   { label: "HITL Assign", key: "hitl_assigned_to" },
   { label: "Processing", key: "processing_duration_ms" },
-  { label: "", key: null },
 ];
 
 // Single source of truth for both the header row and each ResultRow below —
@@ -235,7 +237,7 @@ const TABLE_HEADER_COLUMNS = [
 // apart (different minmax/fr tokens for the Document Type/Key Environment
 // columns), which misaligned every column since the header's row.
 const ROW_GRID =
-  "minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 150px 100px 160px";
+  "32px 160px minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 150px 100px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
   const active = sortKey && sortBy === sortKey;
@@ -510,7 +512,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAssigned, canAssign }) {
+function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAssigned, canAssign, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -527,6 +529,65 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         transition: "background 0.12s ease",
       }}
     >
+      <input
+        type="checkbox"
+        checked={selected}
+        disabled={record.result_id == null}
+        title={record.result_id == null ? "Not selectable — still processing" : undefined}
+        onChange={() => onToggleSelect(record.result_id)}
+        style={{ cursor: record.result_id == null ? "not-allowed" : "pointer" }}
+      />
+
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {record.validation === false && record.result_id != null && (
+          <button
+            onClick={() => onEdit(record.result_id)}
+            title="Open result in HITL Edit"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              border: "1px solid #c2410c",
+              background: "#ea580c",
+              color: "#fff",
+              cursor: "pointer",
+              boxShadow: "0 2px 6px rgba(124,45,18,0.35)",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <Pencil size={12} />
+            Edit
+          </button>
+        )}
+
+        <button
+          onClick={() => onView(record.request_id)}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "6px 12px",
+            borderRadius: 8,
+            fontSize: 12,
+            fontWeight: 600,
+            border: "none",
+            background:
+              "var(--brand-gradient)",
+            color: "#fff",
+            cursor: "pointer",
+            boxShadow: hovered ? "0 4px 14px rgba(20,14,53,0.26)" : "0 2px 6px rgba(20,14,53,0.18)",
+            transition: "all 0.15s ease",
+          }}
+        >
+          <Eye size={12} />
+          View
+        </button>
+      </div>
+
       <span
         style={{
           fontSize: 12.5,
@@ -630,55 +691,6 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         {formatDuration(record.processing_duration_ms)}
       </span>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
-        {record.validation === false && record.result_id != null && (
-          <button
-            onClick={() => onEdit(record.result_id)}
-            title="Open result in HITL Edit"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 600,
-              border: "1px solid #c2410c",
-              background: "#ea580c",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(124,45,18,0.35)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <Pencil size={12} />
-            Edit
-          </button>
-        )}
-
-        <button
-          onClick={() => onView(record.request_id)}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 600,
-            border: "none",
-            background:
-              "var(--brand-gradient)",
-            color: "#fff",
-            cursor: "pointer",
-            boxShadow: hovered ? "0 4px 14px rgba(20,14,53,0.26)" : "0 2px 6px rgba(20,14,53,0.18)",
-            transition: "all 0.15s ease",
-          }}
-        >
-          <Eye size={12} />
-          View
-        </button>
-      </div>
     </div>
   );
 }
@@ -705,6 +717,7 @@ export default function UserResultsPage({ params }) {
   const [page, setPage] = useState(1);
   const [sortBy, setSortBy] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const handleSort = (key) => {
     if (sortBy === key) {
@@ -727,7 +740,14 @@ export default function UserResultsPage({ params }) {
 
   useEffect(() => {
     setPage(1);
+    setSelectedIds(new Set());
   }, [debouncedSearch, docType, status, keyEnv, bugStatus, issueType, sortBy, sortOrder]);
+
+  // A new page of rows means the previous selection no longer corresponds
+  // to what's on screen.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page]);
 
   const userQuery = useQuery({
     queryKey: ["dexai", "user", userId],
@@ -794,6 +814,63 @@ export default function UserResultsPage({ params }) {
   const handleBugStatusChanged = () => {
     queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
   };
+
+  // Selection is keyed by result_id (not request_id) since the bug-status
+  // and assign actions both operate on result_id, and a row without one yet
+  // (still processing) can't be selected at all — same rows whose Edit
+  // button and BugStatusCell are already disabled for the same reason.
+  const selectableRecords = records.filter((r) => r.result_id != null);
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) =>
+      prev.size === selectableRecords.length ? new Set() : new Set(selectableRecords.map((r) => r.result_id))
+    );
+  };
+
+  const bulkActions = [
+    {
+      key: "bugStatus",
+      label: "Bug Status",
+      placeholder: "Bug status…",
+      options: BUG_STATUSES.map((s) => ({ value: s, label: s })),
+      confirmText: (value, count) => `Set bug status to "${value}" for ${count} selected document(s)?`,
+      run: (value, onProgress) =>
+        bulkSetBugStatus([...selectedIds], value, { onProgress }).then((result) => {
+          setSelectedIds(new Set());
+          queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
+          return result;
+        }),
+    },
+    ...(canAssign
+      ? [
+          {
+            key: "hitlAssign",
+            label: "HITL Assign",
+            placeholder: "Assign to…",
+            options: hitlUsers.map((u) => ({ value: u.id, label: u.label })),
+            confirmText: (value, count) => {
+              const user = hitlUsers.find((u) => String(u.id) === String(value));
+              return `Assign ${count} selected document(s) to ${user?.label || value}?`;
+            },
+            run: (value, onProgress) =>
+              bulkAssignHitl([...selectedIds], value, { onProgress }).then((result) => {
+                setSelectedIds(new Set());
+                queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
+                return result;
+              }),
+          },
+        ]
+      : []),
+  ];
 
   const exportParams = {
     search: debouncedSearch,
@@ -1092,6 +1169,8 @@ export default function UserResultsPage({ params }) {
           </a>
         </div>
 
+        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} actions={bulkActions} />
+
         {/* Table */}
         <div
           style={{
@@ -1118,6 +1197,12 @@ export default function UserResultsPage({ params }) {
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
+            <input
+              type="checkbox"
+              checked={selectableRecords.length > 0 && selectedIds.size === selectableRecords.length}
+              onChange={toggleSelectAll}
+              style={{ cursor: "pointer" }}
+            />
             {TABLE_HEADER_COLUMNS.map((col) => (
               <SortableHeaderCell
                 key={col.label || "actions"}
@@ -1179,6 +1264,8 @@ export default function UserResultsPage({ params }) {
                   hitlUsers={hitlUsers}
                   onAssigned={handleAssigned}
                   canAssign={canAssign}
+                  selected={r.result_id != null && selectedIds.has(r.result_id)}
+                  onToggleSelect={toggleSelectOne}
                 />
               ))
             )}

@@ -27,6 +27,8 @@ import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
+import BulkActionBar from "@/components/Grid/BulkActionBar";
+import { bulkSetBugStatus } from "@/lib/bulkDocumentActions";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -40,6 +42,8 @@ function formatDate(value) {
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
 const TABLE_HEADER_COLUMNS = [
+  { label: "Edit", key: null },
+  { label: "View", key: null },
   { label: "Company", key: "business_name" },
   { label: "User Email", key: "client_email" },
   { label: "Request ID", key: "request_id" },
@@ -51,8 +55,6 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Issue Description", key: "issue_description" },
   { label: "HITL Assigned", key: "hitl_assigned_to" },
   { label: "Comments", key: null },
-  { label: "Edit", key: null },
-  { label: "View", key: null },
 ];
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
@@ -471,9 +473,9 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px 150px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px 64px 64px";
+const ROW_GRID = "32px 64px 64px minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px 150px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px";
 
-function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged }) {
+function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -481,6 +483,30 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
       onMouseLeave={() => setHovered(false)}
       style={{ display: "grid", gridTemplateColumns: ROW_GRID, gap: 16, alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--panel-border)", background: hovered ? "var(--input-bg)" : "transparent", transition: "background 0.15s" }}
     >
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={() => onToggleSelect(doc.id)}
+        style={{ cursor: "pointer" }}
+      />
+
+      <button
+        onClick={() => onEdit(doc)}
+        title="Edit"
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--foreground)", cursor: "pointer" }}
+      >
+        <Pencil size={13} />
+      </button>
+
+      <button
+        onClick={() => onView(doc.result_id)}
+        title="View"
+        disabled={doc.result_id == null}
+        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "none", background: doc.result_id == null ? "var(--input-bg)" : "var(--brand-gradient)", color: doc.result_id == null ? "var(--text-muted)" : "#fff", cursor: doc.result_id == null ? "not-allowed" : "pointer" }}
+      >
+        <Eye size={13} />
+      </button>
+
       <span style={{ fontSize: 12.5, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.business_name || ""}>
         {doc.business_name || "—"}
       </span>
@@ -521,23 +547,6 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
         <MessageSquare size={13} />
         {Array.isArray(doc.comments) && doc.comments.length > 0 ? doc.comments.length : ""}
       </button>
-
-      <button
-        onClick={() => onEdit(doc)}
-        title="Edit"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--foreground)", cursor: "pointer" }}
-      >
-        <Pencil size={13} />
-      </button>
-
-      <button
-        onClick={() => onView(doc.result_id)}
-        title="View"
-        disabled={doc.result_id == null}
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "none", background: doc.result_id == null ? "var(--input-bg)" : "var(--brand-gradient)", color: doc.result_id == null ? "var(--text-muted)" : "#fff", cursor: doc.result_id == null ? "not-allowed" : "pointer" }}
-      >
-        <Eye size={13} />
-      </button>
     </div>
   );
 }
@@ -564,6 +573,7 @@ export default function BugTrackerPage() {
   const [viewingCommentsRow, setViewingCommentsRow] = useState(null);
   const [sortBy, setSortBy] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const handleSort = (key) => {
     if (sortBy === key) {
@@ -583,7 +593,14 @@ export default function BugTrackerPage() {
 
   useEffect(() => {
     setPage(1);
+    setSelectedIds(new Set());
   }, [debouncedSearch, companies, docType, issueType, bugStatusFilter, sortBy, sortOrder]);
+
+  // A new page of rows means the previous selection no longer corresponds
+  // to what's on screen.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["bug-tracker", { debouncedSearch, companies, docType, issueType, bugStatusFilter, sortBy, sortOrder, page }],
@@ -620,7 +637,10 @@ export default function BugTrackerPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const businessOptions = (filterOptions?.businesses || []).map((b) => ({ value: b, label: b }));
+  const businessOptions = [
+    { value: "NULL", label: "No Company" },
+    ...(filterOptions?.businesses || []).map((b) => ({ value: b, label: b })),
+  ];
   const docTypeOptions = filterOptions?.docTypes || [];
 
   const handleView = (resultId) => {
@@ -653,6 +673,37 @@ export default function BugTrackerPage() {
     setViewingCommentsRow((prev) => (prev && prev.id === rowId ? { ...prev, comments: updatedComments } : prev));
     queryClient.invalidateQueries({ queryKey: ["bug-tracker"] });
   };
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) =>
+      prev.size === documents.length ? new Set() : new Set(documents.map((d) => d.id))
+    );
+  };
+
+  const bulkActions = [
+    {
+      key: "bugStatus",
+      label: "Bug Status",
+      placeholder: "Bug status…",
+      options: BUG_STATUSES.map((s) => ({ value: s, label: s })),
+      confirmText: (value, count) => `Set bug status to "${value}" for ${count} selected document(s)?`,
+      run: (value, onProgress) =>
+        bulkSetBugStatus([...selectedIds], value, { onProgress }).then((result) => {
+          setSelectedIds(new Set());
+          queryClient.invalidateQueries({ queryKey: ["bug-tracker"] });
+          return result;
+        }),
+    },
+  ];
 
   const hasFilters = search || companies.length || docType || issueType || bugStatusFilter;
 
@@ -762,6 +813,8 @@ export default function BugTrackerPage() {
           </a>
         </div>
 
+        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} actions={bulkActions} />
+
         {/* Table */}
         <div style={{ background: "var(--panel-bg)", border: "1px solid var(--panel-border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
           {/* Header and rows share one horizontal scroll container so a
@@ -771,6 +824,12 @@ export default function BugTrackerPage() {
           <div style={{ overflowX: "auto" }}>
           <div style={{ minWidth: "max-content" }}>
           <div style={{ display: "grid", gridTemplateColumns: ROW_GRID, gap: 16, padding: "12px 20px", background: "var(--input-bg)", borderBottom: "1px solid var(--panel-border)" }}>
+            <input
+              type="checkbox"
+              checked={documents.length > 0 && selectedIds.size === documents.length}
+              onChange={toggleSelectAll}
+              style={{ cursor: "pointer" }}
+            />
             {TABLE_HEADER_COLUMNS.map((col) => (
               <SortableHeaderCell
                 key={col.label}
@@ -808,6 +867,8 @@ export default function BugTrackerPage() {
                   onEdit={setEditingRow}
                   onViewComments={setViewingCommentsRow}
                   onBugStatusChanged={handleBugStatusChanged}
+                  selected={selectedIds.has(doc.id)}
+                  onToggleSelect={toggleSelectOne}
                 />
               ))
             )}

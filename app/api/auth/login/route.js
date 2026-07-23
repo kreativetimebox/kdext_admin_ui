@@ -111,6 +111,9 @@ export async function POST(req) {
       await financeQuery(`SELECT update_internal_user_last_login($1)`, [user.internal_user_id]);
       await financeQuery(`SELECT log_internal_login($1, $2, $3, $4, $5)`,
         [user.internal_user_id, true, req.ip, req.headers.get("user-agent") || "", null]);
+      // Clear any prior logout mark — a fresh login means they're "logged in"
+      // again for the auto-assignment eligibility check (lib/hitlAssignment.js).
+      await financeQuery(`UPDATE internal_users SET logged_out_at = NULL WHERE internal_user_id = $1`, [user.internal_user_id]);
     } catch (logErr) {
       console.error("Failed to log successful login:", logErr.message);
     }

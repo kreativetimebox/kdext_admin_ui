@@ -848,7 +848,10 @@ function HitlWorkloadTab() {
     queryFn: async () => (await axios.get("/api/filter-options")).data,
     staleTime: 10 * 60 * 1000,
   });
-  const businessOptions = (filterOptions?.businesses || []).map((b) => ({ value: b, label: b }));
+  const businessOptions = [
+    { value: "NULL", label: "No Company" },
+    ...(filterOptions?.businesses || []).map((b) => ({ value: b, label: b })),
+  ];
   const docTypeOptions = (filterOptions?.docTypes || []).map((t) => ({ value: t, label: t }));
 
   const { data: members = [], isLoading, error } = useQuery({

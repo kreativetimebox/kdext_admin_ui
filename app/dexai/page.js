@@ -508,16 +508,16 @@ export default function DexaiUsersPage() {
     return Array.from(companySet).sort();
   }, [users]);
 
-  // Company dropdown options
+  // Company dropdown options — "NULL" is a sentinel for "no company on file"
   const companyOptions = useMemo(
-    () => uniqueCompanies.map((c) => ({ value: c, label: c })),
+    () => [{ value: "NULL", label: "No Company" }, ...uniqueCompanies.map((c) => ({ value: c, label: c }))],
     [uniqueCompanies]
   );
 
   // Client (user) dropdown options — scoped to the selected company when one is chosen
   const clientOptions = useMemo(() => {
     const base = selectedCompany
-      ? users.filter((u) => (u.company_name || "Unknown Company") === selectedCompany)
+      ? users.filter((u) => (selectedCompany === "NULL" ? !u.company_name : u.company_name === selectedCompany))
       : users;
     return base
       .map((u) => ({
@@ -548,7 +548,7 @@ export default function DexaiUsersPage() {
 
     // Apply dropdown filters
     if (selectedCompany) {
-      filtered = filtered.filter((u) => u.company_name === selectedCompany);
+      filtered = filtered.filter((u) => (selectedCompany === "NULL" ? !u.company_name : u.company_name === selectedCompany));
     }
     if (selectedClient) {
       filtered = filtered.filter((u) => String(u.user_id) === selectedClient);

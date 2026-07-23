@@ -30,6 +30,8 @@ import { useAuth } from "@/lib/useAuth";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
+import BulkActionBar from "@/components/Grid/BulkActionBar";
+import { bulkSetBugStatus, bulkSetHitlStatus, bulkAssignHitl } from "@/lib/bulkDocumentActions";
 
 const HITL_ASSIGN_ALLOWED = ["financeai@financeai.com", "rashika@financeai.com"];
 function emailCanAssign(email = "") {
@@ -39,6 +41,7 @@ function emailCanAssign(email = "") {
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
 const TABLE_HEADER_COLUMNS = [
+  { label: "Action", key: null },
   { label: "Result ID", key: "result_id" },
   { label: "Document Type", key: "ocr_document_type" },
   { label: "Key Environment", key: "key_environment" },
@@ -49,8 +52,12 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Issue Type", key: "issue_type" },
   { label: "Created At", key: "created_at" },
   { label: "HITL", key: null },
-  { label: "Action", key: null },
 ];
+
+// Single source of truth for both the header row and each MissingFieldRow
+// below — a header/row template drift caused a real column-misalignment bug
+// earlier, so this is shared rather than duplicated inline.
+const ROW_GRID = "32px 90px minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 160px 130px 180px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
@@ -680,7 +687,7 @@ function KeyEnvBadge({ env }) {
 }
 
 /* ── Missing fields row ───────────────────────────────────── */
-function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, onBugStatusChanged, canAssign }) {
+function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, onBugStatusChanged, canAssign, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   const nullFields = doc.missing_fields || [];
 
@@ -690,7 +697,7 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 160px 130px 180px 90px",
+        gridTemplateColumns: ROW_GRID,
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -699,6 +706,37 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         transition: "background 0.15s",
       }}
     >
+      <input
+        type="checkbox"
+        checked={selected}
+        onChange={() => onToggleSelect(doc.id)}
+        style={{ cursor: "pointer" }}
+      />
+
+      <button
+        onClick={() => onView(doc.id)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 6,
+          padding: "7px 14px",
+          borderRadius: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          background: "var(--brand-gradient)",
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
+          boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
+          transform: hovered ? "translateY(-1px)" : "translateY(0)",
+          transition: "all 0.2s",
+        }}
+      >
+        <Eye size={13} />
+        View
+      </button>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
         <span
           style={{
@@ -808,30 +846,6 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         onAssigned={onAssigned}
         canAssign={canAssign}
       />
-
-      <button
-        onClick={() => onView(doc.id)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          padding: "7px 14px",
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 600,
-          background: "var(--brand-gradient)",
-          color: "#fff",
-          border: "none",
-          cursor: "pointer",
-          boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
-          transform: hovered ? "translateY(-1px)" : "translateY(0)",
-          transition: "all 0.2s",
-        }}
-      >
-        <Eye size={13} />
-        View
-      </button>
     </div>
   );
 }
@@ -865,6 +879,7 @@ export default function MissingFieldsPage() {
   const [docs, setDocs] = useState([]);
   const [sortBy, setSortBy] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
+  const [selectedIds, setSelectedIds] = useState(new Set());
 
   const handleSort = (key) => {
     if (sortBy === key) {
@@ -887,7 +902,14 @@ export default function MissingFieldsPage() {
   // filtered total, so jump back to page 1 whenever any filter changes.
   useEffect(() => {
     setPage(1);
+    setSelectedIds(new Set());
   }, [debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, hitlUserId, validationFilter, showAll, sortBy, sortOrder]);
+
+  // A new page of rows means the previous selection no longer corresponds
+  // to what's on screen.
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [page]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["missing-fields", { debouncedSearch, docType, clientId, businessName, statusFilter, keyEnvironment, bugStatusFilter, issueTypeFilter, hitlUserId, validationFilter, showAll, sortBy, sortOrder, page }],
@@ -951,10 +973,10 @@ export default function MissingFieldsPage() {
     label: c.label,
     sublabel: c.email,
   }));
-  const businessOptions = (filterOptions?.businesses || []).map((b) => ({
-    value: b,
-    label: b,
-  }));
+  const businessOptions = [
+    { value: "NULL", label: "No Company" },
+    ...(filterOptions?.businesses || []).map((b) => ({ value: b, label: b })),
+  ];
   const docTypes = filterOptions?.docTypes || [];
   const keyEnvironments = filterOptions?.keyEnvironments || [];
 
@@ -987,6 +1009,70 @@ export default function MissingFieldsPage() {
     );
     queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
   };
+
+  const toggleSelectOne = (id) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) =>
+      prev.size === documents.length ? new Set() : new Set(documents.map((d) => d.id))
+    );
+  };
+
+  const bulkActions = [
+    {
+      key: "bugStatus",
+      label: "Bug Status",
+      placeholder: "Bug status…",
+      options: BUG_STATUSES.map((s) => ({ value: s, label: s })),
+      confirmText: (value, count) => `Set bug status to "${value}" for ${count} selected document(s)?`,
+      run: (value, onProgress) =>
+        bulkSetBugStatus([...selectedIds], value, { onProgress }).then((result) => {
+          setSelectedIds(new Set());
+          queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
+          return result;
+        }),
+    },
+    {
+      key: "hitlStatus",
+      label: "HITL Status",
+      placeholder: "HITL status…",
+      options: STATUS_OPTIONS,
+      confirmText: (value, count) => `Set HITL status to "${value}" for ${count} selected document(s)?`,
+      run: (value, onProgress) =>
+        bulkSetHitlStatus([...selectedIds], value, { onProgress }).then((result) => {
+          setSelectedIds(new Set());
+          queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
+          return result;
+        }),
+    },
+    ...(canAssign
+      ? [
+          {
+            key: "hitlAssign",
+            label: "HITL Assign",
+            placeholder: "Assign to…",
+            options: hitlUsers.map((u) => ({ value: u.id, label: u.label })),
+            confirmText: (value, count) => {
+              const user = hitlUsers.find((u) => String(u.id) === String(value));
+              return `Assign ${count} selected document(s) to ${user?.label || value}?`;
+            },
+            run: (value, onProgress) =>
+              bulkAssignHitl([...selectedIds], value, { onProgress }).then((result) => {
+                setSelectedIds(new Set());
+                queryClient.invalidateQueries({ queryKey: ["missing-fields", "all"] });
+                return result;
+              }),
+          },
+        ]
+      : []),
+  ];
 
   const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter || keyEnvironment || bugStatusFilter || issueTypeFilter;
 
@@ -1155,7 +1241,7 @@ export default function MissingFieldsPage() {
             placeholder="HITL: All"
             searchPlaceholder="Search HITL..."
             emptyText="No HITL users"
-            options={hitlUsers.map((u) => ({ value: u.id, label: u.label, sublabel: u.email }))}
+            options={[{ value: "UNASSIGNED", label: "Unassigned" }, ...hitlUsers.map((u) => ({ value: u.id, label: u.label, sublabel: u.email }))]}
             value={hitlUserId}
             onChange={setHitlUserId}
           />
@@ -1270,6 +1356,8 @@ export default function MissingFieldsPage() {
           </a>
         </div>
 
+        <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} actions={bulkActions} />
+
         {/* Table */}
         <div
           style={{
@@ -1289,14 +1377,20 @@ export default function MissingFieldsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 160px 130px 180px 90px",
+              gridTemplateColumns: ROW_GRID,
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {TABLE_HEADER_COLUMNS.map((col, i) => (
+            <input
+              type="checkbox"
+              checked={documents.length > 0 && selectedIds.size === documents.length}
+              onChange={toggleSelectAll}
+              style={{ cursor: "pointer" }}
+            />
+            {TABLE_HEADER_COLUMNS.map((col) => (
               <SortableHeaderCell
                 key={col.label}
                 label={col.label}
@@ -1304,7 +1398,7 @@ export default function MissingFieldsPage() {
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={handleSort}
-                align={i === 9 ? "center" : "left"}
+                align={col.label === "HITL" ? "center" : "left"}
               />
             ))}
           </div>
@@ -1335,7 +1429,7 @@ export default function MissingFieldsPage() {
               </div>
             ) : (
               documents.map((doc) => (
-                <MissingFieldRow key={doc.id} doc={doc} onView={handleView} hitlUsers={hitlUsers} onAssigned={handleAssigned} onStatusChanged={handleStatusChanged} onBugStatusChanged={handleBugStatusChanged} canAssign={canAssign} />
+                <MissingFieldRow key={doc.id} doc={doc} onView={handleView} hitlUsers={hitlUsers} onAssigned={handleAssigned} onStatusChanged={handleStatusChanged} onBugStatusChanged={handleBugStatusChanged} canAssign={canAssign} selected={selectedIds.has(doc.id)} onToggleSelect={toggleSelectOne} />
               ))
             )}
           </div>
