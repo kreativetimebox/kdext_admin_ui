@@ -44,8 +44,7 @@ function formatDate(value) {
 const TABLE_HEADER_COLUMNS = [
   { label: "Edit", key: null },
   { label: "View", key: null },
-  { label: "Company", key: "business_name" },
-  { label: "User Email", key: "client_email" },
+  { label: "Client Email", key: "client_email" },
   { label: "Request ID", key: "request_id" },
   { label: "Result ID", key: "result_id" },
   { label: "Document Type", key: "ocr_document_type" },
@@ -473,7 +472,7 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "32px 64px 64px minmax(140px, 1fr) minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px 150px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px";
+const ROW_GRID = "32px 64px 64px minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px 150px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px";
 
 function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
@@ -507,9 +506,6 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
         <Eye size={13} />
       </button>
 
-      <span style={{ fontSize: 12.5, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.business_name || ""}>
-        {doc.business_name || "—"}
-      </span>
       <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.client_email || ""}>
         {doc.client_email || "—"}
       </span>
@@ -563,7 +559,7 @@ export default function BugTrackerPage() {
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [companies, setCompanies] = useState([]);
+  const [clientEmails, setClientEmails] = useState([]);
   const [docType, setDocType] = useState("");
   const [issueType, setIssueType] = useState("");
   const [bugStatusFilter, setBugStatusFilter] = useState("");
@@ -594,7 +590,7 @@ export default function BugTrackerPage() {
   useEffect(() => {
     setPage(1);
     setSelectedIds(new Set());
-  }, [debouncedSearch, companies, docType, issueType, bugStatusFilter, sortBy, sortOrder]);
+  }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, sortBy, sortOrder]);
 
   // A new page of rows means the previous selection no longer corresponds
   // to what's on screen.
@@ -603,12 +599,12 @@ export default function BugTrackerPage() {
   }, [page]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["bug-tracker", { debouncedSearch, companies, docType, issueType, bugStatusFilter, sortBy, sortOrder, page }],
+    queryKey: ["bug-tracker", { debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, sortBy, sortOrder, page }],
     queryFn: async () => {
       const res = await axios.get("/api/bug-tracker", {
         params: {
           search: debouncedSearch,
-          companies: companies.join(","),
+          clientEmails: clientEmails.join(","),
           docType,
           issueType,
           bugStatus: bugStatusFilter,
@@ -637,10 +633,16 @@ export default function BugTrackerPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
-  const businessOptions = [
-    { value: "NULL", label: "No Company" },
-    ...(filterOptions?.businesses || []).map((b) => ({ value: b, label: b })),
-  ];
+  const clientEmailOptions = useMemo(() => {
+    const seen = new Set();
+    const options = [];
+    for (const c of filterOptions?.clients || []) {
+      if (!c.email || seen.has(c.email)) continue;
+      seen.add(c.email);
+      options.push({ value: c.email, label: c.email });
+    }
+    return options.sort((a, b) => a.label.localeCompare(b.label));
+  }, [filterOptions?.clients]);
   const docTypeOptions = filterOptions?.docTypes || [];
 
   const handleView = (resultId) => {
@@ -705,11 +707,11 @@ export default function BugTrackerPage() {
     },
   ];
 
-  const hasFilters = search || companies.length || docType || issueType || bugStatusFilter;
+  const hasFilters = search || clientEmails.length || docType || issueType || bugStatusFilter;
 
   const exportParams = {
     search: debouncedSearch,
-    companies: companies.join(","),
+    clientEmails: clientEmails.join(","),
     docType,
     issueType,
     bugStatus: bugStatusFilter,
@@ -739,12 +741,12 @@ export default function BugTrackerPage() {
         {/* Filters */}
         <div style={{ display: "flex", gap: 12, marginBottom: 24, padding: 20, background: "var(--panel-bg)", border: "1px solid var(--panel-border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", flexWrap: "wrap" }}>
           <MultiSelectDropdown
-            placeholder="All Companies"
-            searchPlaceholder="Search company..."
-            emptyText="No companies"
-            options={businessOptions}
-            values={companies}
-            onChange={setCompanies}
+            placeholder="All Client Emails"
+            searchPlaceholder="Search email..."
+            emptyText="No clients"
+            options={clientEmailOptions}
+            values={clientEmails}
+            onChange={setClientEmails}
           />
 
           <SearchableDropdown

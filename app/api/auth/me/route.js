@@ -23,6 +23,7 @@ export async function GET() {
         id: payload.userId,
         email: payload.email,
         roles: payload.roles,
+        clientId: payload.clientId ?? null,
       },
     });
   } catch (error) {

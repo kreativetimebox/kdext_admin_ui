@@ -20,7 +20,10 @@ import {
   Building2,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
+
+const CLIENT_ROLES = ["CLIENT_ADMIN", "CLIENT_USER"];
 
 function formatDate(value) {
   if (!value) return "—";
@@ -479,6 +482,8 @@ function SearchableDropdown({
 export default function DexaiUsersPage() {
   const { initTheme } = useThemeStore();
   const router = useRouter();
+  const { user } = useAuth();
+  const isClientRole = (user?.roles || []).some((r) => CLIENT_ROLES.includes(r));
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [selectedClient, setSelectedClient] = useState("");
@@ -486,6 +491,14 @@ export default function DexaiUsersPage() {
   useEffect(() => {
     initTheme();
   }, [initTheme]);
+
+  // CLIENT_ADMIN/CLIENT_USER only ever have one client to look at — skip the
+  // directory entirely and land them straight on their own detail page.
+  useEffect(() => {
+    if (isClientRole && user?.clientId) {
+      router.replace(`/dexai/${user.clientId}`);
+    }
+  }, [isClientRole, user?.clientId, router]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["dexai", "users"],

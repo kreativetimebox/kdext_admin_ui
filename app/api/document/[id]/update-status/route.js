@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { dexaiQuery } from "@/lib/dexaidb";
+import { assertOwnsDocument } from "@/lib/clientAccess";
 
 const VALID_STATUSES = ["COMPLETED", "PENDING", "PROCESSING", "TO_BE_TESTED", "FAILED"];
 
 export async function POST(req, { params }) {
   try {
-    const { status } = await req.json();
     const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(req, id);
+    if (ownershipError) return ownershipError;
+
+    const { status } = await req.json();
 
     if (!VALID_STATUSES.includes(status)) {
       return NextResponse.json({ ok: false, error: "Invalid status value" }, { status: 400 });

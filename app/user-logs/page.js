@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useMemo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Search, ChevronUp, ChevronDown, Plus, UserX, UserCheck, X, Eye, EyeOff } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronRight, Plus, UserX, UserCheck, X, Eye, EyeOff, Pencil, KeyRound, RefreshCw, Copy } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import { TEAM_ROLES } from "@/lib/constants";
@@ -39,13 +39,14 @@ export default function UserLogsPage() {
   const [tab, setTab] = useState("team");
 
   const isSuperUser = user && user.roles?.includes("SUPER_ADMIN");
+  const isClientAdmin = user && user.roles?.includes("CLIENT_ADMIN");
 
   useEffect(() => {
-    if (!authLoading && !isSuperUser) {
-      toast.error("Access denied. Super user privileges required.");
+    if (!authLoading && !isSuperUser && !isClientAdmin) {
+      toast.error("Access denied.");
       window.location.href = "/";
     }
-  }, [authLoading, isSuperUser]);
+  }, [authLoading, isSuperUser, isClientAdmin]);
 
   if (authLoading) {
     return (
@@ -58,8 +59,15 @@ export default function UserLogsPage() {
     );
   }
 
-  if (!isSuperUser) {
+  if (!isSuperUser && !isClientAdmin) {
     return null;
+  }
+
+  // CLIENT_ADMIN gets a lightweight, unrelated view — they can only ever
+  // manage their own CLIENT_USER accounts (lib/clientUsers.js), never the
+  // full Team Members/Clients/HITL Workload tabs below.
+  if (isClientAdmin) {
+    return <ClientAdminUserLogsPage />;
   }
 
   return (
@@ -102,6 +110,425 @@ export default function UserLogsPage() {
         {tab === "clients" && <ClientsTab />}
         {tab === "hitlWorkload" && <HitlWorkloadTab />}
       </main>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CLIENT_ADMIN's restricted User Logs view — manage this client's own
+// CLIENT_USER accounts only. Backed by /api/client-users, which scopes every
+// query to the requester's own client_id server-side (lib/clientUsers.js).
+// ---------------------------------------------------------------------------
+
+function ClientAdminUserLogsPage() {
+  const queryClient = useQueryClient();
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [credentialsUser, setCredentialsUser] = useState(null);
+
+  const { data: users = [], isLoading, error } = useQuery({
+    queryKey: ["client-users"],
+    queryFn: async () => (await axios.get("/api/client-users")).data.users || [],
+  });
+
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ["client-users"] });
+  }
+
+  async function handleToggleActive(u) {
+    try {
+      await axios.patch(`/api/client-users/${u.internal_user_id}`, { isActive: !u.is_active });
+      toast.success(u.is_active ? "User deactivated" : "User activated");
+      refresh();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to update user");
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--bg-primary)" }}>
+      <Navbar />
+
+      <main style={{ flex: 1, padding: "24px 28px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+          <div>
+            <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--foreground)", margin: 0, marginBottom: 8 }}>
+              User Logs
+            </h1>
+            <p style={{ fontSize: 14, color: "var(--text-muted)", margin: 0 }}>
+              Manage the users on your account
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowAddModal(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "9px 16px",
+              borderRadius: 8,
+              border: "none",
+              background: "var(--accent)",
+              color: "#fff",
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              height: "fit-content",
+            }}
+          >
+            <Plus size={15} /> Add User
+          </button>
+        </div>
+
+        <div
+          style={{
+            borderRadius: 10,
+            border: "1px solid var(--panel-border)",
+            overflow: "hidden",
+            background: "var(--card-bg)",
+            boxShadow: "0 4px 14px rgba(0,0,0,0.08)",
+          }}
+        >
+          {isLoading ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>Loading users...</div>
+          ) : error ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#dc2626" }}>Error loading users</div>
+          ) : users.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)" }}>No users yet — add one to get started</div>
+          ) : (
+            <table style={{ width: "100%", borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid var(--panel-border)", background: "var(--input-bg)" }}>
+                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Name</th>
+                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Email</th>
+                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Role</th>
+                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Status</th>
+                  <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Last Login</th>
+                  <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {users.map((u, idx) => {
+                  const isClientAdminRow = u.roles.includes("CLIENT_ADMIN");
+                  return (
+                    <tr
+                      key={u.internal_user_id}
+                      style={{
+                        borderBottom: idx < users.length - 1 ? "1px solid var(--panel-border)" : "none",
+                        background: idx % 2 === 0 ? "transparent" : "var(--input-bg)",
+                        opacity: u.is_active ? 1 : 0.55,
+                      }}
+                    >
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{fullName(u)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{u.email}</td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <RoleBadges roles={u.roles} />
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: 12 }}>
+                        <span
+                          style={{
+                            padding: "3px 9px",
+                            borderRadius: 999,
+                            fontWeight: 600,
+                            background: u.is_active ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+                            color: u.is_active ? "#16a34a" : "#ef4444",
+                          }}
+                        >
+                          {u.is_active ? "Active" : "Inactive"}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.last_login_at)}</td>
+                      <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                        {!isClientAdminRow && (
+                          <div style={{ display: "inline-flex", gap: 8 }}>
+                            <button
+                              type="button"
+                              title="View/edit password"
+                              onClick={() => setCredentialsUser(u)}
+                              style={iconBtnStyle(false)}
+                            >
+                              <KeyRound size={14} />
+                            </button>
+                            <button
+                              type="button"
+                              title={u.is_active ? "Deactivate" : "Activate"}
+                              onClick={() => handleToggleActive(u)}
+                              style={iconBtnStyle(false, u.is_active ? "#ef4444" : "#16a34a")}
+                            >
+                              {u.is_active ? <UserX size={14} /> : <UserCheck size={14} />}
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </main>
+
+      {showAddModal && (
+        <AddClientUserModal
+          onClose={() => setShowAddModal(false)}
+          onSaved={() => {
+            setShowAddModal(false);
+            refresh();
+          }}
+        />
+      )}
+
+      {credentialsUser && (
+        <UserCredentialsModal
+          title="User Credentials"
+          fetchUrl={`/api/client-users/${credentialsUser.internal_user_id}/credentials`}
+          saveUrl={`/api/client-users/${credentialsUser.internal_user_id}/credentials`}
+          onClose={() => setCredentialsUser(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function AddClientUserModal({ onClose, onSaved }) {
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!email.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    if (!password || password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await axios.post("/api/client-users", {
+        email: email.trim(),
+        firstName: firstName.trim() || null,
+        lastName: lastName.trim() || null,
+        password,
+      });
+      toast.success("User created");
+      onSaved();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to create user");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 420, maxWidth: "90vw", maxHeight: "85vh", overflowY: "auto", background: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", padding: 22 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#111827" }}>Add User</h2>
+          <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={modalLabelStyle}>First Name</label>
+              <input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="off" name="client-user-first-name" style={modalFieldStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={modalLabelStyle}>Last Name</label>
+              <input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" name="client-user-last-name" style={modalFieldStyle} />
+            </div>
+          </div>
+
+          <div>
+            <label style={modalLabelStyle}>Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" name="client-user-email" style={modalFieldStyle} />
+          </div>
+
+          <div>
+            <label style={modalLabelStyle}>Password</label>
+            <div style={{ position: "relative" }}>
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                autoComplete="new-password"
+                name="client-user-password"
+                style={{ ...modalFieldStyle, paddingRight: 36 }}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                title={showPassword ? "Hide password" : "Show password"}
+                style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}
+              >
+                {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 22 }}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "1px solid #d1d5db", background: "#f3f4f6", color: "#111827", cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* Shared view+edit password panel — used for CLIENT_USER (by their own
+   CLIENT_ADMIN) and internal team members (by SUPER_ADMIN). fetchUrl GET
+   returns { email, isActive, password } (password null if not viewable);
+   saveUrl PUT sets a new password from { newPassword }. */
+function UserCredentialsModal({ title, fetchUrl, saveUrl, onClose }) {
+  const [loading, setLoading] = useState(true);
+  const [creds, setCreds] = useState(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(fetchUrl)
+      .then((res) => {
+        if (!cancelled) setCreds(res.data);
+      })
+      .catch((err) => {
+        toast.error(err?.response?.data?.error || "Failed to load credentials");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [fetchUrl]);
+
+  function copyPassword() {
+    if (!creds?.password) return;
+    navigator.clipboard.writeText(creds.password);
+    toast.success("Password copied");
+  }
+
+  async function handleSetPassword() {
+    if (!newPassword || newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setSaving(true);
+    try {
+      await axios.put(saveUrl, { newPassword });
+      setCreds((prev) => ({ ...prev, password: newPassword }));
+      setNewPassword("");
+      toast.success("Password updated");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to set password");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 420, maxWidth: "90vw", background: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", padding: 22 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#111827" }}>{title}</h2>
+          <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 20, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading...</div>
+        ) : !creds ? (
+          <p style={{ fontSize: 13, color: "#6b7280", margin: 0 }}>Not found.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label style={modalLabelStyle}>Email</label>
+              <div style={{ ...modalFieldStyle, background: "#f9fafb" }}>{creds.email}</div>
+            </div>
+
+            <div>
+              <label style={modalLabelStyle}>Current Password</label>
+              {creds.password ? (
+                <div style={{ position: "relative" }}>
+                  <div style={{ ...modalFieldStyle, background: "#f9fafb", paddingRight: 64, fontFamily: "monospace" }}>
+                    {showPassword ? creds.password : "•".repeat(Math.min(creds.password.length, 16))}
+                  </div>
+                  <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 6 }}>
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} title={showPassword ? "Hide" : "Show"} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280", display: "flex" }}>
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                    <button type="button" onClick={copyPassword} title="Copy" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280", display: "flex" }}>
+                      <Copy size={15} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
+                  Not viewable — set a new password below to make it viewable going forward.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label style={modalLabelStyle}>Set New Password</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                  name="new-password"
+                  style={{ ...modalFieldStyle, paddingRight: 36 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((v) => !v)}
+                  title={showNewPassword ? "Hide password" : "Show password"}
+                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}
+                >
+                  {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleSetPassword}
+                disabled={saving}
+                style={{ marginTop: 10, width: "100%", padding: "9px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
+              >
+                {saving ? "Saving..." : "Save New Password"}
+              </button>
+            </div>
+
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>
+              Status: {creds.isActive ? "Active" : "Inactive"}
+            </p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -208,6 +635,7 @@ function TeamMembersTab({ currentUserId }) {
   const [sortBy, setSortBy] = useState("first_name");
   const [sortOrder, setSortOrder] = useState("ASC");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [credentialsMember, setCredentialsMember] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
@@ -354,6 +782,14 @@ function TeamMembersTab({ currentUserId }) {
                     <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(m.last_login_at)}</td>
                     <td style={{ padding: "12px 16px", textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: 8 }}>
+                        <button
+                          type="button"
+                          title="View/edit password"
+                          onClick={() => setCredentialsMember(m)}
+                          style={iconBtnStyle(false)}
+                        >
+                          <KeyRound size={14} />
+                        </button>
                         {m.is_active ? (
                           <button
                             type="button"
@@ -391,6 +827,15 @@ function TeamMembersTab({ currentUserId }) {
             setShowAddModal(false);
             refresh();
           }}
+        />
+      )}
+
+      {credentialsMember && (
+        <UserCredentialsModal
+          title="Team Member Credentials"
+          fetchUrl={`/api/team-members/${credentialsMember.internal_user_id}/credentials`}
+          saveUrl={`/api/team-members/${credentialsMember.internal_user_id}/credentials`}
+          onClose={() => setCredentialsMember(null)}
         />
       )}
     </div>
@@ -624,11 +1069,40 @@ function AddTeamMemberModal({ onClose, onSaved }) {
 // Clients tab
 // ---------------------------------------------------------------------------
 
+function PortalLoginBadge({ user }) {
+  if (!user.portal_internal_user_id) {
+    return (
+      <span style={{ padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "rgba(148,163,184,0.2)", color: "#64748b" }}>
+        Not Provisioned
+      </span>
+    );
+  }
+  return (
+    <span
+      style={{
+        padding: "3px 9px",
+        borderRadius: 999,
+        fontSize: 11,
+        fontWeight: 600,
+        background: user.portal_is_active ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+        color: user.portal_is_active ? "#16a34a" : "#ef4444",
+      }}
+    >
+      {user.portal_is_active ? "Active" : "Inactive"}
+    </span>
+  );
+}
+
 function ClientsTab() {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [sortBy, setSortBy] = useState("last_login_at");
   const [sortOrder, setSortOrder] = useState("DESC");
+  const [editingClient, setEditingClient] = useState(null);
+  const [credentialsClient, setCredentialsClient] = useState(null);
+  const [bulkProvisioning, setBulkProvisioning] = useState(false);
+  const [expandedClients, setExpandedClients] = useState(new Set());
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
@@ -645,6 +1119,30 @@ function ClientsTab() {
     },
   });
 
+  // Every CLIENT_USER across every client, grouped client-side by client_id
+  // — same "fetch once, group in memory" shape as Business Audit's
+  // company → client grouping (app/dexai/page.js's groupedData).
+  const { data: clientUsersAll = [] } = useQuery({
+    queryKey: ["client-users-all"],
+    queryFn: async () => (await axios.get("/api/client-users/all")).data.users || [],
+  });
+  const clientUsersByClientId = useMemo(() => {
+    const map = {};
+    for (const cu of clientUsersAll) {
+      (map[cu.client_id] ??= []).push(cu);
+    }
+    return map;
+  }, [clientUsersAll]);
+
+  function toggleExpanded(userId) {
+    setExpandedClients((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) next.delete(userId);
+      else next.add(userId);
+      return next;
+    });
+  }
+
   const handleSort = (column) => {
     if (sortBy === column) {
       setSortOrder(sortOrder === "ASC" ? "DESC" : "ASC");
@@ -654,9 +1152,60 @@ function ClientsTab() {
     }
   };
 
+  function refresh() {
+    queryClient.invalidateQueries({ queryKey: ["clients"] });
+  }
+
+  async function handleBulkProvision() {
+    setBulkProvisioning(true);
+    try {
+      const res = await axios.post("/api/user-logs/provision-all");
+      const { created, failed } = res.data;
+      if (created > 0) {
+        toast.success(`Generated ${created} new portal login(s)`);
+      } else {
+        toast.success("All clients already have a portal login");
+      }
+      if (failed?.length) {
+        toast.error(`${failed.length} client(s) could not be provisioned — check console`);
+        console.warn("Bulk-provision failures:", failed);
+      }
+      refresh();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to bulk-generate logins");
+    } finally {
+      setBulkProvisioning(false);
+    }
+  }
+
   return (
     <div>
-      <SearchBar value={search} onChange={setSearch} placeholder="Search by name, email, or company..." />
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+        <SearchBar value={search} onChange={setSearch} placeholder="Search by name, email, or company..." />
+        <button
+          type="button"
+          onClick={handleBulkProvision}
+          disabled={bulkProvisioning}
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            padding: "9px 16px",
+            borderRadius: 8,
+            border: "1px solid var(--panel-border)",
+            background: "var(--input-bg)",
+            color: "var(--foreground)",
+            fontSize: 13,
+            fontWeight: 600,
+            cursor: bulkProvisioning ? "not-allowed" : "pointer",
+            opacity: bulkProvisioning ? 0.6 : 1,
+            marginBottom: 20,
+            height: "fit-content",
+          }}
+        >
+          <RefreshCw size={15} /> {bulkProvisioning ? "Generating..." : "Refresh and Add"}
+        </button>
+      </div>
 
       <div
         style={{
@@ -677,6 +1226,7 @@ function ClientsTab() {
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
               <tr style={{ borderBottom: "1px solid var(--panel-border)", background: "var(--input-bg)" }}>
+                <th style={{ padding: "12px 16px", width: 1 }} />
                 <SortableHeader label="Name" column="first_name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                 <SortableHeader label="Email" column="email" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                 <SortableHeader label="Company" column="company_name" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
@@ -684,28 +1234,382 @@ function ClientsTab() {
                 <SortableHeader label="Last Updated" column="updated_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                 <SortableHeader label="Last Login" column="last_login_at" sortBy={sortBy} sortOrder={sortOrder} onSort={handleSort} />
                 <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Requests</th>
+                <th style={{ padding: "12px 16px", textAlign: "left", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Portal Login</th>
+                <th style={{ padding: "12px 16px", textAlign: "right", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {users.map((u, idx) => (
-                <tr
-                  key={u.user_id}
-                  style={{
-                    borderBottom: idx < users.length - 1 ? "1px solid var(--panel-border)" : "none",
-                    background: idx % 2 === 0 ? "transparent" : "var(--input-bg)",
-                  }}
-                >
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>{fullName(u)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{u.email}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{u.company_name || "—"}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.created_at)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.updated_at)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.last_login_at)}</td>
-                  <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)", textAlign: "right" }}>{u.total_requests}</td>
-                </tr>
-              ))}
+              {users.map((u, idx) => {
+                const children = clientUsersByClientId[u.user_id] || [];
+                const isExpanded = expandedClients.has(u.user_id);
+                const isLastClient = idx === users.length - 1;
+                return (
+                  <Fragment key={u.user_id}>
+                    <tr
+                      style={{
+                        borderBottom: !isExpanded && isLastClient ? "none" : "1px solid var(--panel-border)",
+                        background: idx % 2 === 0 ? "transparent" : "var(--input-bg)",
+                      }}
+                    >
+                      <td style={{ padding: "12px 16px" }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(u.user_id)}
+                          title={isExpanded ? "Hide users" : "Show users"}
+                          style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 22, height: 22, borderRadius: 6, border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}
+                        >
+                          {isExpanded ? <ChevronDown size={15} /> : <ChevronRight size={15} />}
+                        </button>
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--foreground)", fontWeight: 500 }}>
+                        {fullName(u)}
+                        {children.length > 0 && (
+                          <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 999, background: "var(--tag-bg)", color: "var(--accent)" }}>
+                            {children.length} user{children.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{u.email}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{u.company_name || "—"}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.created_at)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.updated_at)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)" }}>{formatDate(u.last_login_at)}</td>
+                      <td style={{ padding: "12px 16px", fontSize: 13, color: "var(--text-muted)", textAlign: "right" }}>{u.total_requests}</td>
+                      <td style={{ padding: "12px 16px" }}>
+                        <PortalLoginBadge user={u} />
+                      </td>
+                      <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: 8 }}>
+                          <button type="button" title="Edit client" onClick={() => setEditingClient(u)} style={iconBtnStyle(false)}>
+                            <Pencil size={14} />
+                          </button>
+                          <button type="button" title="Portal credentials" onClick={() => setCredentialsClient(u)} style={iconBtnStyle(false)}>
+                            <KeyRound size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+
+                    {isExpanded && children.length === 0 && (
+                      <tr style={{ borderBottom: isLastClient ? "none" : "1px solid var(--panel-border)", background: "var(--input-bg)" }}>
+                        <td />
+                        <td colSpan={9} style={{ padding: "10px 16px 10px 44px", fontSize: 12, color: "var(--text-muted)", fontStyle: "italic" }}>
+                          No users added yet
+                        </td>
+                      </tr>
+                    )}
+
+                    {isExpanded &&
+                      children.map((cu, cidx) => (
+                        <tr
+                          key={cu.internal_user_id}
+                          style={{
+                            borderBottom: isLastClient && cidx === children.length - 1 ? "none" : "1px solid var(--panel-border)",
+                            background: "var(--input-bg)",
+                            opacity: cu.is_active ? 1 : 0.55,
+                          }}
+                        >
+                          <td />
+                          <td style={{ padding: "10px 16px 10px 44px", fontSize: 12.5, color: "var(--foreground)" }}>{fullName(cu)}</td>
+                          <td style={{ padding: "10px 16px", fontSize: 12.5, color: "var(--text-muted)" }}>{cu.email}</td>
+                          <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)" }}>—</td>
+                          <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)" }}>{formatDate(cu.created_at)}</td>
+                          <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)" }}>—</td>
+                          <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)" }}>{formatDate(cu.last_login_at)}</td>
+                          <td style={{ padding: "10px 16px", fontSize: 12, color: "var(--text-muted)", textAlign: "right" }}>—</td>
+                          <td style={{ padding: "10px 16px", fontSize: 11 }}>
+                            <span
+                              style={{
+                                padding: "3px 9px",
+                                borderRadius: 999,
+                                fontWeight: 600,
+                                background: cu.is_active ? "rgba(34,197,94,0.15)" : "rgba(239,68,68,0.15)",
+                                color: cu.is_active ? "#16a34a" : "#ef4444",
+                              }}
+                            >
+                              {cu.is_active ? "Active" : "Inactive"}
+                            </span>
+                          </td>
+                          <td />
+                        </tr>
+                      ))}
+                  </Fragment>
+                );
+              })}
             </tbody>
           </table>
+        )}
+      </div>
+
+      {editingClient && (
+        <EditClientModal
+          client={editingClient}
+          onClose={() => setEditingClient(null)}
+          onSaved={() => {
+            setEditingClient(null);
+            refresh();
+          }}
+        />
+      )}
+
+      {credentialsClient && (
+        <ClientCredentialsModal
+          client={credentialsClient}
+          onClose={() => setCredentialsClient(null)}
+          onProvisioned={refresh}
+        />
+      )}
+    </div>
+  );
+}
+
+const modalFieldStyle = {
+  fontSize: 13,
+  padding: "9px 11px",
+  borderRadius: 8,
+  border: "1px solid #d1d5db",
+  background: "#ffffff",
+  color: "#111827",
+  width: "100%",
+};
+const modalLabelStyle = { fontSize: 11, fontWeight: 700, color: "#6b7280", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 6, display: "block" };
+
+function EditClientModal({ client, onClose, onSaved }) {
+  const [email, setEmail] = useState(client.email || "");
+  const [firstName, setFirstName] = useState(client.first_name || "");
+  const [lastName, setLastName] = useState(client.last_name || "");
+  const [companyName, setCompanyName] = useState(client.company_name || "");
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!email.trim()) {
+      toast.error("Email is required");
+      return;
+    }
+    setSaving(true);
+    try {
+      await axios.patch(`/api/user-logs/${client.user_id}`, {
+        email: email.trim(),
+        firstName: firstName.trim() || null,
+        lastName: lastName.trim() || null,
+        companyName: companyName.trim() || null,
+      });
+      toast.success("Client updated");
+      onSaved();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to update client");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 440, maxWidth: "90vw", maxHeight: "85vh", overflowY: "auto", background: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", padding: 22 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#111827" }}>Edit Client</h2>
+          <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <div style={{ display: "flex", gap: 10 }}>
+            <div style={{ flex: 1 }}>
+              <label style={modalLabelStyle}>First Name</label>
+              <input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="off" name="client-first-name" style={modalFieldStyle} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={modalLabelStyle}>Last Name</label>
+              <input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="off" name="client-last-name" style={modalFieldStyle} />
+            </div>
+          </div>
+
+          <div>
+            <label style={modalLabelStyle}>Email</label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="off" name="client-email" style={modalFieldStyle} />
+          </div>
+
+          <div>
+            <label style={modalLabelStyle}>Company</label>
+            <input value={companyName} onChange={(e) => setCompanyName(e.target.value)} autoComplete="off" name="client-company" style={modalFieldStyle} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 22 }}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "1px solid #d1d5db", background: "#f3f4f6", color: "#111827", cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ClientCredentialsModal({ client, onClose, onProvisioned }) {
+  const [loading, setLoading] = useState(true);
+  const [provisioning, setProvisioning] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [creds, setCreds] = useState(null);
+  const [newPassword, setNewPassword] = useState("");
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [settingPassword, setSettingPassword] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    axios
+      .get(`/api/user-logs/${client.user_id}/credentials`)
+      .then((res) => {
+        if (!cancelled) setCreds(res.data);
+      })
+      .catch((err) => {
+        toast.error(err?.response?.data?.error || "Failed to load credentials");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [client.user_id]);
+
+  async function handleProvision() {
+    setProvisioning(true);
+    try {
+      const res = await axios.post(`/api/user-logs/${client.user_id}/credentials`);
+      setCreds({ provisioned: true, email: res.data.email, isActive: true, password: res.data.password });
+      setShowPassword(true);
+      toast.success("Portal login generated");
+      onProvisioned();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to generate login");
+    } finally {
+      setProvisioning(false);
+    }
+  }
+
+  function copyPassword() {
+    if (!creds?.password) return;
+    navigator.clipboard.writeText(creds.password);
+    toast.success("Password copied");
+  }
+
+  async function handleSetPassword() {
+    if (!newPassword || newPassword.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+    setSettingPassword(true);
+    try {
+      await axios.put(`/api/user-logs/${client.user_id}/credentials`, { newPassword });
+      setCreds((prev) => ({ ...prev, password: newPassword }));
+      setNewPassword("");
+      toast.success("Password updated");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to set password");
+    } finally {
+      setSettingPassword(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 420, maxWidth: "90vw", background: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", padding: 22 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#111827" }}>Portal Login</h2>
+          <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}>
+            <X size={18} />
+          </button>
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 20, textAlign: "center", color: "#6b7280", fontSize: 13 }}>Loading...</div>
+        ) : !creds?.provisioned ? (
+          <div>
+            <p style={{ fontSize: 13, color: "#6b7280", margin: "0 0 16px" }}>
+              This client doesn&apos;t have a portal login yet. Generate one to give them CLIENT_ADMIN access.
+            </p>
+            <button
+              type="button"
+              onClick={handleProvision}
+              disabled={provisioning}
+              style={{ width: "100%", padding: "10px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", cursor: provisioning ? "not-allowed" : "pointer", opacity: provisioning ? 0.7 : 1 }}
+            >
+              {provisioning ? "Generating..." : "Generate Login"}
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label style={modalLabelStyle}>Email</label>
+              <div style={{ ...modalFieldStyle, background: "#f9fafb" }}>{creds.email}</div>
+            </div>
+            <div>
+              <label style={modalLabelStyle}>Password</label>
+              {creds.password ? (
+                <div style={{ position: "relative" }}>
+                  <div style={{ ...modalFieldStyle, background: "#f9fafb", paddingRight: 64, fontFamily: "monospace" }}>
+                    {showPassword ? creds.password : "•".repeat(Math.min(creds.password.length, 16))}
+                  </div>
+                  <div style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", display: "flex", gap: 6 }}>
+                    <button type="button" onClick={() => setShowPassword((v) => !v)} title={showPassword ? "Hide" : "Show"} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280", display: "flex" }}>
+                      {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                    </button>
+                    <button type="button" onClick={copyPassword} title="Copy" style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280", display: "flex" }}>
+                      <Copy size={15} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: "#9ca3af", margin: 0 }}>
+                  This client changed their password themselves — it&apos;s no longer viewable here.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <label style={modalLabelStyle}>Set New Password</label>
+              <div style={{ position: "relative" }}>
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
+                  name="new-password"
+                  style={{ ...modalFieldStyle, paddingRight: 36 }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((v) => !v)}
+                  title={showNewPassword ? "Hide password" : "Show password"}
+                  style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", cursor: "pointer", color: "#6b7280", display: "flex", alignItems: "center" }}
+                >
+                  {showNewPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={handleSetPassword}
+                disabled={settingPassword}
+                style={{ marginTop: 10, width: "100%", padding: "9px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", cursor: settingPassword ? "not-allowed" : "pointer", opacity: settingPassword ? 0.7 : 1 }}
+              >
+                {settingPassword ? "Saving..." : "Save New Password"}
+              </button>
+            </div>
+
+            <p style={{ fontSize: 11, color: "#9ca3af", margin: 0 }}>
+              Status: {creds.isActive ? "Active" : "Inactive"}
+            </p>
+          </div>
         )}
       </div>
     </div>

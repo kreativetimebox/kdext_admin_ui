@@ -1,6 +1,7 @@
 import { Readable } from "node:stream";
 import { getDexaiUserResultsForExport } from "@/lib/dexai";
 import { buildDocumentsZip } from "@/lib/documentZip";
+import { getRequesterClientScope } from "@/lib/clientAccess";
 
 // Downloading real files (not CSV rows) means an S3 fetch per document, so
 // this is capped far below the CSV export's 20000-row cap to keep the
@@ -13,6 +14,12 @@ export async function GET(req, { params }) {
     const id = Number(userId);
     if (!Number.isFinite(id)) {
       return new Response("Invalid user id", { status: 400 });
+    }
+
+    // CLIENT_ADMIN/CLIENT_USER can only ever download their own client's documents.
+    const { isClientRole, clientId } = getRequesterClientScope(req);
+    if (isClientRole && id !== clientId) {
+      return new Response("Forbidden", { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);

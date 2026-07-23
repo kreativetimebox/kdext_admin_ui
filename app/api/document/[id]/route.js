@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { getDocumentById } from "@/lib/queries";
 import { getSignedFileUrl } from "@/lib/aws";
+import { assertOwnsDocument } from "@/lib/clientAccess";
 
-export async function GET(_request, { params }) {
+export async function GET(request, { params }) {
   try {
     const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(request, id);
+    if (ownershipError) return ownershipError;
+
     const doc = await getDocumentById(id);
 
     if (!doc) {

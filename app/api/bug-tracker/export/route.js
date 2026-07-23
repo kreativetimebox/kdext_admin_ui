@@ -1,5 +1,6 @@
 import { getBugTrackerRowsForExport } from "@/lib/bugTracker";
 import { rowsToCsv } from "@/lib/csv";
+import { getRequesterClientScope } from "@/lib/clientAccess";
 
 const COLUMNS = [
   { key: "business_name", label: "Company" },
@@ -20,19 +21,25 @@ export async function GET(req) {
   try {
     const { searchParams } = new URL(req.url);
     const search = searchParams.get("search") || "";
-    const companies = (searchParams.get("companies") || "").split(",").map((s) => s.trim()).filter(Boolean);
+    const clientEmails = (searchParams.get("clientEmails") || "").split(",").map((s) => s.trim()).filter(Boolean);
     const docType = searchParams.get("docType") || "";
     const issueType = searchParams.get("issueType") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
     const sortBy = searchParams.get("sortBy") || "";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
+    const { isClientRole, clientId } = getRequesterClientScope(req);
+    if (isClientRole && !clientId) {
+      return new Response(rowsToCsv([], COLUMNS), { status: 200, headers: { "Content-Type": "text/csv; charset=utf-8" } });
+    }
+
     const rows = await getBugTrackerRowsForExport({
       search,
-      companies,
+      clientEmails: isClientRole ? [] : clientEmails,
       docType,
       issueType,
       bugStatus,
+      clientId: isClientRole ? clientId : "",
       sortBy,
       sortOrder,
     });

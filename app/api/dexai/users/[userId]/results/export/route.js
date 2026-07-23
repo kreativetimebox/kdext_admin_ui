@@ -1,5 +1,6 @@
 import { getDexaiUserResultsForExport } from "@/lib/dexai";
 import { rowsToCsv } from "@/lib/csv";
+import { getRequesterClientScope } from "@/lib/clientAccess";
 
 const COLUMNS = [
   { key: "request_id", label: "Request ID" },
@@ -23,6 +24,12 @@ export async function GET(req, { params }) {
     const id = Number(userId);
     if (!Number.isFinite(id)) {
       return new Response("Invalid user id", { status: 400 });
+    }
+
+    // CLIENT_ADMIN/CLIENT_USER can only ever export their own client's results.
+    const { isClientRole, clientId } = getRequesterClientScope(req);
+    if (isClientRole && id !== clientId) {
+      return new Response("Forbidden", { status: 403 });
     }
 
     const { searchParams } = new URL(req.url);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { dexaiQuery } from "@/lib/dexaidb";
+import { assertOwnsDocument } from "@/lib/clientAccess";
 
 const ALLOWED_EMAILS = ["financeai@financeai.com", "rashika@financeai.com"];
 
@@ -14,8 +15,12 @@ export async function POST(req, { params }) {
       return NextResponse.json({ ok: false, error: "Not authorized to assign HITL" }, { status: 403 });
     }
 
-    const { hitlUserId } = await req.json();
     const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(req, id);
+    if (ownershipError) return ownershipError;
+
+    const { hitlUserId } = await req.json();
 
     const assignee = hitlUserId || null;
     const newStatus = assignee ? "PENDING" : null;

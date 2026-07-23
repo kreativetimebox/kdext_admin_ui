@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle, Bug } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle, Bug, KeyRound } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
 import axios from "axios";
 import toast from "react-hot-toast";
+import ChangePasswordModal from "./ChangePasswordModal";
 
 /* ── Nav link ──────────────────────────────────────────────── */
 function NavLink({ href, label, icon: Icon, active, badge, badgeColor }) {
@@ -80,8 +81,14 @@ export default function Navbar() {
   const router = useRouter();
   const { user, loading } = useAuth();
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
   // Full-access admin (vs. a restricted server-monitor-only account).
   const isAdmin = !loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "HITL", "ADMIN"].includes(r));
+  // CLIENT_ADMIN/CLIENT_USER — confined to Home/Business Audit/HITL EDIT/Bug
+  // Tracker (each scoped to just their own client's data server-side), never
+  // Alerts or Servers.
+  const isClientRole = !loading && user && user.roles?.some((r) => ["CLIENT_ADMIN", "CLIENT_USER"].includes(r));
+  const canSeeCoreTabs = isAdmin || isClientRole;
   // Same audience as the Servers/Alerts tabs below.
   const canSeeAlerts = !loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r));
 
@@ -163,8 +170,10 @@ export default function Navbar() {
 
       {/* ── Nav links ── */}
       <nav style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        {/* Core admin tabs — hidden from restricted (server-only) accounts */}
-        {isAdmin && (
+        {/* Core admin tabs — hidden from restricted (server-only) accounts.
+            Visible to CLIENT_ADMIN/CLIENT_USER too — their queries are scoped
+            server-side to just their own client's data (lib/clientAccess.js). */}
+        {canSeeCoreTabs && (
           <>
             <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
             <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
@@ -172,8 +181,9 @@ export default function Navbar() {
             <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />
           </>
         )}
-        {/* User Logs tab - visible only to super users */}
-        {!loading && user && user.roles?.includes("SUPER_ADMIN") && (
+        {/* User Logs tab - super users (full Team Members/Clients/HITL Workload
+            view) and CLIENT_ADMIN (their own restricted CLIENT_USER management view) */}
+        {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "CLIENT_ADMIN"].includes(r)) && (
           <NavLink href="/user-logs"      label="User Logs"       icon={Activity}     active={pathname === "/user-logs"} />
         )}
         {/* Server Monitoring tab - super users and the restricted server-monitor role */}
@@ -329,6 +339,39 @@ export default function Navbar() {
                   </p>
                 </div>
 
+                {/* Change password */}
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    setShowChangePassword(true);
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "10px 14px",
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: 0,
+                    fontSize: 13,
+                    color: "var(--foreground)",
+                    fontWeight: 500,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    transition: "background 0.15s",
+                    borderBottom: "1px solid var(--panel-border)",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "var(--input-bg)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "transparent";
+                  }}
+                >
+                  <KeyRound size={14} />
+                  Change Password
+                </button>
+
                 {/* Logout button */}
                 <button
                   onClick={() => {
@@ -365,6 +408,8 @@ export default function Navbar() {
           </div>
         )}
       </div>
+
+      {showChangePassword && <ChangePasswordModal onClose={() => setShowChangePassword(false)} />}
     </header>
   );
 }

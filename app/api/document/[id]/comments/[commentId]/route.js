@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getComment, updateComment, deleteComment } from "@/lib/queries";
+import { assertOwnsDocument } from "@/lib/clientAccess";
 
 // x-user-email is set by middleware.js from the verified JWT, so it can't be
 // spoofed by the request body -- only the original author of a comment may
@@ -20,6 +21,10 @@ export async function PUT(req, { params }) {
   try {
     const { id, commentId } = await params;
     const numericCommentId = Number(commentId);
+
+    const ownershipError = await assertOwnsDocument(req, id);
+    if (ownershipError) return ownershipError;
+
     const body = await req.json();
     const message = (body?.message || "").trim();
 
@@ -46,6 +51,9 @@ export async function DELETE(req, { params }) {
   try {
     const { id, commentId } = await params;
     const numericCommentId = Number(commentId);
+
+    const ownershipError = await assertOwnsDocument(req, id);
+    if (ownershipError) return ownershipError;
 
     const { error } = await assertOwnComment(req, id, numericCommentId);
     if (error) return error;

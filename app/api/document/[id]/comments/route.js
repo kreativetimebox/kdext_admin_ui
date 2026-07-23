@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { addComment } from "@/lib/queries";
+import { assertOwnsDocument } from "@/lib/clientAccess";
 
 export async function POST(req, { params }) {
   try {
     const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(req, id);
+    if (ownershipError) return ownershipError;
+
     const body = await req.json();
     const message = (body?.message || "").trim();
 

@@ -23,8 +23,11 @@ import {
   UserCircle,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
+
+const CLIENT_ROLES = ["CLIENT_ADMIN", "CLIENT_USER"];
 
 function formatNumber(n) {
   if (n == null) return "—";
@@ -265,7 +268,7 @@ function StatusBadge({ status }) {
 const BUG_STATS_GRID = "1.4fr 0.8fr 0.8fr";
 const DOC_TYPE_STATS_GRID = "1.6fr 0.8fr 0.9fr 0.8fr 0.7fr";
 
-function BugStatsSection({ clientIds, onClientIdsChange, clientOptions }) {
+function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClientRole }) {
   const { data, isLoading } = useQuery({
     queryKey: ["bug-tracker-stats", clientIds],
     queryFn: async () => {
@@ -303,15 +306,17 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions }) {
           Bug Tracker
         </span>
         <div style={{ flex: 1, height: 1, background: "var(--panel-border)" }} />
-        <MultiSelectDropdown
-          icon={UserCircle}
-          placeholder="All Clients"
-          searchPlaceholder="Search client..."
-          emptyText="No clients"
-          options={clientOptions}
-          values={clientIds}
-          onChange={onClientIdsChange}
-        />
+        {!isClientRole && (
+          <MultiSelectDropdown
+            icon={UserCircle}
+            placeholder="All Clients"
+            searchPlaceholder="Search client..."
+            emptyText="No clients"
+            options={clientOptions}
+            values={clientIds}
+            onChange={onClientIdsChange}
+          />
+        )}
       </div>
 
       <section
@@ -440,6 +445,8 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions }) {
 export default function HomePage() {
   const { initTheme } = useThemeStore();
   const router = useRouter();
+  const { user } = useAuth();
+  const isClientRole = (user?.roles || []).some((r) => CLIENT_ROLES.includes(r));
 
   useEffect(() => {
     initTheme();
@@ -454,11 +461,30 @@ export default function HomePage() {
     staleTime: 60 * 1000,
   });
 
+  // Only needed for the client-role page title ("Tech DexAI {Client Name}
+  // Admin") — internal-staff roles never fetch this.
+  const { data: ownClient } = useQuery({
+    queryKey: ["dexai", "own-client", user?.clientId],
+    queryFn: async () => (await axios.get(`/api/dexai/users/${user.clientId}`)).data,
+    enabled: isClientRole && !!user?.clientId,
+    staleTime: 5 * 60 * 1000,
+  });
+  const clientDisplayName =
+    ownClient?.company_name ||
+    [ownClient?.first_name, ownClient?.last_name].filter(Boolean).join(" ") ||
+    ownClient?.email ||
+    "";
+  const pageTitle = isClientRole && clientDisplayName ? `Tech DexAI ${clientDisplayName} Admin` : "Tech DexAI Admin";
+
   const [bugStatsClientIds, setBugStatsClientIds] = useState([]);
+  // Client-role users never see the cross-client filter dropdown, so their
+  // own client list is never fetched — the stats API forces their scope
+  // server-side regardless of what this state holds.
   const { data: filterOptions } = useQuery({
     queryKey: ["filter-options"],
     queryFn: async () => (await axios.get("/api/filter-options")).data,
     staleTime: 10 * 60 * 1000,
+    enabled: !isClientRole,
   });
   const clientOptions = useMemo(
     () =>
@@ -475,11 +501,12 @@ export default function HomePage() {
   // selection afterward isn't immediately reset back to all-selected.
   const clientFilterInitialized = useRef(false);
   useEffect(() => {
-    if (!clientFilterInitialized.current && clientOptions.length > 0) {
+    if (isClientRole || clientFilterInitialized.current) return;
+    if (clientOptions.length > 0) {
       setBugStatsClientIds(clientOptions.map((c) => c.value));
       clientFilterInitialized.current = true;
     }
-  }, [clientOptions]);
+  }, [clientOptions, isClientRole]);
 
   const overview = data?.overview;
   const recent = data?.recent || [];
@@ -578,7 +605,7 @@ export default function HomePage() {
                   backgroundClip: "text",
                 }}
               >
-                TechDexAI_doc_parser
+                {pageTitle}
               </h1>
               <p
                 style={{
@@ -635,22 +662,26 @@ export default function HomePage() {
             color="#ff6d8e"
             loading={isLoading}
           />
-          <StatTile
-            icon={Building}
-            label="Businesses"
-            value={overview?.businesses_count}
-            sub="registered"
-            color="#8b5cf6"
-            loading={isLoading}
-          />
-          <StatTile
-            icon={Store}
-            label="Clients"
-            value={overview?.clients_count}
-            sub="in system"
-            color="#06b6d4"
-            loading={isLoading}
-          />
+          {!isClientRole && (
+            <>
+              <StatTile
+                icon={Building}
+                label="Businesses"
+                value={overview?.businesses_count}
+                sub="registered"
+                color="#8b5cf6"
+                loading={isLoading}
+              />
+              <StatTile
+                icon={Store}
+                label="Clients"
+                value={overview?.clients_count}
+                sub="in system"
+                color="#06b6d4"
+                loading={isLoading}
+              />
+            </>
+          )}
           <StatTile
             icon={Database}
             label="Total Requests"
@@ -682,6 +713,7 @@ export default function HomePage() {
           clientIds={bugStatsClientIds}
           onClientIdsChange={setBugStatsClientIds}
           clientOptions={clientOptions}
+          isClientRole={isClientRole}
         />
 
         {/* ── Action cards ── */}

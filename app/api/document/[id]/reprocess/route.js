@@ -6,6 +6,7 @@ import {
 } from "@/lib/queries";
 import { getSignedFileUrl } from "@/lib/aws";
 import { submitReprocess } from "@/lib/ocrClient";
+import { assertOwnsDocument } from "@/lib/clientAccess";
 
 // Document types the reprocess dropdown may submit. Mirrors the API's
 // _VALID_DOCUMENT_TYPES so we reject anything unexpected before hitting the DB.
@@ -29,6 +30,10 @@ const TERMINAL_STATUSES = new Set(["COMPLETED", "FAILED"]);
 export async function POST(request, { params }) {
   try {
     const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(request, id);
+    if (ownershipError) return ownershipError;
+
     const { documentType } = await request.json().catch(() => ({}));
 
     if (!VALID_DOCUMENT_TYPES.has(documentType)) {
@@ -89,8 +94,13 @@ export async function POST(request, { params }) {
  * GET /api/document/[id]/reprocess?newRequestId=...
  * Poll the transient reprocess request's status.
  */
-export async function GET(request) {
+export async function GET(request, { params }) {
   try {
+    const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(request, id);
+    if (ownershipError) return ownershipError;
+
     const newRequestId = request.nextUrl.searchParams.get("newRequestId");
     if (!newRequestId) {
       return NextResponse.json(
@@ -133,6 +143,10 @@ export async function GET(request) {
 export async function PUT(request, { params }) {
   try {
     const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(request, id);
+    if (ownershipError) return ownershipError;
+
     const { newRequestId, documentType } = await request.json().catch(() => ({}));
 
     if (!newRequestId) {

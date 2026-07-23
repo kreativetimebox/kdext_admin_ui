@@ -732,6 +732,17 @@ export default function UserResultsPage({ params }) {
     initTheme();
   }, [initTheme]);
 
+  // CLIENT_ADMIN/CLIENT_USER can only ever view their own client's page —
+  // the API already 403s this server-side (lib/clientAccess.js), this just
+  // bounces them home cleanly instead of showing an error-filled page if
+  // they land here via URL manipulation.
+  const isClientRole = (authUser?.roles || []).some((r) => ["CLIENT_ADMIN", "CLIENT_USER"].includes(r));
+  useEffect(() => {
+    if (isClientRole && authUser?.clientId != null && String(authUser.clientId) !== String(userId)) {
+      router.replace("/");
+    }
+  }, [isClientRole, authUser?.clientId, userId, router]);
+
   // Keep the input feeling instant while the network request trails behind.
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDexaiUserResults } from "@/lib/dexai";
+import { getRequesterClientScope } from "@/lib/clientAccess";
 
 export async function GET(request, { params }) {
   try {
@@ -8,6 +9,13 @@ export async function GET(request, { params }) {
     if (!Number.isFinite(id)) {
       return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
     }
+
+    // CLIENT_ADMIN/CLIENT_USER can only ever view their own client's results.
+    const { isClientRole, clientId } = getRequesterClientScope(request);
+    if (isClientRole && id !== clientId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const docType = searchParams.get("docType") || "";

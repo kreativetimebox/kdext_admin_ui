@@ -35,12 +35,13 @@ export async function POST(req) {
         iu.is_active,
         iu.locked_until,
         iu.failed_login_attempts,
+        iu.client_id,
         STRING_AGG(r.role_name, ',' ORDER BY r.role_name) as roles
        FROM internal_users iu
        LEFT JOIN user_roles ur ON iu.internal_user_id = ur.internal_user_id
        LEFT JOIN roles r ON ur.role_id = r.role_id
        WHERE LOWER(iu.email) = LOWER($1)
-       GROUP BY iu.internal_user_id, iu.email, iu.password_hash, iu.is_active, iu.locked_until, iu.failed_login_attempts`,
+       GROUP BY iu.internal_user_id, iu.email, iu.password_hash, iu.is_active, iu.locked_until, iu.failed_login_attempts, iu.client_id`,
       [email]
     );
 
@@ -87,7 +88,7 @@ export async function POST(req) {
     const userRoles = user.roles
       ? user.roles.split(",").map(r => r.trim()).filter(r => r.length > 0)
       : [];
-    const allowedRoles = ["SUPER_ADMIN", "HITL", "ADMIN", "SERVER_MONITOR"];
+    const allowedRoles = ["SUPER_ADMIN", "HITL", "ADMIN", "SERVER_MONITOR", "CLIENT_ADMIN", "CLIENT_USER"];
     const hasRequiredRole = userRoles.some(role => allowedRoles.includes(role));
 
     // Debug log
@@ -123,6 +124,9 @@ export async function POST(req) {
       userId: user.internal_user_id,
       email: user.email,
       roles: userRoles,
+      // Only meaningful for CLIENT_ADMIN/CLIENT_USER — which users.user_id
+      // (client) this login represents. null for every other role.
+      clientId: user.client_id ?? null,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
@@ -148,6 +152,7 @@ export async function POST(req) {
         id: user.internal_user_id,
         email: user.email,
         roles: userRoles,
+        clientId: user.client_id ?? null,
       },
     });
   } catch (error) {

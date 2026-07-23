@@ -1,12 +1,17 @@
 import { NextResponse } from "next/server";
 import { updateHitlResult } from "@/lib/queries";
 import { publishDocumentCorrected } from "@/lib/events";
+import { assertOwnsDocument } from "@/lib/clientAccess";
 
 const AUDIT_LIMIT = 50;
 
 export async function POST(request, { params }) {
   try {
     const { id } = await params;
+
+    const ownershipError = await assertOwnsDocument(request, id);
+    if (ownershipError) return ownershipError;
+
     const body = await request.json();
 
     if (!body || typeof body !== "object") {
