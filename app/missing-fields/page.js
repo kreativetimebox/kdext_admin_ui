@@ -43,21 +43,22 @@ function emailCanAssign(email = "") {
 const TABLE_HEADER_COLUMNS = [
   { label: "Action", key: null },
   { label: "Result ID", key: "result_id" },
+  { label: "HITL Status", key: "hitl_status" },
+  { label: "Validation", key: "validation" },
+  { label: "HITL", key: null },
+  { label: "Bug Status", key: "bug_status" },
+  { label: "Issue Type", key: "issue_type" },
+  { label: "Issue Description", key: "issue_description" },
   { label: "Document Type", key: "ocr_document_type" },
   { label: "Key Environment", key: "key_environment" },
   { label: "Missing Fields", key: "missing_count" },
-  { label: "HITL Status", key: "hitl_status" },
-  { label: "Validation", key: "validation" },
-  { label: "Bug Status", key: "bug_status" },
-  { label: "Issue Type", key: "issue_type" },
   { label: "Created At", key: "created_at" },
-  { label: "HITL", key: null },
 ];
 
 // Single source of truth for both the header row and each MissingFieldRow
 // below — a header/row template drift caused a real column-misalignment bug
 // earlier, so this is shared rather than duplicated inline.
-const ROW_GRID = "32px 90px minmax(200px, 1.2fr) 180px 130px 1fr 130px 140px 130px 160px 130px 180px";
+const ROW_GRID = "32px 90px minmax(200px, 1.2fr) 130px 140px 180px 130px 160px minmax(180px, 1.2fr) 180px 130px 1fr 130px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
@@ -769,6 +770,54 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         )}
       </div>
 
+      <StatusDropCell
+        docId={doc.id}
+        currentStatus={doc.hitl_status}
+        onStatusChanged={onStatusChanged}
+      />
+
+      <ValidationDot validation={doc.validation} />
+
+      <HitlAssignCell
+        docId={doc.id}
+        currentId={doc.hitl_assigned_to}
+        hitlUsers={hitlUsers}
+        onAssigned={onAssigned}
+        canAssign={canAssign}
+      />
+
+      <BugStatusDropCell
+        docId={doc.id}
+        currentStatus={doc.bug_status}
+        onBugStatusChanged={onBugStatusChanged}
+      />
+
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--foreground)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={doc.issue_type || ""}
+      >
+        {doc.issue_type || "—"}
+      </span>
+
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--text-muted)",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={doc.issue_description || ""}
+      >
+        {doc.issue_description || "—"}
+      </span>
+
       <span
         style={{
           fontSize: 12,
@@ -799,33 +848,6 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         )}
       </div>
 
-      <StatusDropCell
-        docId={doc.id}
-        currentStatus={doc.hitl_status}
-        onStatusChanged={onStatusChanged}
-      />
-
-      <ValidationDot validation={doc.validation} />
-
-      <BugStatusDropCell
-        docId={doc.id}
-        currentStatus={doc.bug_status}
-        onBugStatusChanged={onBugStatusChanged}
-      />
-
-      <span
-        style={{
-          fontSize: 12,
-          color: "var(--foreground)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={doc.issue_type || ""}
-      >
-        {doc.issue_type || "—"}
-      </span>
-
       <span
         style={{
           fontSize: 12,
@@ -838,14 +860,6 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
       >
         {formatDate(doc.created_at)}
       </span>
-
-      <HitlAssignCell
-        docId={doc.id}
-        currentId={doc.hitl_assigned_to}
-        hitlUsers={hitlUsers}
-        onAssigned={onAssigned}
-        canAssign={canAssign}
-      />
     </div>
   );
 }

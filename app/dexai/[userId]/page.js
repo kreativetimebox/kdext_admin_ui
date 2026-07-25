@@ -220,6 +220,9 @@ const TABLE_HEADER_COLUMNS = [
   { label: "", key: null },
   { label: "Request ID", key: "request_id" },
   { label: "Result ID", key: "result_id" },
+  { label: "Anomalous", key: "is_anomalous" },
+  { label: "Duplicate", key: "is_duplicate" },
+  { label: "Fraud Risk", key: "fraud_risk_level" },
   { label: "Document Type", key: "document_type" },
   { label: "Key Environment", key: "key_environment" },
   { label: "Status", key: "status" },
@@ -237,7 +240,7 @@ const TABLE_HEADER_COLUMNS = [
 // apart (different minmax/fr tokens for the Document Type/Key Environment
 // columns), which misaligned every column since the header's row.
 const ROW_GRID =
-  "32px 160px minmax(170px, 1.2fr) minmax(130px, 0.9fr) minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 150px 100px";
+  "32px 160px minmax(170px, 1.2fr) minmax(130px, 0.9fr) 100px 100px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 150px 100px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
   const active = sortKey && sortBy === sortKey;
@@ -345,6 +348,43 @@ function StatusBadge({ status }) {
       }}
     >
       {status || "UNKNOWN"}
+    </span>
+  );
+}
+
+// Tri-state flag badge for is_anomalous/is_duplicate — true is a flagged
+// condition worth noticing (red), false is clean (muted green "No"), and
+// null means it was never evaluated (e.g. rows from before these columns
+// existed, or documents that never ran through that check).
+function FlagBadge({ value }) {
+  if (value === true) {
+    return (
+      <span style={{ fontSize: 11, fontWeight: 700, padding: "3px 8px", borderRadius: 99, background: "rgba(239,68,68,0.12)", color: "#ef4444", whiteSpace: "nowrap" }}>
+        Yes
+      </span>
+    );
+  }
+  if (value === false) {
+    return (
+      <span style={{ fontSize: 11, fontWeight: 600, padding: "3px 8px", borderRadius: 99, background: "var(--input-bg)", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+        No
+      </span>
+    );
+  }
+  return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
+}
+
+const FRAUD_RISK_COLORS = {
+  LOW: { bg: "rgba(34,197,94,0.12)", color: "#22c55e" },
+  MEDIUM: { bg: "rgba(249,115,22,0.12)", color: "#f97316" },
+  HIGH: { bg: "rgba(239,68,68,0.12)", color: "#ef4444" },
+};
+function FraudRiskBadge({ level }) {
+  if (!level) return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
+  const c = FRAUD_RISK_COLORS[level] || { bg: "var(--input-bg)", color: "var(--text-muted)" };
+  return (
+    <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: "0.05em", padding: "3px 8px", borderRadius: 99, background: c.bg, color: c.color, whiteSpace: "nowrap" }}>
+      {level}
     </span>
   );
 }
@@ -616,6 +656,10 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
       >
         {record.result_id ?? "—"}
       </span>
+
+      <FlagBadge value={record.is_anomalous} />
+      <FlagBadge value={record.is_duplicate} />
+      <FraudRiskBadge level={record.fraud_risk_level} />
 
       <span
         style={{

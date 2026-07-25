@@ -44,15 +44,14 @@ function formatDate(value) {
 const TABLE_HEADER_COLUMNS = [
   { label: "Edit", key: null },
   { label: "View", key: null },
-  { label: "Client Email", key: "client_email" },
-  { label: "Request ID", key: "request_id" },
   { label: "Result ID", key: "result_id" },
-  { label: "Document Type", key: "ocr_document_type" },
+  { label: "HITL Assigned", key: "hitl_assigned_to" },
   { label: "Bug Status", key: "bug_status" },
-  { label: "Bug Created At", key: "bug_flagged_at" },
   { label: "Issue Type", key: "issue_type" },
   { label: "Issue Description", key: "issue_description" },
-  { label: "HITL Assigned", key: "hitl_assigned_to" },
+  { label: "Client Email", key: "client_email" },
+  { label: "Document Type", key: "ocr_document_type" },
+  { label: "Bug Created At", key: "bug_flagged_at" },
   { label: "Comments", key: null },
 ];
 
@@ -472,7 +471,7 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "32px 64px 64px minmax(160px, 1fr) minmax(150px, 1fr) minmax(110px, 0.7fr) 130px 120px 150px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(140px, 1fr) 96px";
+const ROW_GRID = "32px 64px 64px minmax(150px, 1fr) minmax(140px, 1fr) 120px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(160px, 1fr) 130px 150px 96px";
 
 function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
@@ -506,24 +505,28 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
         <Eye size={13} />
       </button>
 
-      <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.client_email || ""}>
-        {doc.client_email || "—"}
-      </span>
-      <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.request_id}>
-        {doc.request_id}
-      </span>
-      <span style={{ fontSize: 12, color: "var(--foreground)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.result_id ? String(doc.result_id) : ""}>
-        {doc.result_id ?? "—"}
-      </span>
-      <span style={{ fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 6, background: "var(--tag-purple-bg)", color: "var(--tag-purple-color)", textAlign: "center", justifySelf: "start", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {doc.ocr_document_type || "Unknown"}
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
+        <span
+          style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          title={doc.result_id ?? doc.request_id}
+        >
+          {doc.result_id ?? doc.request_id}
+        </span>
+        {doc.result_id && doc.request_id && (
+          <span
+            style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            title={doc.request_id}
+          >
+            {doc.request_id}
+          </span>
+        )}
+      </div>
+
+      <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.hitl_assigned_to || ""}>
+        {doc.hitl_assigned_to || "—"}
       </span>
 
       <BugStatusDropCell docId={doc.result_id} currentStatus={doc.bug_status} onBugStatusChanged={onBugStatusChanged} />
-
-      <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }} title={doc.bug_flagged_at ? formatDate(doc.bug_flagged_at) : "Not tracked (flagged before this column existed)"}>
-        {doc.bug_flagged_at ? formatDate(doc.bug_flagged_at) : "—"}
-      </span>
 
       <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.issue_type || ""}>
         {doc.issue_type || "—"}
@@ -531,8 +534,15 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
       <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.issue_description || ""}>
         {doc.issue_description || "—"}
       </span>
-      <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.hitl_assigned_to || ""}>
-        {doc.hitl_assigned_to || "—"}
+
+      <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.client_email || ""}>
+        {doc.client_email || "—"}
+      </span>
+      <span style={{ fontSize: 12, fontWeight: 500, padding: "4px 10px", borderRadius: 6, background: "var(--tag-purple-bg)", color: "var(--tag-purple-color)", textAlign: "center", justifySelf: "start", maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {doc.ocr_document_type || "Unknown"}
+      </span>
+      <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }} title={doc.bug_flagged_at ? formatDate(doc.bug_flagged_at) : "Not tracked (flagged before this column existed)"}>
+        {doc.bug_flagged_at ? formatDate(doc.bug_flagged_at) : "—"}
       </span>
 
       <button
