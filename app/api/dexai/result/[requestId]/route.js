@@ -48,6 +48,13 @@ export async function GET(_request, { params }) {
         created_at: row.created_at,
         updated_at: row.updated_at,
         signed_url: signedUrl,
+        hitl_status: row.hitl_status,
+        validation: row.validation,
+        hitl_assigned_to: row.hitl_assigned_to,
+        hitl_assigned_to_name: row.hitl_assigned_to_name,
+        fraud_risk_level: row.fraud_risk_level,
+        is_anomalous: row.is_anomalous,
+        is_duplicate: row.is_duplicate,
         formatted_result: row.formatted_result ?? null,
         // Seed from the original extraction when this row still needs review
         // (row.status here is getDexaiResultByRequestId's derived hitl_status

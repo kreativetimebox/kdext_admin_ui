@@ -11,6 +11,7 @@ import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
 import FileViewer from "@/components/Viewer/FileViewer";
+import DocumentMetadataPanel from "@/components/Results/DocumentMetadataPanel";
 import EditableResultView, { EditHistory } from "@/components/Results/EditableResultView";
 import FormattedResultView from "@/components/Results/FormattedResultView";
 import OCRResults from "@/components/Results/OCRResults";
@@ -238,6 +239,9 @@ export default function ViewDocumentPage() {
                     onRefresh={() => queryClient.invalidateQueries({ queryKey: ["document", id] })}
                   />
                     <div className="p-4 border-t" style={{ borderColor: "var(--panel-border)" }}>
+                      <DocumentMetadataPanel doc={doc} documentType={doc?.ocr_document_type} />
+                    </div>
+                    <div className="p-4 border-t" style={{ borderColor: "var(--panel-border)" }}>
                       <BugTrackingPanel
                         docId={id}
                         doc={doc}
@@ -327,6 +331,13 @@ export default function ViewDocumentPage() {
                                 : prev
                             );
                           }
+                          // Publish also flips hitl_status server-side (see
+                          // lib/queries.js's updateHitlResult) and may have
+                          // changed other fields the metadata panel shows —
+                          // the setQueryData patch above only covers the two
+                          // fields this component itself knows about, so
+                          // refetch to pick up everything else.
+                          queryClient.invalidateQueries({ queryKey: ["document", id] });
                         }}
                       />
 

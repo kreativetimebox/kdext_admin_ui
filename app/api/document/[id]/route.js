@@ -31,9 +31,13 @@ export async function GET(request, { params }) {
     return NextResponse.json(
       {
         id: doc.id,
+        result_id: doc.id,
         request_id: doc.request_id,
+        transaction_id: doc.transaction_id,
         ocr_document_type: doc.ocr_document_type,
         source_file: doc.source_file,
+        original_filename: doc.original_filename,
+        file_size_bytes: doc.file_size_bytes,
         signed_url: signedUrl,
         // Whether a HITL reviewer has validated/published edits. The viewer uses
         // this to decide whether the "HITL Updated Result" panel shows the saved
@@ -42,11 +46,27 @@ export async function GET(request, { params }) {
         validation: doc.validation === true,
         status: doc.status,
         hitl_status: doc.hitl_status,
+        hitl_assigned_to: doc.hitl_assigned_to,
+        hitl_assigned_to_name: doc.hitl_assigned_to_name,
+        fraud_risk_level: doc.fraud_risk_level,
+        is_anomalous: doc.is_anomalous,
+        is_duplicate: doc.is_duplicate,
         issue_type: doc.issue_type ?? null,
         issue_description: doc.issue_description ?? null,
         bug_status: doc.bug_status ?? null,
         comments: doc.comments ?? [],
         key_environment: doc.key_environment,
+        created_at: doc.created_at,
+        updated_at: doc.updated_at,
+        submitted_at: doc.submitted_at,
+        completed_at: doc.completed_at,
+        processing_duration_ms: doc.processing_duration_ms,
+        error_message: doc.error_message,
+        user: {
+          email: doc.client_email,
+          first_name: doc.client_first_name,
+          last_name: doc.client_last_name,
+        },
         // formatted_result is the original (immutable) extraction, mapped onto
         // the names the frontend already speaks — shown in the "Original Result"
         // tab.

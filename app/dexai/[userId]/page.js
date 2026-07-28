@@ -218,20 +218,19 @@ function HitlAssignCell({ docId, currentId, hitlUsers, onAssigned, canAssign }) 
    server-paginated result set, not just the rows on screen. ── */
 const TABLE_HEADER_COLUMNS = [
   { label: "", key: null },
-  { label: "Request ID", key: "request_id" },
   { label: "Result ID", key: "result_id" },
+  { label: "Status", key: "status" },
+  { label: "HITL Assign", key: "hitl_assigned_to" },
   { label: "Anomalous", key: "is_anomalous" },
   { label: "Duplicate", key: "is_duplicate" },
   { label: "Fraud Risk", key: "fraud_risk_level" },
   { label: "Document Type", key: "document_type" },
   { label: "Key Environment", key: "key_environment" },
-  { label: "Status", key: "status" },
   { label: "Validation", key: "validation" },
   { label: "Bug Status", key: "bug_status" },
   { label: "Issue Type", key: "issue_type" },
   { label: "Created At", key: "created_at" },
   { label: "Updated At", key: "updated_at" },
-  { label: "HITL Assign", key: "hitl_assigned_to" },
   { label: "Processing", key: "processing_duration_ms" },
 ];
 
@@ -240,7 +239,7 @@ const TABLE_HEADER_COLUMNS = [
 // apart (different minmax/fr tokens for the Document Type/Key Environment
 // columns), which misaligned every column since the header's row.
 const ROW_GRID =
-  "32px 160px minmax(170px, 1.2fr) minmax(130px, 0.9fr) 100px 100px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 100px 140px 130px 160px 150px 150px 150px 100px";
+  "32px 160px minmax(170px, 1.2fr) 100px 150px 100px 100px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 140px 130px 160px 150px 150px 100px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
   const active = sortKey && sortBy === sortKey;
@@ -628,34 +627,47 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         </button>
       </div>
 
-      <span
-        style={{
-          fontSize: 12.5,
-          fontWeight: 600,
-          color: "var(--accent)",
-          fontFamily: "ui-monospace, SFMono-Regular, monospace",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={record.request_id}
-      >
-        {record.request_id}
-      </span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: "var(--accent)",
+            fontFamily: "ui-monospace, SFMono-Regular, monospace",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={record.result_id ? String(record.result_id) : record.request_id}
+        >
+          {record.result_id ?? record.request_id ?? "—"}
+        </span>
+        {record.result_id != null && record.request_id && (
+          <span
+            style={{
+              fontSize: 10,
+              color: "var(--text-muted)",
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={record.request_id}
+          >
+            {record.request_id}
+          </span>
+        )}
+      </div>
 
-      <span
-        style={{
-          fontSize: 12,
-          color: "var(--foreground)",
-          fontFamily: "ui-monospace, SFMono-Regular, monospace",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={record.result_id ? String(record.result_id) : ""}
-      >
-        {record.result_id ?? "—"}
-      </span>
+      <StatusBadge status={record.status} />
+
+      <HitlAssignCell
+        docId={record.result_id}
+        currentId={record.hitl_assigned_to}
+        hitlUsers={hitlUsers}
+        onAssigned={onAssigned}
+        canAssign={canAssign}
+      />
 
       <FlagBadge value={record.is_anomalous} />
       <FlagBadge value={record.is_duplicate} />
@@ -681,8 +693,6 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
       </span>
 
       <KeyEnvBadge env={record.key_environment} />
-
-      <StatusBadge status={record.status} />
 
       <ValidationDot validation={record.validation} />
 
@@ -712,14 +722,6 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
         {formatDate(record.updated_at || record.completed_at)}
       </span>
-
-      <HitlAssignCell
-        docId={record.result_id}
-        currentId={record.hitl_assigned_to}
-        hitlUsers={hitlUsers}
-        onAssigned={onAssigned}
-        canAssign={canAssign}
-      />
 
       <span
         style={{

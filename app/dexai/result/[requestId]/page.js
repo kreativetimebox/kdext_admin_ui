@@ -27,6 +27,7 @@ import CommentsPanel from "@/components/Comments/CommentsPanel";
 import JsonPanel from "@/components/Results/JsonPanel";
 import FormattedResultView from "@/components/Results/FormattedResultView";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
+import DocumentMetadataPanel from "@/components/Results/DocumentMetadataPanel";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -45,15 +46,6 @@ function formatDuration(ms) {
   const m = Math.floor(s / 60);
   const rem = (s % 60).toFixed(0);
   return `${m}m ${rem}s`;
-}
-
-function formatBytes(bytes) {
-  if (bytes == null) return "—";
-  const n = Number(bytes);
-  if (!Number.isFinite(n)) return String(bytes);
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  return `${(n / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 function isImagePath(path) {
@@ -388,46 +380,6 @@ function FileRender({ url, originalFilename, documentPath }) {
   );
 }
 
-function MetaRow({ label, children, mono }) {
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "140px 1fr",
-        gap: 12,
-        alignItems: "center",
-        padding: "8px 0",
-        borderBottom: "1px dashed var(--panel-border)",
-      }}
-    >
-      <span
-        style={{
-          fontSize: 11,
-          fontWeight: 700,
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          color: "var(--text-muted)",
-        }}
-      >
-        {label}
-      </span>
-      <div
-        style={{
-          fontSize: 13,
-          color: "var(--foreground)",
-          wordBreak: "break-all",
-          fontFamily: mono ? "ui-monospace, SFMono-Regular, monospace" : undefined,
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function SummaryStat({ label, value, icon: Icon, color }) {
   return (
     <div
@@ -751,81 +703,7 @@ export default function DexaiResultPage({ params }) {
                   )}
                 </div>
 
-                <div
-                  style={{
-                    background: "var(--panel-bg)",
-                    border: "1px solid var(--panel-border)",
-                    borderRadius: 12,
-                    padding: "12px 16px 16px",
-                    boxShadow: "var(--shadow-sm)",
-                  }}
-                >
-                  <h3
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.08em",
-                      color: "var(--text-muted)",
-                      margin: "4px 0 8px",
-                    }}
-                  >
-                    Metadata
-                  </h3>
-
-                  <MetaRow label="Request ID" mono>
-                    <span>{data.request_id}</span>
-                    <CopyButton value={data.request_id} label="request_id" />
-                  </MetaRow>
-                  {data.transaction_id && (
-                    <MetaRow label="Transaction ID" mono>
-                      <span>{data.transaction_id}</span>
-                      <CopyButton value={data.transaction_id} label="transaction_id" />
-                    </MetaRow>
-                  )}
-                  <MetaRow label="User">
-                    <span>{userFullName}</span>
-                    {data.user?.email && (
-                      <span style={{ color: "var(--text-muted)", fontSize: 12 }}>
-                        ({data.user.email})
-                      </span>
-                    )}
-                  </MetaRow>
-                  <MetaRow label="Document Type">
-                    {data.document_type ? (
-                      <span
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          padding: "3px 10px",
-                          borderRadius: 99,
-                          background: "var(--tag-purple-bg)",
-                          color: "var(--tag-purple-color)",
-                        }}
-                      >
-                        {data.document_type}
-                      </span>
-                    ) : (
-                      "—"
-                    )}
-                  </MetaRow>
-                  <MetaRow label="Original File" mono>
-                    {data.original_filename || "—"}
-                  </MetaRow>
-                  <MetaRow label="File Size">{formatBytes(data.file_size_bytes)}</MetaRow>
-                  <MetaRow label="Created At">{formatDate(data.created_at)}</MetaRow>
-                  <MetaRow label="Updated At">{formatDate(data.updated_at)}</MetaRow>
-                  <MetaRow label="Submitted">{formatDate(data.submitted_at)}</MetaRow>
-                  <MetaRow label="Completed">{formatDate(data.completed_at)}</MetaRow>
-                  <MetaRow label="Duration">
-                    {formatDuration(data.processing_duration_ms)}
-                  </MetaRow>
-                  {data.error_message && (
-                    <MetaRow label="Error">
-                      <span style={{ color: "#ef4444" }}>{data.error_message}</span>
-                    </MetaRow>
-                  )}
-                </div>
+                <DocumentMetadataPanel doc={data} documentType={data.document_type} />
 
                 <BugTrackingPanel
                   resultId={data.result_id}
