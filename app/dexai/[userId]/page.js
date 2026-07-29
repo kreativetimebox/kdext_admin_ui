@@ -219,6 +219,7 @@ function HitlAssignCell({ docId, currentId, hitlUsers, onAssigned, canAssign }) 
 const TABLE_HEADER_COLUMNS = [
   { label: "", key: null },
   { label: "Result ID", key: "result_id" },
+  { label: "Processing", key: "processing_duration_ms" },
   { label: "Status", key: "status" },
   { label: "HITL Assign", key: "hitl_assigned_to" },
   { label: "Anomalous", key: "is_anomalous" },
@@ -231,7 +232,6 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Issue Type", key: "issue_type" },
   { label: "Created At", key: "created_at" },
   { label: "Updated At", key: "updated_at" },
-  { label: "Processing", key: "processing_duration_ms" },
 ];
 
 // Single source of truth for both the header row and each ResultRow below —
@@ -239,7 +239,7 @@ const TABLE_HEADER_COLUMNS = [
 // apart (different minmax/fr tokens for the Document Type/Key Environment
 // columns), which misaligned every column since the header's row.
 const ROW_GRID =
-  "32px 160px minmax(170px, 1.2fr) 100px 150px 100px 100px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 140px 130px 160px 150px 150px 100px";
+  "32px 160px minmax(170px, 1.2fr) 100px 100px 150px 100px 100px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 140px 130px 160px 150px 150px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
   const active = sortKey && sortBy === sortKey;
@@ -659,6 +659,20 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         )}
       </div>
 
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--foreground)",
+          fontWeight: 500,
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        <Clock size={11} style={{ color: "var(--text-muted)" }} />
+        {formatDuration(record.processing_duration_ms)}
+      </span>
+
       <StatusBadge status={record.status} />
 
       <HitlAssignCell
@@ -721,20 +735,6 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
 
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
         {formatDate(record.updated_at || record.completed_at)}
-      </span>
-
-      <span
-        style={{
-          fontSize: 12,
-          color: "var(--foreground)",
-          fontWeight: 500,
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-        }}
-      >
-        <Clock size={11} style={{ color: "var(--text-muted)" }} />
-        {formatDuration(record.processing_duration_ms)}
       </span>
 
     </div>
