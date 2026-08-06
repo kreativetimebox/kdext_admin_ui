@@ -47,8 +47,8 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Result ID", key: "result_id" },
   { label: "HITL Assigned", key: "hitl_assigned_to" },
   { label: "Bug Status", key: "bug_status" },
-  { label: "Issue Type", key: "issue_type" },
-  { label: "Issue Description", key: "issue_description" },
+  // { label: "Issue Type", key: "issue_type" },
+  // { label: "Issue Description", key: "issue_description" },
   { label: "Client Email", key: "client_email" },
   { label: "Document Type", key: "ocr_document_type" },
   { label: "Bug Created At", key: "bug_flagged_at" },
@@ -471,7 +471,7 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "32px 64px 64px minmax(150px, 1fr) minmax(140px, 1fr) 120px minmax(150px, 1fr) minmax(180px, 1.2fr) minmax(160px, 1fr) 130px 150px 96px";
+const ROW_GRID = "32px 64px 64px 150px 140px 120px 150px minmax(180px, 1.2fr) 160px 130px 150px 96px";
 
 function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
@@ -498,14 +498,14 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
 
       <button
         onClick={() => onView(doc.result_id)}
-        title="View"
+        // title="View"
         disabled={doc.result_id == null}
         style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "none", background: doc.result_id == null ? "var(--input-bg)" : "var(--brand-gradient)", color: doc.result_id == null ? "var(--text-muted)" : "#fff", cursor: doc.result_id == null ? "not-allowed" : "pointer" }}
       >
         <Eye size={13} />
       </button>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
         <span
           style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
           title={doc.result_id ?? doc.request_id}

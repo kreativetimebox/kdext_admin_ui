@@ -276,7 +276,8 @@ export default function DocumentMetadataPanel({ doc, documentType }) {
       <MetaRow label="HITL Assigned">
         {doc.hitl_assigned_to_name || "—"}
       </MetaRow>
-      <MetaRow label="Fraud Risk">
+      <MetaRow label="Created At">{formatDate(doc.created_at)}</MetaRow>
+      {/* <MetaRow label="Fraud Risk">
         <FraudRiskBadge level={doc.fraud_risk_level} />
       </MetaRow>
       <MetaRow label="Anomalous">
@@ -284,13 +285,11 @@ export default function DocumentMetadataPanel({ doc, documentType }) {
       </MetaRow>
       <MetaRow label="Duplicate">
         <FlagBadge value={doc.is_duplicate} />
-      </MetaRow>
-
+      </MetaRow> */}
       <MetaRow label="Original File" mono>
         {doc.original_filename || "—"}
       </MetaRow>
       <MetaRow label="File Size">{formatBytes(doc.file_size_bytes)}</MetaRow>
-      <MetaRow label="Created At">{formatDate(doc.created_at)}</MetaRow>
       <MetaRow label="Updated At">{formatDate(doc.updated_at)}</MetaRow>
       <MetaRow label="Submitted">{formatDate(doc.submitted_at)}</MetaRow>
       <MetaRow label="Completed">{formatDate(doc.completed_at)}</MetaRow>

@@ -46,13 +46,13 @@ const TABLE_HEADER_COLUMNS = [
   { label: "HITL Status", key: "hitl_status" },
   { label: "Validation", key: "validation" },
   { label: "HITL", key: null },
+  { label: "Created At", key: "created_at" },
   { label: "Bug Status", key: "bug_status" },
-  { label: "Issue Type", key: "issue_type" },
-  { label: "Issue Description", key: "issue_description" },
+  // { label: "Issue Type", key: "issue_type" },
+  // { label: "Issue Description", key: "issue_description" },
   { label: "Document Type", key: "ocr_document_type" },
   { label: "Key Environment", key: "key_environment" },
   { label: "Missing Fields", key: "missing_count" },
-  { label: "Created At", key: "created_at" },
 ];
 
 // Single source of truth for both the header row and each MissingFieldRow
@@ -735,7 +735,7 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         }}
       >
         <Eye size={13} />
-        View
+        {/* View */}
       </button>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
@@ -785,6 +785,18 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         onAssigned={onAssigned}
         canAssign={canAssign}
       />
+          <span
+            style={{
+              fontSize: 12,
+              color: "var(--text-muted)",
+              whiteSpace: "nowrap",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+            }}
+            title={doc.created_at || ""}
+          >
+            {formatDate(doc.created_at)}
+          </span>
 
       <BugStatusDropCell
         docId={doc.id}
@@ -792,7 +804,7 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         onBugStatusChanged={onBugStatusChanged}
       />
 
-      <span
+      {/* <span
         style={{
           fontSize: 12,
           color: "var(--foreground)",
@@ -816,7 +828,7 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         title={doc.issue_description || ""}
       >
         {doc.issue_description || "—"}
-      </span>
+      </span> */}
 
       <span
         style={{
@@ -848,18 +860,6 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
         )}
       </div>
 
-      <span
-        style={{
-          fontSize: 12,
-          color: "var(--text-muted)",
-          whiteSpace: "nowrap",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-        }}
-        title={doc.created_at || ""}
-      >
-        {formatDate(doc.created_at)}
-      </span>
     </div>
   );
 }
@@ -937,8 +937,8 @@ export default function MissingFieldsPage() {
           businessName,
           status: statusFilter,
           keyEnvironment,
-          bugStatus: bugStatusFilter,
-          issueType: issueTypeFilter,
+          // bugStatus: bugStatusFilter,
+          // issueType: issueTypeFilter,
           hitlUserId,
           validation: validationFilter,
           sortBy,
@@ -1261,24 +1261,24 @@ export default function MissingFieldsPage() {
           />
 
           {/* Bug Status */}
-          <SearchableDropdown
+          {/* <SearchableDropdown
             placeholder="All Bug Statuses"
             searchPlaceholder="Search bug status..."
             emptyText="No bug statuses"
             options={BUG_STATUSES.map((s) => ({ value: s, label: s }))}
             value={bugStatusFilter}
             onChange={setBugStatusFilter}
-          />
+          /> */}
 
           {/* Issue Type */}
-          <SearchableDropdown
+          {/* <SearchableDropdown
             placeholder="All Issue Types"
             searchPlaceholder="Search issue type..."
             emptyText="No issue types"
             options={ISSUE_TYPES.map((t) => ({ value: t, label: t }))}
             value={issueTypeFilter}
             onChange={setIssueTypeFilter}
-          />
+          /> */}
 
           {/* Search */}
           <div style={{ flex: 1, minWidth: 220, position: "relative" }}>

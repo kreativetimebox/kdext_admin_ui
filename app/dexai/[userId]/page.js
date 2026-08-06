@@ -222,15 +222,15 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Processing", key: "processing_duration_ms" },
   { label: "Status", key: "status" },
   { label: "HITL Assign", key: "hitl_assigned_to" },
-  { label: "Anomalous", key: "is_anomalous" },
-  { label: "Duplicate", key: "is_duplicate" },
-  { label: "Fraud Risk", key: "fraud_risk_level" },
-  { label: "Document Type", key: "document_type" },
+  { label: "Created At", key: "created_at" },
+  // { label: "Anomalous", key: "is_anomalous" },
+  // { label: "Duplicate", key: "is_duplicate" },
+  // { label: "Fraud Risk", key: "fraud_risk_level" },
+  // { label: "Document Type", key: "document_type" },
   { label: "Key Environment", key: "key_environment" },
   { label: "Validation", key: "validation" },
   { label: "Bug Status", key: "bug_status" },
   { label: "Issue Type", key: "issue_type" },
-  { label: "Created At", key: "created_at" },
   { label: "Updated At", key: "updated_at" },
 ];
 
@@ -623,7 +623,7 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
           }}
         >
           <Eye size={12} />
-          View
+          {/* View */}
         </button>
       </div>
 
@@ -682,10 +682,13 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         onAssigned={onAssigned}
         canAssign={canAssign}
       />
+<span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+  {formatDate(record.created_at || record.submitted_at)}
+</span>
 
-      <FlagBadge value={record.is_anomalous} />
+      {/* <FlagBadge value={record.is_anomalous} />
       <FlagBadge value={record.is_duplicate} />
-      <FraudRiskBadge level={record.fraud_risk_level} />
+      <FraudRiskBadge level={record.fraud_risk_level} /> */}
 
       <span
         style={{
@@ -716,7 +719,7 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         onChanged={onBugStatusChanged}
       />
 
-      <span
+      {/* <span
         style={{
           fontSize: 12,
           color: "var(--foreground)",
@@ -727,11 +730,8 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         title={record.issue_type || ""}
       >
         {record.issue_type || "—"}
-      </span>
+      </span> */}
 
-      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-        {formatDate(record.created_at || record.submitted_at)}
-      </span>
 
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
         {formatDate(record.updated_at || record.completed_at)}
