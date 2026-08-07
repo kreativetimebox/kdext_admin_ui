@@ -633,7 +633,10 @@ export default function BugTrackerPage() {
       const res = await axios.get("/api/bug-tracker", {
         params: {
           search: debouncedSearch,
-          clientEmails: clientEmails.join(","),
+          // A search is a global find (e.g. a Bug ID is unique across clients),
+          // so it ignores the client filter — otherwise the default itadmin
+          // filter would hide matches from other clients.
+          clientEmails: debouncedSearch ? "" : clientEmails.join(","),
           docType,
           issueType,
           bugStatus: bugStatusFilter,
@@ -740,7 +743,8 @@ export default function BugTrackerPage() {
 
   const exportParams = {
     search: debouncedSearch,
-    clientEmails: clientEmails.join(","),
+    // Match the table: a search ignores the client filter (global find).
+    clientEmails: debouncedSearch ? "" : clientEmails.join(","),
     docType,
     issueType,
     bugStatus: bugStatusFilter,

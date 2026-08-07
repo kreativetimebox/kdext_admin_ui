@@ -529,3 +529,8 @@ GET /api/hitl-users error: Error: read ETIMEDOUT
   syscall: 'read'
 }
 [browser] Updating a style property during rerender (borderBottom) when a conflicting property is set (border) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. 
+⚠ Fast Refresh had to perform a full reload when ./app/announcements/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./app/announcements/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./app/announcements/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./app/announcements/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./app/announcements/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload

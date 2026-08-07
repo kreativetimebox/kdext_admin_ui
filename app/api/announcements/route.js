@@ -9,6 +9,7 @@ const ALLOWED_TYPES = [
   "application/pdf",
   "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp",
 ];
+const ALLOWED_STATUSES = ["Active", "Resolved", "Maintenance", "Release Note", "Documentation"];
 
 // Everyone signed in can read the announcement feed.
 export async function GET(req) {
@@ -17,7 +18,9 @@ export async function GET(req) {
 
   try {
     const result = await dexaiQuery(
-      `SELECT a.id, a.title, a.body, a.created_by_email, a.created_at,
+      `SELECT a.id, a.title, a.body, a.status, a.created_by_email,
+              COALESCE(a.announced_at, a.created_at) AS announced_at,
+              a.created_at,
               COALESCE(
                 (SELECT json_agg(json_build_object(
                    'id', at.id, 'filename', at.filename,
@@ -25,7 +28,7 @@ export async function GET(req) {
                  FROM announcement_attachments at WHERE at.announcement_id = a.id),
                 '[]'::json) AS attachments
          FROM announcements a
-        ORDER BY a.created_at DESC`
+        ORDER BY COALESCE(a.announced_at, a.created_at) DESC`
     );
     return NextResponse.json({ announcements: result.rows });
   } catch (err) {
@@ -46,6 +49,22 @@ export async function POST(req) {
     const title = (form.get("title") || "").toString().trim();
     const body = (form.get("body") || "").toString();
     const files = form.getAll("files").filter((f) => f && typeof f.arrayBuffer === "function");
+
+    // Optional status tag; must be one of the allowed values if provided.
+    const statusRaw = (form.get("status") || "").toString().trim();
+    const status = statusRaw || null;
+    if (status && !ALLOWED_STATUSES.includes(status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+
+    // Optional announcement date/time — defaults to now when not provided or
+    // unparseable.
+    const announcedAtRaw = (form.get("announcedAt") || "").toString().trim();
+    let announcedAt = null;
+    if (announcedAtRaw) {
+      const d = new Date(announcedAtRaw);
+      if (!Number.isNaN(d.getTime())) announcedAt = d.toISOString();
+    }
 
     if (!title && !body && files.length === 0) {
       return NextResponse.json({ error: "Nothing to post" }, { status: 400 });
@@ -74,9 +93,9 @@ export async function POST(req) {
 
     const created = await dexaiTransaction(async (client) => {
       const ins = await client.query(
-        `INSERT INTO announcements (title, body, created_by, created_by_email)
-         VALUES ($1, $2, $3, $4) RETURNING id, created_at`,
-        [title || null, body || null, user.userId || null, user.email || null]
+        `INSERT INTO announcements (title, body, status, announced_at, created_by, created_by_email)
+         VALUES ($1, $2, $3, COALESCE($4::timestamptz, now()), $5, $6) RETURNING id, created_at`,
+        [title || null, body || null, status, announcedAt, user.userId || null, user.email || null]
       );
       const id = ins.rows[0].id;
       for (const f of prepared) {

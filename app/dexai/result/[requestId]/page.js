@@ -25,6 +25,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import Navbar from "@/components/Navbar/Navbar";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
 import JsonPanel from "@/components/Results/JsonPanel";
+import FormattedResultView from "@/components/Results/FormattedResultView";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 import DocumentMetadataPanel from "@/components/Results/DocumentMetadataPanel";
 
@@ -445,6 +446,7 @@ export default function DexaiResultPage({ params }) {
 
   // Result tabs: "original" = formatted_result, "hitl" = hitl_updated_result.
   const [resultTab, setResultTab] = useState("original");
+  const [viewFormat, setViewFormat] = useState("json"); // "json" | "table"
 
   useEffect(() => {
     initTheme();
@@ -772,51 +774,79 @@ export default function DexaiResultPage({ params }) {
                       </button>
                     );
                   })}
+
+                  {/* JSON / Table view toggle (pushed to the right). */}
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+                    {[
+                      { key: "json", label: "JSON" },
+                      { key: "table", label: "Table" },
+                    ].map((f) => {
+                      const active = viewFormat === f.key;
+                      return (
+                        <button
+                          key={f.key}
+                          onClick={() => setViewFormat(f.key)}
+                          style={{
+                            padding: "8px 16px",
+                            borderRadius: 8,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                            border: "1px solid var(--panel-border)",
+                            background: active ? "var(--brand-gradient)" : "var(--input-bg)",
+                            color: active ? "#fff" : "var(--foreground)",
+                          }}
+                        >
+                          {f.label}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* Result JSON and Processing Result side by side, always expanded.
-                    Wraps to one column when the viewport is too narrow. */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 16, alignItems: "start" }}>
-                  {resultTab === "original" ? (
-                    <JsonPanel
-                      title="Formatted Result (JSON)"
-                      data={data.formatted_result}
-                      variant="green"
-                      defaultOpen
-                      maxHeight="calc(100vh - 240px)"
-                    />
-                  ) : data.hitl_updated_result ? (
-                    <JsonPanel
-                      title="HITL Updated Result (JSON)"
-                      data={data.hitl_updated_result}
-                      variant="green"
-                      defaultOpen
-                      maxHeight="calc(100vh - 240px)"
-                    />
-                  ) : (
-                    <div
-                      style={{
-                        padding: "24px 16px",
-                        borderRadius: 12,
-                        border: "1px dashed var(--panel-border)",
-                        background: "var(--input-bg)",
-                        color: "var(--text-muted)",
-                        fontSize: 13,
-                        textAlign: "center",
-                      }}
-                    >
+                {(() => {
+                  // The active result depends on the Original/HITL tab.
+                  const activeResult = resultTab === "original" ? data.formatted_result : data.hitl_updated_result;
+                  const noHitl = resultTab === "hitl" && !data.hitl_updated_result;
+                  const emptyBox = (
+                    <div style={{ padding: "24px 16px", borderRadius: 12, border: "1px dashed var(--panel-border)", background: "var(--input-bg)", color: "var(--text-muted)", fontSize: 13, textAlign: "center" }}>
                       No HITL-updated result yet — this document has not been edited.
                     </div>
-                  )}
+                  );
 
-                  <JsonPanel
-                    title="Processing Result"
-                    data={data.processing_result}
-                    variant="blue"
-                    defaultOpen
-                    maxHeight="calc(100vh - 240px)"
-                  />
-                </div>
+                  if (viewFormat === "table") {
+                    // Table format: the formatted result rendered as fields/tables.
+                    return noHitl ? emptyBox : (
+                      <FormattedResultView
+                        data={activeResult}
+                        title={resultTab === "original" ? "OCR Results" : "HITL Updated Result"}
+                        requestId={data.request_id}
+                      />
+                    );
+                  }
+
+                  // JSON format: result + processing side by side, always expanded.
+                  return (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 16, alignItems: "start" }}>
+                      {noHitl ? emptyBox : (
+                        <JsonPanel
+                          title={resultTab === "original" ? "Formatted Result (JSON)" : "HITL Updated Result (JSON)"}
+                          data={activeResult}
+                          variant="green"
+                          defaultOpen
+                          maxHeight="calc(100vh - 240px)"
+                        />
+                      )}
+                      <JsonPanel
+                        title="Processing Result"
+                        data={data.processing_result}
+                        variant="blue"
+                        defaultOpen
+                        maxHeight="calc(100vh - 240px)"
+                      />
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           </>

@@ -935,7 +935,10 @@ export default function MissingFieldsPage() {
           showAll,
           search: debouncedSearch,
           docType,
-          clientId,
+          // A search is a global find (result/request/transaction/doc id), so
+          // it ignores the client filter — otherwise the default itadmin filter
+          // would hide matches from other clients.
+          clientId: debouncedSearch ? "" : clientId,
           businessName,
           status: statusFilter,
           keyEnvironment,
@@ -1124,7 +1127,8 @@ useEffect(() => {
     showAll: String(showAll),
     search: debouncedSearch,
     docType,
-    clientId,
+    // Match the table: a search ignores the client filter (global find).
+    clientId: debouncedSearch ? "" : clientId,
     businessName,
     status: statusFilter,
     keyEnvironment,

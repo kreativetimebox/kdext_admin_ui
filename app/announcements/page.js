@@ -4,11 +4,32 @@ import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Megaphone, Paperclip, FileText, Image as ImageIcon, Trash2, Send, X } from "lucide-react";
+import { Megaphone, Paperclip, FileText, Image as ImageIcon, Trash2, Send, X, ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 
 export const dynamic = "force-dynamic";
+
+// Status tags an announcement can carry, each with its own dot color.
+const STATUSES = [
+  { value: "Active", color: "#22c55e" },
+  { value: "Resolved", color: "#64748b" },
+  { value: "Maintenance", color: "#f59e0b" },
+  { value: "Release Note", color: "#3b82f6" },
+  { value: "Documentation", color: "#a855f7" },
+];
+const STATUS_COLOR = Object.fromEntries(STATUSES.map((s) => [s.value, s.color]));
+
+function StatusTag({ status }) {
+  if (!status) return null;
+  const color = STATUS_COLOR[status] || "#64748b";
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 7, padding: "3px 10px", borderRadius: 999, fontSize: 11.5, fontWeight: 600, color, background: `${color}1f`, whiteSpace: "nowrap" }}>
+      <span style={{ width: 8, height: 8, borderRadius: "50%", background: color, boxShadow: `0 0 7px ${color}, 0 0 3px ${color}` }} />
+      {status}
+    </span>
+  );
+}
 
 function formatDate(v) {
   if (!v) return "";
@@ -55,7 +76,10 @@ export default function AnnouncementsPage() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [files, setFiles] = useState([]);
+  const [status, setStatus] = useState("Active");
+  const [announcedAt, setAnnouncedAt] = useState(""); // datetime-local; blank = now
   const [posting, setPosting] = useState(false);
+  const [expandedId, setExpandedId] = useState(null);
   const fileRef = useRef(null);
 
   const { data: announcements = [], isLoading } = useQuery({
@@ -81,9 +105,12 @@ export default function AnnouncementsPage() {
       const fd = new FormData();
       fd.append("title", title);
       fd.append("body", body);
+      fd.append("status", status);
+      // datetime-local has no timezone; convert to an ISO instant. Blank => now (server-side).
+      if (announcedAt) fd.append("announcedAt", new Date(announcedAt).toISOString());
       files.forEach((f) => fd.append("files", f));
       await axios.post("/api/announcements", fd);
-      setTitle(""); setBody(""); setFiles([]);
+      setTitle(""); setBody(""); setFiles([]); setStatus("Active"); setAnnouncedAt("");
       toast.success("Announcement posted");
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
     } catch (err) {
@@ -158,6 +185,30 @@ export default function AnnouncementsPage() {
                 ))}
               </div>
             )}
+            {/* Status + date/time */}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 12 }}>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 5 }}>Status</label>
+                <select
+                  value={status}
+                  onChange={(e) => setStatus(e.target.value)}
+                  style={{ padding: "8px 10px", fontSize: 13, background: "var(--input-bg)", border: "1px solid var(--panel-border)", borderRadius: 8, color: "var(--foreground)" }}
+                >
+                  {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.value}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", display: "block", marginBottom: 5 }}>Date &amp; time (optional)</label>
+                <input
+                  type="datetime-local"
+                  value={announcedAt}
+                  onChange={(e) => setAnnouncedAt(e.target.value)}
+                  style={{ padding: "8px 10px", fontSize: 13, background: "var(--input-bg)", border: "1px solid var(--panel-border)", borderRadius: 8, color: "var(--foreground)" }}
+                />
+                <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 8 }}>defaults to now</span>
+              </div>
+            </div>
+
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 12 }}>
               <label style={{ display: "inline-flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-muted)" }}>
                 <Paperclip size={15} /> Attach PDF / image
@@ -182,34 +233,56 @@ export default function AnnouncementsPage() {
         ) : announcements.length === 0 ? (
           <p style={{ color: "var(--text-muted)" }}>No announcements yet.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {announcements.map((a) => (
-              <div key={a.id} style={{ border: "1px solid var(--panel-border)", borderRadius: 12, padding: 18, background: "var(--panel-bg, var(--input-bg))" }}>
-                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
-                  <div style={{ minWidth: 0 }}>
-                    {a.title && <h3 style={{ fontSize: 18, fontWeight: 700, color: "var(--foreground)", margin: "0 0 4px" }}>{a.title}</h3>}
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                      {a.created_by_email || "Admin"} · {formatDate(a.created_at)}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {announcements.map((a) => {
+              const open = expandedId === a.id;
+              const hasDetail = !!a.body || a.attachments?.length > 0;
+              return (
+                <div key={a.id} style={{ border: "1px solid var(--panel-border)", borderRadius: 12, background: "var(--panel-bg, var(--input-bg))", overflow: "hidden" }}>
+                  {/* Collapsed header — title, status, date. Click to expand. */}
+                  <div
+                    onClick={() => setExpandedId(open ? null : a.id)}
+                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 18px", cursor: hasDetail ? "pointer" : "default" }}
+                  >
+                    <span style={{ color: "var(--text-muted)", flexShrink: 0, visibility: hasDetail ? "visible" : "hidden" }}>
+                      {open ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {a.title || "(untitled)"}
+                        </h3>
+                        <StatusTag status={a.status} />
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
+                        {a.created_by_email || "Admin"} · {formatDate(a.announced_at)}
+                      </div>
                     </div>
+                    {isSuperUser && (
+                      <button title="Delete" onClick={(e) => { e.stopPropagation(); remove(a.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
+                        <Trash2 size={16} />
+                      </button>
+                    )}
                   </div>
-                  {isSuperUser && (
-                    <button title="Delete" onClick={() => remove(a.id)} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
-                      <Trash2 size={16} />
-                    </button>
+
+                  {/* Expanded detail — body + attachments. */}
+                  {open && hasDetail && (
+                    <div style={{ padding: "0 18px 18px 48px", borderTop: "1px solid var(--panel-border)" }}>
+                      {a.body && (
+                        <p style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "var(--foreground)", margin: "14px 0 0", lineHeight: 1.55 }}>
+                          {a.body}
+                        </p>
+                      )}
+                      {a.attachments?.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
+                          {a.attachments.map((att) => <Attachment key={att.id} a={att} />)}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-                {a.body && (
-                  <p style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "var(--foreground)", margin: "12px 0 0", lineHeight: 1.55 }}>
-                    {a.body}
-                  </p>
-                )}
-                {a.attachments?.length > 0 && (
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
-                    {a.attachments.map((att) => <Attachment key={att.id} a={att} />)}
-                  </div>
-                )}
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </main>
