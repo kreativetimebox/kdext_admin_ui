@@ -11,9 +11,9 @@ const PUBLIC_ROUTES = ["/auth/login"];
 // Full-access admin roles. A user who has none of these but DOES have
 // SERVER_MONITOR is a restricted account that may only reach the server pages.
 const ADMIN_ROLES = ["SUPER_ADMIN", "HITL", "ADMIN"];
-// Announcements are visible to EVERY signed-in role, so this prefix is added to
-// every restricted role's allow-list below.
-const ANNOUNCEMENT_PREFIXES = ["/announcements", "/api/announcements"];
+// Pages every signed-in role can reach (Announcements, DEXAI Satori chat) —
+// spread into every restricted role's allow-list below.
+const ANNOUNCEMENT_PREFIXES = ["/announcements", "/api/announcements", "/satori", "/api/satori"];
 const SERVER_ONLY_PREFIXES = ["/server-monitor", "/api/server-monitor", "/alerts", "/api/alerts", "/api/auth", ...ANNOUNCEMENT_PREFIXES];
 
 // Client-side accounts (CLIENT_ADMIN/CLIENT_USER) — confined to their own

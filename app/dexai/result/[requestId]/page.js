@@ -833,6 +833,27 @@ export default function DexaiResultPage({ params }) {
                   }
 
                   // JSON format: result + processing side by side, always expanded.
+                  // When processing never produced a result (e.g. the document was
+                  // rejected before OCR ran), fall back to the stored error — shaped
+                  // like the OCR API's own /process-async response (request_id,
+                  // status, validation, document_type, message, document_url,
+                  // formatted_result) — so the panel shows why instead of a bare
+                  // "No data". confidence/client_document_type aren't persisted
+                  // anywhere in the DB, so they're left out rather than faked.
+                  const processingData = data.processing_result ?? (
+                    (data.error_message || data.error_code)
+                      ? {
+                          request_id: data.request_id,
+                          status: data.status,
+                          validation: data.validation ?? null,
+                          document_type: data.document_type ?? null,
+                          error_code: data.error_code ?? null,
+                          message: data.error_message ?? null,
+                          document_url: data.signed_url ?? null,
+                          formatted_result: data.formatted_result ?? null,
+                        }
+                      : null
+                  );
                   return (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 16, alignItems: "start" }}>
                       {noHitl ? emptyBox : (
@@ -845,9 +866,9 @@ export default function DexaiResultPage({ params }) {
                         />
                       )}
                       <JsonPanel
-                        title="Processing Result"
-                        data={data.processing_result}
-                        variant="blue"
+                        title={data.processing_result ? "Processing Result" : "Processing Result (Error)"}
+                        data={processingData}
+                        variant={data.processing_result ? "blue" : "amber"}
                         defaultOpen
                         maxHeight="calc(100vh - 240px)"
                       />

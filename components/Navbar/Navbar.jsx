@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle, Bug, KeyRound, Megaphone } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle, Bug, KeyRound, Megaphone, Sparkles } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
@@ -199,7 +199,10 @@ export default function Navbar() {
             {showBugTracker    && <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />}
           </>
         )}
-        {/* Announcements — visible to every signed-in user. */}
+        {/* DEXAI Satori + Announcements — visible to every signed-in user. */}
+        {!loading && user && (
+          <NavLink href="/satori"         label="DEXAI Satori"    icon={Sparkles}     active={pathname === "/satori"} />
+        )}
         {!loading && user && (
           <NavLink href="/announcements"  label="Announcements"   icon={Megaphone}    active={pathname === "/announcements"} />
         )}
