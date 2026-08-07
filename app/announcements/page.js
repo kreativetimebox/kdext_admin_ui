@@ -12,11 +12,11 @@ export const dynamic = "force-dynamic";
 
 // Status tags an announcement can carry, each with its own dot color.
 const STATUSES = [
-  { value: "Active", color: "#22c55e" },
-  { value: "Resolved", color: "#64748b" },
-  { value: "Maintenance", color: "#f59e0b" },
-  { value: "Release Note", color: "#3b82f6" },
-  { value: "Documentation", color: "#a855f7" },
+  { value: "Active", color: "#3b82f6" },        // blue — ongoing
+  { value: "Resolved", color: "#22c55e" },      // green — done
+  { value: "Maintenance", color: "#f59e0b" },   // amber
+  { value: "Release Note", color: "#a855f7" },  // purple
+  { value: "Documentation", color: "#14b8a6" }, // teal
 ];
 const STATUS_COLOR = Object.fromEntries(STATUSES.map((s) => [s.value, s.color]));
 
@@ -127,6 +127,15 @@ export default function AnnouncementsPage() {
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
     } catch {
       toast.error("Failed to delete");
+    }
+  };
+
+  const changeStatus = async (id, newStatus) => {
+    try {
+      await axios.patch(`/api/announcements/${id}`, { status: newStatus || null });
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+    } catch {
+      toast.error("Failed to update status");
     }
   };
 
@@ -252,7 +261,22 @@ export default function AnnouncementsPage() {
                         <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {a.title || "(untitled)"}
                         </h3>
-                        <StatusTag status={a.status} />
+                        {isSuperUser ? (
+                          <span onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <StatusTag status={a.status} />
+                            <select
+                              value={a.status || ""}
+                              onChange={(e) => changeStatus(a.id, e.target.value)}
+                              title="Change status"
+                              style={{ fontSize: 11.5, padding: "3px 6px", borderRadius: 6, background: "var(--input-bg)", border: "1px solid var(--panel-border)", color: "var(--foreground)", cursor: "pointer" }}
+                            >
+                              <option value="">— none —</option>
+                              {STATUSES.map((s) => <option key={s.value} value={s.value}>{s.value}</option>)}
+                            </select>
+                          </span>
+                        ) : (
+                          <StatusTag status={a.status} />
+                        )}
                       </div>
                       <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>
                         {a.created_by_email || "Admin"} · {formatDate(a.announced_at)}

@@ -2202,3 +2202,20 @@ Login attempt: zarina@financeai.com, roles: [ADMIN, HITL], allowed: true
  GET /api/auth/me 200 in 9ms (next.js: 2ms, proxy.ts: 2ms, application-code: 4ms)
  GET /api/auth/me 200 in 9ms (next.js: 2ms, proxy.ts: 2ms, application-code: 5ms)
  GET /api/alerts/summary 200 in 220ms (next.js: 5ms, proxy.ts: 4ms, application-code: 210ms)
+▲ Next.js 16.2.10 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.29.158:3000
+- Environments: .env
+✓ Ready in 480ms
+[hitl-assign] polling started (every 20s)
+[client-provision] polling started (every 60s)
+[auto-reprocess] next run in 365 min (00:00 local time)
+
+ GET /dexai/result/req_3304f24aa8be4a6180d3f6566dbe23be 200 in 2.1s (next.js: 1484ms, proxy.ts: 146ms, application-code: 517ms)
+ GET /api/auth/me 200 in 103ms (next.js: 71ms, proxy.ts: 9ms, application-code: 23ms)
+[alert-monitor] polling started (every 30s)
+ GET /api/alerts/summary 200 in 703ms (next.js: 31ms, proxy.ts: 4ms, application-code: 668ms)
+ GET /api/dexai/result/req_3304f24aa8be4a6180d3f6566dbe23be 200 in 2.2s (next.js: 915ms, proxy.ts: 10ms, application-code: 1298ms)
+ GET /api/auth/me 200 in 26ms (next.js: 5ms, proxy.ts: 13ms, application-code: 8ms)
+ GET /api/auth/me 200 in 13ms (next.js: 3ms, proxy.ts: 4ms, application-code: 6ms)
+[?25h

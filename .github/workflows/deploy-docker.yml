@@ -71,7 +71,8 @@ jobs:
           PORT=3004
 
           echo "🔨 Building image on server..."
-          docker build -t ${IMAGE}:latest .
+          # BuildKit is required for the Dockerfile's cache mounts (npm + .next/cache).
+          DOCKER_BUILDKIT=1 docker build -t ${IMAGE}:latest .
 
           echo "🧹 Removing old container..."
           docker rm -f ${APP} 2>/dev/null || true

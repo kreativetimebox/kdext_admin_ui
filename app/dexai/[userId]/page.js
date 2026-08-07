@@ -551,7 +551,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAssigned, canAssign, selected, onToggleSelect }) {
+function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAssigned, canAssign, canEdit, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -578,7 +578,7 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
       />
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {record.validation === false && record.result_id != null && (
+        {canEdit && record.validation === false && record.result_id != null && (
           <button
             onClick={() => onEdit(record.result_id)}
             title="Open result in HITL Edit"
@@ -1321,6 +1321,7 @@ export default function UserResultsPage({ params }) {
                   hitlUsers={hitlUsers}
                   onAssigned={handleAssigned}
                   canAssign={canAssign}
+                  canEdit={!isClientRole}
                   selected={r.result_id != null && selectedIds.has(r.result_id)}
                   onToggleSelect={toggleSelectOne}
                 />

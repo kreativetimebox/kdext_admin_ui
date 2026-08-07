@@ -63,20 +63,15 @@ export async function POST(req) {
       );
     }
 
-    // Check if user is locked
-    if (user.locked_until && new Date(user.locked_until) > new Date()) {
-      return Response.json(
-        { error: "Account is locked. Please try again later." },
-        { status: 403 }
-      );
-    }
+    // NOTE: the failed-login lockout / rate-limiting is intentionally disabled
+    // for all users — no locked_until check and no accrual of failed attempts.
+    // Failed logins are still recorded to the audit log below.
 
     // Verify password
     const isPasswordValid = await verifyPassword(password, user.password_hash);
 
     if (!isPasswordValid) {
       try {
-        await financeQuery(`SELECT record_failed_login_attempt($1)`, [email.toLowerCase()]);
         await financeQuery(`SELECT log_internal_login($1, $2, $3, $4, $5)`,
           [user.internal_user_id, false, req.ip, req.headers.get("user-agent") || "", "Invalid password"]);
       } catch (logErr) {

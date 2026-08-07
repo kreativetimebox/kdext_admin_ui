@@ -28,6 +28,7 @@ import JsonPanel from "@/components/Results/JsonPanel";
 import FormattedResultView from "@/components/Results/FormattedResultView";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 import DocumentMetadataPanel from "@/components/Results/DocumentMetadataPanel";
+import { useAuth } from "@/lib/useAuth";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -443,6 +444,9 @@ export default function DexaiResultPage({ params }) {
   const { initTheme } = useThemeStore();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user: authUser } = useAuth();
+  // Client-role accounts don't get Reprocess (or Edit) — read-only view.
+  const isClientRole = (authUser?.roles || []).some((r) => ["CLIENT_ADMIN", "CLIENT_USER", "CLIENT"].includes(r));
 
   // Result tabs: "original" = formatted_result, "hitl" = hitl_updated_result.
   const [resultTab, setResultTab] = useState("original");
@@ -740,12 +744,15 @@ export default function DexaiResultPage({ params }) {
                 }}
               >
                 {/* Reprocess: re-run the pipeline and overwrite this result in
-                    place (keeps the original request_id). */}
-                <ReprocessControl
-                  docId={data.request_id || requestId}
-                  currentType={data.document_type}
-                  queryKey={["dexai", "result", requestId]}
-                />
+                    place (keeps the original request_id). Hidden for client-role
+                    accounts — read-only view. */}
+                {!isClientRole && (
+                  <ReprocessControl
+                    docId={data.request_id || requestId}
+                    currentType={data.document_type}
+                    queryKey={["dexai", "result", requestId]}
+                  />
+                )}
 
                 {/* Tabs: Original Result vs HITL Updated (both read-only) */}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
