@@ -16,6 +16,8 @@ services:
       # Same broker as the Gateway — used to publish document.corrected on HITL publish.
       - RABBITMQ_URL=${RABBITMQ_URL}
       - RABBITMQ_EVENTS_EXCHANGE=${RABBITMQ_EVENTS_EXCHANGE:-document.events}
+      # DEXAI Satori — same self-hosted Qwen2.5-VL service kdext_api's copilot/risk-review chat proxy to
+      - QWEN_SERVICE_URL=${QWEN_SERVICE_URL:-http://217.16.188.48:8007}
       - JWT_SECRET=${JWT_SECRET}
       # Current/default bucket
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}

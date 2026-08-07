@@ -102,6 +102,7 @@ jobs:
             -e DB_PASSWORD="$DB_PASSWORD_VALUE" \
             -e RABBITMQ_URL="$RABBITMQ_URL_VALUE" \
             -e RABBITMQ_EVENTS_EXCHANGE="document.events" \
+            -e QWEN_SERVICE_URL="http://217.16.188.48:8007" \
             -e ALERT_WATCHED_CONTAINERS="lightonocr,kdext-qwen,kdext-document-api,kdext-api,kdext-worker,kdext-webhook-worker" \
             ${IMAGE}:latest
 
