@@ -27,7 +27,7 @@ import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 
-const CLIENT_ROLES = ["CLIENT_ADMIN", "CLIENT_USER"];
+const CLIENT_ROLES = ["CLIENT_ADMIN", "CLIENT_USER", "CLIENT"];
 
 function formatNumber(n) {
   if (n == null) return "—";

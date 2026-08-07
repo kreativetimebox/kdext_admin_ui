@@ -36,12 +36,13 @@ export async function POST(req) {
         iu.locked_until,
         iu.failed_login_attempts,
         iu.client_id,
+        iu.page_access,
         STRING_AGG(r.role_name, ',' ORDER BY r.role_name) as roles
        FROM internal_users iu
        LEFT JOIN user_roles ur ON iu.internal_user_id = ur.internal_user_id
        LEFT JOIN roles r ON ur.role_id = r.role_id
        WHERE LOWER(iu.email) = LOWER($1)
-       GROUP BY iu.internal_user_id, iu.email, iu.password_hash, iu.is_active, iu.locked_until, iu.failed_login_attempts, iu.client_id`,
+       GROUP BY iu.internal_user_id, iu.email, iu.password_hash, iu.is_active, iu.locked_until, iu.failed_login_attempts, iu.client_id, iu.page_access`,
       [email]
     );
 
@@ -88,7 +89,7 @@ export async function POST(req) {
     const userRoles = user.roles
       ? user.roles.split(",").map(r => r.trim()).filter(r => r.length > 0)
       : [];
-    const allowedRoles = ["SUPER_ADMIN", "HITL", "ADMIN", "SERVER_MONITOR", "CLIENT_ADMIN", "CLIENT_USER"];
+    const allowedRoles = ["SUPER_ADMIN", "HITL", "ADMIN", "SERVER_MONITOR", "CLIENT_ADMIN", "CLIENT_USER", "CLIENT"];
     const hasRequiredRole = userRoles.some(role => allowedRoles.includes(role));
 
     // Debug log
@@ -127,6 +128,9 @@ export async function POST(req) {
       // Only meaningful for CLIENT_ADMIN/CLIENT_USER — which users.user_id
       // (client) this login represents. null for every other role.
       clientId: user.client_id ?? null,
+      // Per-user page permissions ({dashboard,businessAudit,bugTracker}) for
+      // client sub-users; null = every page their role allows.
+      pageAccess: user.page_access ?? null,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setIssuedAt()
@@ -153,6 +157,7 @@ export async function POST(req) {
         email: user.email,
         roles: userRoles,
         clientId: user.client_id ?? null,
+        pageAccess: user.page_access ?? null,
       },
     });
   } catch (error) {

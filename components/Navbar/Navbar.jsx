@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
-import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle, Bug, KeyRound } from "lucide-react";
+import { Database, FileSearch, Home, ShieldCheck, Sun, Moon, Users, LogOut, ChevronDown, Activity, Server, AlertTriangle, Bug, KeyRound, Megaphone } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import { useState } from "react";
@@ -88,7 +88,17 @@ export default function Navbar() {
   // Tracker (each scoped to just their own client's data server-side), never
   // Alerts or Servers.
   const isClientRole = !loading && user && user.roles?.some((r) => ["CLIENT_ADMIN", "CLIENT_USER"].includes(r));
+  // Plain CLIENT — client portal: Dashboard, Business Audit, Bug Tracker and
+  // own sub-user management (each scoped to their client id), but no HITL Edit
+  // and no Servers/Alerts.
+  const isClientPortal = !loading && user && !isAdmin && !isClientRole && user.roles?.some((r) => r === "CLIENT");
   const canSeeCoreTabs = isAdmin || isClientRole;
+  // Per-user page permissions (admins have null = everything). A page toggled
+  // off is hidden from the nav (and blocked in middleware).
+  const pa = user?.pageAccess;
+  const showDashboard = !pa || pa.dashboard !== false;
+  const showBusinessAudit = !pa || pa.businessAudit !== false;
+  const showBugTracker = !pa || pa.bugTracker !== false;
   // Same audience as the Servers/Alerts tabs below.
   const canSeeAlerts = !loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r));
 
@@ -173,17 +183,29 @@ export default function Navbar() {
         {/* Core admin tabs — hidden from restricted (server-only) accounts.
             Visible to CLIENT_ADMIN/CLIENT_USER too — their queries are scoped
             server-side to just their own client's data (lib/clientAccess.js). */}
-        {canSeeCoreTabs && (
+        {isClientPortal ? (
+          /* Plain CLIENT: Dashboard + Business Audit + Bug Tracker (no HITL Edit),
+             each further gated by the user's per-page permissions. */
           <>
-            <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />
-            <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />
-            <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
-            <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />
+            {showDashboard     && <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />}
+            {showBusinessAudit && <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />}
+            {showBugTracker    && <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />}
           </>
+        ) : canSeeCoreTabs && (
+          <>
+            {showDashboard     && <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />}
+            {showBusinessAudit && <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />}
+            <NavLink href="/missing-fields" label="HITL EDIT"       icon={ShieldCheck}  active={pathname === "/missing-fields"} />
+            {showBugTracker    && <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />}
+          </>
+        )}
+        {/* Announcements — visible to every signed-in user. */}
+        {!loading && user && (
+          <NavLink href="/announcements"  label="Announcements"   icon={Megaphone}    active={pathname === "/announcements"} />
         )}
         {/* User Logs tab - super users (full Team Members/Clients/HITL Workload
             view) and CLIENT_ADMIN (their own restricted CLIENT_USER management view) */}
-        {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "CLIENT_ADMIN"].includes(r)) && (
+        {!loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "CLIENT_ADMIN", "CLIENT"].includes(r)) && (
           <NavLink href="/user-logs"      label="User Logs"       icon={Activity}     active={pathname === "/user-logs"} />
         )}
         {/* Server Monitoring tab - super users and the restricted server-monitor role */}

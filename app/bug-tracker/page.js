@@ -5,6 +5,10 @@ import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
+import { useAuth } from "@/lib/useAuth";
+
+// HITL reviewers land on this client's data by default; they can change it.
+const DEFAULT_HITL_CLIENT_EMAIL = "itadmin@capium.com";
 import {
   Search,
   Eye,
@@ -44,11 +48,10 @@ function formatDate(value) {
 const TABLE_HEADER_COLUMNS = [
   { label: "Edit", key: null },
   { label: "View", key: null },
+  { label: "Bug ID", key: "bug_tracker_id" },
   { label: "Result ID", key: "result_id" },
   { label: "HITL Assigned", key: "hitl_assigned_to" },
   { label: "Bug Status", key: "bug_status" },
-  // { label: "Issue Type", key: "issue_type" },
-  // { label: "Issue Description", key: "issue_description" },
   { label: "Client Email", key: "client_email" },
   { label: "Document Type", key: "ocr_document_type" },
   { label: "Bug Created At", key: "bug_flagged_at" },
@@ -471,7 +474,7 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "32px 64px 64px 150px 140px 120px 150px minmax(180px, 1.2fr) 160px 130px 150px 96px";
+const ROW_GRID = "32px 64px 150px 120px 150px 140px 120px 160px 130px 150px 96px";
 
 function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
@@ -505,6 +508,13 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
         <Eye size={13} />
       </button>
 
+      <span
+        style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        title={doc.bug_tracker_id != null ? `BUG-${String(doc.bug_tracker_id).padStart(5, "0")}` : ""}
+      >
+        {doc.bug_tracker_id != null ? `BUG-${String(doc.bug_tracker_id).padStart(5, "0")}` : "—"}
+      </span>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
         <span
           style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -527,13 +537,6 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
       </span>
 
       <BugStatusDropCell docId={doc.result_id} currentStatus={doc.bug_status} onBugStatusChanged={onBugStatusChanged} />
-
-      <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.issue_type || ""}>
-        {doc.issue_type || "—"}
-      </span>
-      <span style={{ fontSize: 12, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.issue_description || ""}>
-        {doc.issue_description || "—"}
-      </span>
 
       <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.client_email || ""}>
         {doc.client_email || "—"}
@@ -566,6 +569,8 @@ export default function BugTrackerPage() {
   const { setActiveId } = useDocumentStore();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const hitlDefaultApplied = useRef(false);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -591,6 +596,20 @@ export default function BugTrackerPage() {
   };
 
   useEffect(() => { initTheme(); }, [initTheme]);
+
+  // HITL reviewers default to itadmin@capium's data (applied once, then freely
+  // changeable). Non-HITL roles (admins/clients) keep the unfiltered default.
+  useEffect(() => {
+    if (hitlDefaultApplied.current || !user?.roles) return;
+    // Staff who use this page (admins + HITL reviewers), not client-scoped
+    // accounts (server forces those to their own client anyway).
+    const isStaff = user.roles.some((r) => ["SUPER_ADMIN", "ADMIN", "HITL"].includes(r));
+    hitlDefaultApplied.current = true;
+    if (isStaff && clientEmails.length === 0) {
+      setClientEmails([DEFAULT_HITL_CLIENT_EMAIL]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);

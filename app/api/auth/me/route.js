@@ -24,6 +24,7 @@ export async function GET() {
         email: payload.email,
         roles: payload.roles,
         clientId: payload.clientId ?? null,
+        pageAccess: payload.pageAccess ?? null,
       },
     });
   } catch (error) {

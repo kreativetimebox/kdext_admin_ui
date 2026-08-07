@@ -7,7 +7,7 @@ async function requireClientAdmin(req) {
   if (!user) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
-  if (!user.roles?.includes("CLIENT_ADMIN")) {
+  if (!user.roles?.some((r) => ["CLIENT_ADMIN", "CLIENT"].includes(r))) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
   if (!user.clientId) {

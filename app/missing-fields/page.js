@@ -877,6 +877,8 @@ export default function MissingFieldsPage() {
 
   const canAssign = emailCanAssign(user?.email || "");
 
+  const hitlDefaultApplied = useRef(false);
+
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
@@ -983,10 +985,38 @@ export default function MissingFieldsPage() {
   const total = data?.total ?? 0;
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const clientOptions = (filterOptions?.clients || []).map((c) => ({
-    value: c.id,
+    value: String(c.id),
     label: c.label,
     sublabel: c.email,
   }));
+
+useEffect(() => {
+  if (
+    hitlDefaultApplied.current ||
+    !user?.roles ||
+    !filterOptions?.clients?.length
+  ) {
+    return;
+  }
+
+  // Apply default for admins/HITL users
+  if (!user.roles.some((r) => ["SUPER_ADMIN", "ADMIN", "HITL"].includes(r))) {
+    return;
+  }
+
+  const itadmin = filterOptions.clients.find(
+    (c) => (c.email || "").toLowerCase() === "itadmin@capium.com"
+  );
+
+  if (itadmin && !clientId) {
+    setClientId(String(itadmin.id));
+  }
+
+  // Mark as applied after checking the client list
+  hitlDefaultApplied.current = true;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [user, filterOptions]);
   const businessOptions = [
     { value: "NULL", label: "No Company" },
     ...(filterOptions?.businesses || []).map((b) => ({ value: b, label: b })),

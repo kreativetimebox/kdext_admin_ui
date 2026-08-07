@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Search, ChevronUp, ChevronDown, ChevronRight, Plus, UserX, UserCheck, X, Eye, EyeOff, Pencil, KeyRound, RefreshCw, Copy } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronRight, Plus, UserX, UserCheck, X, Eye, EyeOff, Pencil, KeyRound, RefreshCw, Copy, UserPlus } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import { TEAM_ROLES } from "@/lib/constants";
@@ -39,7 +39,8 @@ export default function UserLogsPage() {
   const [tab, setTab] = useState("team");
 
   const isSuperUser = user && user.roles?.includes("SUPER_ADMIN");
-  const isClientAdmin = user && user.roles?.includes("CLIENT_ADMIN");
+  // CLIENT_ADMIN and the flat CLIENT role both get the sub-user management view.
+  const isClientAdmin = user && user.roles?.some((r) => ["CLIENT_ADMIN", "CLIENT"].includes(r));
 
   useEffect(() => {
     if (!authLoading && !isSuperUser && !isClientAdmin) {
@@ -1101,6 +1102,7 @@ function ClientsTab() {
   const [sortOrder, setSortOrder] = useState("DESC");
   const [editingClient, setEditingClient] = useState(null);
   const [credentialsClient, setCredentialsClient] = useState(null);
+  const [addSubUserClient, setAddSubUserClient] = useState(null);
   const [bulkProvisioning, setBulkProvisioning] = useState(false);
   const [expandedClients, setExpandedClients] = useState(new Set());
 
@@ -1280,6 +1282,9 @@ function ClientsTab() {
                       </td>
                       <td style={{ padding: "12px 16px", textAlign: "right" }}>
                         <div style={{ display: "inline-flex", gap: 8 }}>
+                          <button type="button" title="Add sub-user" onClick={() => setAddSubUserClient(u)} style={iconBtnStyle(false)}>
+                            <UserPlus size={14} />
+                          </button>
                           <button type="button" title="Edit client" onClick={() => setEditingClient(u)} style={iconBtnStyle(false)}>
                             <Pencil size={14} />
                           </button>
@@ -1359,6 +1364,103 @@ function ClientsTab() {
           onProvisioned={refresh}
         />
       )}
+
+      {addSubUserClient && (
+        <AddSubUserModal
+          client={addSubUserClient}
+          onClose={() => setAddSubUserClient(null)}
+          onSaved={() => {
+            setAddSubUserClient(null);
+            queryClient.invalidateQueries({ queryKey: ["client-users-all"] });
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// SUPER_ADMIN: add a sub-user to a specific client, choosing which pages the
+// sub-user can see. Posts to /api/client-users with the target clientId +
+// pageAccess (the route grants the CLIENT role and stores page_access).
+function AddSubUserModal({ client, onClose, onSaved }) {
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [password, setPassword] = useState("");
+  const [access, setAccess] = useState({ dashboard: true, businessAudit: true, bugTracker: true });
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (k) => setAccess((p) => ({ ...p, [k]: !p[k] }));
+
+  const save = async () => {
+    if (!email.trim() || password.length < 8) {
+      toast.error("Email and a password of 8+ characters are required");
+      return;
+    }
+    setSaving(true);
+    try {
+      await axios.post("/api/client-users", {
+        clientId: client.user_id,
+        email: email.trim(),
+        firstName: firstName.trim() || null,
+        lastName: lastName.trim() || null,
+        password,
+        pageAccess: access,
+      });
+      toast.success("Sub-user added");
+      onSaved?.();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to add sub-user");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const PAGES = [
+    { key: "dashboard", label: "Dashboard" },
+    { key: "businessAudit", label: "Business Audit" },
+    { key: "bugTracker", label: "Bug Tracker" },
+  ];
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ width: 440, maxWidth: "90vw", maxHeight: "85vh", overflowY: "auto", background: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", padding: 22 }}>
+        <h3 style={{ margin: "0 0 4px", fontSize: 17, fontWeight: 700, color: "#111827" }}>Add sub-user</h3>
+        <p style={{ margin: "0 0 16px", fontSize: 12.5, color: "#6b7280" }}>
+          For {client.company_name || client.email} — scoped to this client only.
+        </p>
+        <div style={{ display: "grid", gap: 12 }}>
+          <div>
+            <label style={modalLabelStyle}>Email</label>
+            <input value={email} onChange={(e) => setEmail(e.target.value)} style={modalFieldStyle} placeholder="user@example.com" />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label style={modalLabelStyle}>First name</label><input value={firstName} onChange={(e) => setFirstName(e.target.value)} style={modalFieldStyle} /></div>
+            <div><label style={modalLabelStyle}>Last name</label><input value={lastName} onChange={(e) => setLastName(e.target.value)} style={modalFieldStyle} /></div>
+          </div>
+          <div>
+            <label style={modalLabelStyle}>Password</label>
+            <input type="text" value={password} onChange={(e) => setPassword(e.target.value)} style={modalFieldStyle} placeholder="min 8 characters" />
+          </div>
+          <div>
+            <label style={modalLabelStyle}>Can access</label>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
+              {PAGES.map((p) => (
+                <label key={p.key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "#111827", cursor: "pointer" }}>
+                  <input type="checkbox" checked={access[p.key]} onChange={() => toggle(p.key)} />
+                  {p.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+          <button type="button" onClick={onClose} style={{ ...modalFieldStyle, width: "auto", cursor: "pointer", background: "#f3f4f6" }}>Cancel</button>
+          <button type="button" onClick={save} disabled={saving} style={{ ...modalFieldStyle, width: "auto", cursor: "pointer", background: "#2563eb", color: "#fff", border: "none", opacity: saving ? 0.6 : 1 }}>
+            {saving ? "Adding…" : "Add sub-user"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

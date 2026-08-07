@@ -23,7 +23,7 @@ import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 
-const CLIENT_ROLES = ["CLIENT_ADMIN", "CLIENT_USER"];
+const CLIENT_ROLES = ["CLIENT_ADMIN", "CLIENT_USER", "CLIENT"];
 
 function formatDate(value) {
   if (!value) return "—";

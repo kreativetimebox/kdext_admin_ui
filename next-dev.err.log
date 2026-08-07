@@ -1,1 +1,531 @@
 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+[browser] Updating a style property during rerender (borderBottom) when a conflicting property is set (border) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. 
+S3 head-check inconclusive for receipt-hub-new/uploads/19/3df308bf-a713-4daf-9d28-0e2b83938e15.png: TimeoutError
+⚠ Fast Refresh had to perform a full reload when ./app/user-logs/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./app/announcements/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+⚠ Fast Refresh had to perform a full reload when ./app/announcements/page.js changed. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] Updating a style property during rerender (borderBottom) when a conflicting property is set (border) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. 
+[browser] Updating a style property during rerender (borderBottom) when a conflicting property is set (border) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. 
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+[client-provision] poll cycle failed: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+[alert-monitor] document failure check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document check failed: timeout exceeded when trying to connect
+[alert-monitor] stuck document reconcile failed: timeout exceeded when trying to connect
+[alert-monitor] failed document reconcile failed: timeout exceeded when trying to connect
+Error: read ENETUNREACH
+    at ignore-listed frames {
+  errno: -101,
+  code: 'ENETUNREACH',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ENETUNREACH
+    at ignore-listed frames {
+  errno: -101,
+  code: 'ENETUNREACH',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ENETUNREACH
+    at ignore-listed frames {
+  errno: -101,
+  code: 'ENETUNREACH',
+  syscall: 'read'
+}
+[alert-monitor] poll failed for Server 1: read ENETUNREACH
+[alert-monitor] poll failed for Server 1: timeout exceeded when trying to connect
+[alert-monitor] poll failed for Server 2: timeout exceeded when trying to connect
+[hitl-assign] poll cycle failed: timeout exceeded when trying to connect
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+GET /api/dexai/users/[userId]/results error: Error: read ETIMEDOUT
+    at async dexaiQuery (lib/dexaidb.js:71:14)
+    at async getDexaiUserResults (lib/dexai.js:329:18)
+    at async GET (app/api/dexai/users/[userId]/results/route.js:31:29)
+  69 |     try {
+  70 |       client = await getPool().connect();
+> 71 |       return await client.query(text, params);
+     |              ^
+  72 |     } catch (err) {
+  73 |       if (attempt === 0 && isRetryable(err)) {
+  74 |         continue; // one retry to skip past a dead pooled connection {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+GET /api/filter-options error: Error: read ETIMEDOUT
+    at async dexaiQuery (lib/dexaidb.js:71:14)
+    at async getFilterOptions (lib/queries.js:954:56)
+    at async GET (app/api/filter-options/route.js:6:21)
+  69 |     try {
+  70 |       client = await getPool().connect();
+> 71 |       return await client.query(text, params);
+     |              ^
+  72 |     } catch (err) {
+  73 |       if (attempt === 0 && isRetryable(err)) {
+  74 |         continue; // one retry to skip past a dead pooled connection {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+[hitl-assign] poll cycle failed: read ETIMEDOUT
+⨯ Error: read ETIMEDOUT
+    at async dexaiQuery (lib/dexaidb.js:71:14)
+    at async GET (app/api/alerts/summary/route.js:16:18)
+  69 |     try {
+  70 |       client = await getPool().connect();
+> 71 |       return await client.query(text, params);
+     |              ^
+  72 |     } catch (err) {
+  73 |       if (attempt === 0 && isRetryable(err)) {
+  74 |         continue; // one retry to skip past a dead pooled connection {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+GET /api/dexai/users/[userId] error: Error: read ETIMEDOUT
+    at async dexaiQuery (lib/dexaidb.js:71:14)
+    at async getDexaiUserById (lib/dexai.js:239:18)
+    at async GET (app/api/dexai/users/[userId]/route.js:19:17)
+  69 |     try {
+  70 |       client = await getPool().connect();
+> 71 |       return await client.query(text, params);
+     |              ^
+  72 |     } catch (err) {
+  73 |       if (attempt === 0 && isRetryable(err)) {
+  74 |         continue; // one retry to skip past a dead pooled connection {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+GET /api/team-members error: Error: read ETIMEDOUT
+    at async dexaiQuery (lib/dexaidb.js:71:14)
+    at async getTeamMembers (lib/teamMembers.js:54:18)
+    at async GET (app/api/team-members/route.js:26:21)
+  69 |     try {
+  70 |       client = await getPool().connect();
+> 71 |       return await client.query(text, params);
+     |              ^
+  72 |     } catch (err) {
+  73 |       if (attempt === 0 && isRetryable(err)) {
+  74 |         continue; // one retry to skip past a dead pooled connection {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException: Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+⨯ uncaughtException:  Error: read ETIMEDOUT
+    at ignore-listed frames {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+GET /api/hitl-users error: Error: read ETIMEDOUT
+    at async dexaiQuery (lib/dexaidb.js:71:14)
+    at async GET (app/api/hitl-users/route.js:6:20)
+  69 |     try {
+  70 |       client = await getPool().connect();
+> 71 |       return await client.query(text, params);
+     |              ^
+  72 |     } catch (err) {
+  73 |       if (attempt === 0 && isRetryable(err)) {
+  74 |         continue; // one retry to skip past a dead pooled connection {
+  errno: -110,
+  code: 'ETIMEDOUT',
+  syscall: 'read'
+}
+[browser] Updating a style property during rerender (borderBottom) when a conflicting property is set (border) can lead to styling bugs. To avoid this, don't mix shorthand and non-shorthand properties for the same value; instead, replace the shorthand with separate values. 

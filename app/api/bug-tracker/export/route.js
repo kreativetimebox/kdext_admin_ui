@@ -3,6 +3,7 @@ import { rowsToCsv } from "@/lib/csv";
 import { getRequesterClientScope } from "@/lib/clientAccess";
 
 const COLUMNS = [
+  { key: "bug_tracker_id", label: "Bug ID" },
   { key: "business_name", label: "Company" },
   { key: "client_email", label: "User Email" },
   { key: "request_id", label: "Request ID" },

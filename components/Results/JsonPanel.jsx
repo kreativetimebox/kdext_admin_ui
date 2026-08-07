@@ -15,7 +15,7 @@ const VARIANT_COLORS = {
   purple:  { iconBg: "var(--tag-purple-bg)", iconColor: "var(--tag-purple-color)" },
 };
 
-function JsonPanel({ title, data, defaultOpen = false, variant = "default" }) {
+function JsonPanel({ title, data, defaultOpen = false, variant = "default", maxHeight = 400 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [copied, setCopied] = useState(false);
   const { isDark } = useThemeStore();
@@ -127,7 +127,7 @@ function JsonPanel({ title, data, defaultOpen = false, variant = "default" }) {
             No data available
           </p>
         ) : (
-          <div style={{ maxHeight: 400, overflowY: "auto" }}>
+          <div style={{ maxHeight, overflowY: "auto" }}>
             <SyntaxHighlighter
               language="json"
               style={isDark ? atomOneDark : atomOneLight}

@@ -782,7 +782,7 @@ export default function UserResultsPage({ params }) {
   // the API already 403s this server-side (lib/clientAccess.js), this just
   // bounces them home cleanly instead of showing an error-filled page if
   // they land here via URL manipulation.
-  const isClientRole = (authUser?.roles || []).some((r) => ["CLIENT_ADMIN", "CLIENT_USER"].includes(r));
+  const isClientRole = (authUser?.roles || []).some((r) => ["CLIENT_ADMIN", "CLIENT_USER", "CLIENT"].includes(r));
   useEffect(() => {
     if (isClientRole && authUser?.clientId != null && String(authUser.clientId) !== String(userId)) {
       router.replace("/");

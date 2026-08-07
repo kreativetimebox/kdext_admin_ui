@@ -25,7 +25,6 @@ import { copyToClipboard } from "@/lib/clipboard";
 import Navbar from "@/components/Navbar/Navbar";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
 import JsonPanel from "@/components/Results/JsonPanel";
-import FormattedResultView from "@/components/Results/FormattedResultView";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 import DocumentMetadataPanel from "@/components/Results/DocumentMetadataPanel";
 
@@ -486,8 +485,6 @@ export default function DexaiResultPage({ params }) {
         style={{
           flex: 1,
           padding: "32px 40px",
-          maxWidth: 1600,
-          margin: "0 auto",
           width: "100%",
         }}
       >
@@ -777,53 +774,49 @@ export default function DexaiResultPage({ params }) {
                   })}
                 </div>
 
-                {resultTab === "original" ? (
-                  <>
-                    <FormattedResultView
-                      data={data.formatted_result}
-                      title="OCR Results"
-                      requestId={data.request_id}
-                    />
+                {/* Result JSON and Processing Result side by side, always expanded.
+                    Wraps to one column when the viewport is too narrow. */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(420px, 1fr))", gap: 16, alignItems: "start" }}>
+                  {resultTab === "original" ? (
                     <JsonPanel
                       title="Formatted Result (JSON)"
                       data={data.formatted_result}
                       variant="green"
+                      defaultOpen
+                      maxHeight="calc(100vh - 240px)"
                     />
-                  </>
-                ) : data.hitl_updated_result ? (
-                  <>
-                    <FormattedResultView
-                      data={data.hitl_updated_result}
-                      title="HITL Updated Result"
-                      requestId={data.request_id}
-                    />
+                  ) : data.hitl_updated_result ? (
                     <JsonPanel
                       title="HITL Updated Result (JSON)"
                       data={data.hitl_updated_result}
                       variant="green"
+                      defaultOpen
+                      maxHeight="calc(100vh - 240px)"
                     />
-                  </>
-                ) : (
-                  <div
-                    style={{
-                      padding: "24px 16px",
-                      borderRadius: 12,
-                      border: "1px dashed var(--panel-border)",
-                      background: "var(--input-bg)",
-                      color: "var(--text-muted)",
-                      fontSize: 13,
-                      textAlign: "center",
-                    }}
-                  >
-                    No HITL-updated result yet — this document has not been edited.
-                  </div>
-                )}
+                  ) : (
+                    <div
+                      style={{
+                        padding: "24px 16px",
+                        borderRadius: 12,
+                        border: "1px dashed var(--panel-border)",
+                        background: "var(--input-bg)",
+                        color: "var(--text-muted)",
+                        fontSize: 13,
+                        textAlign: "center",
+                      }}
+                    >
+                      No HITL-updated result yet — this document has not been edited.
+                    </div>
+                  )}
 
-                <JsonPanel
-                  title="Processing Result"
-                  data={data.processing_result}
-                  variant="blue"
-                />
+                  <JsonPanel
+                    title="Processing Result"
+                    data={data.processing_result}
+                    variant="blue"
+                    defaultOpen
+                    maxHeight="calc(100vh - 240px)"
+                  />
+                </div>
               </div>
             </div>
           </>
