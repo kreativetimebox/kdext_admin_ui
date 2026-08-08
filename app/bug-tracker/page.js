@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useRef, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
@@ -33,6 +34,8 @@ import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
 import BulkActionBar from "@/components/Grid/BulkActionBar";
 import { bulkSetBugStatus } from "@/lib/bulkDocumentActions";
+
+export const dynamic = "force-dynamic";
 
 function formatDate(value) {
   if (!value) return "—";
@@ -516,12 +519,26 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
       </span>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
-        <span
-          style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-          title={doc.result_id ?? doc.request_id}
-        >
-          {doc.result_id ?? doc.request_id}
-        </span>
+        {doc.result_id ? (
+          // A real <a> (via next/link) rather than a JS-only onClick, so
+          // right-click → "Open in new tab" / middle-click / ctrl-click all
+          // work like a normal link, not just the Eye button's programmatic nav.
+          <Link
+            href={`/view/${encodeURIComponent(doc.result_id)}`}
+            style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}
+            title={doc.result_id}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {doc.result_id}
+          </Link>
+        ) : (
+          <span
+            style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            title={doc.request_id}
+          >
+            {doc.request_id}
+          </span>
+        )}
         {doc.result_id && doc.request_id && (
           <span
             style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -564,26 +581,44 @@ const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
 
 /* ── Main page ────────────────────────────────────────────── */
+// useSearchParams() (used below to restore filters on back-navigation)
+// requires a Suspense boundary even with dynamic = "force-dynamic" — Next
+// still generates a static shell at build time and errors without one.
 export default function BugTrackerPage() {
+  return (
+    <Suspense fallback={null}>
+      <BugTrackerContent />
+    </Suspense>
+  );
+}
+
+function BugTrackerContent() {
   const { initTheme } = useThemeStore();
   const { setActiveId } = useDocumentStore();
   const router = useRouter();
+  // Read once on mount to seed filter state below — restores whatever was on
+  // the URL when navigating back from a document (see the URL-sync effect
+  // further down), instead of every filter resetting to its default.
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const hitlDefaultApplied = useRef(false);
 
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  const [clientEmails, setClientEmails] = useState([]);
-  const [docType, setDocType] = useState("");
-  const [issueType, setIssueType] = useState("");
-  const [bugStatusFilter, setBugStatusFilter] = useState("");
-  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState(() => searchParams.get("search") || "");
+  const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
+  const [clientEmails, setClientEmails] = useState(() => {
+    const v = searchParams.get("clientEmails");
+    return v ? v.split(",").filter(Boolean) : [];
+  });
+  const [docType, setDocType] = useState(() => searchParams.get("docType") || "");
+  const [issueType, setIssueType] = useState(() => searchParams.get("issueType") || "");
+  const [bugStatusFilter, setBugStatusFilter] = useState(() => searchParams.get("bugStatus") || "");
+  const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
   const [docs, setDocs] = useState([]);
   const [editingRow, setEditingRow] = useState(null);
   const [viewingCommentsRow, setViewingCommentsRow] = useState(null);
-  const [sortBy, setSortBy] = useState("");
-  const [sortOrder, setSortOrder] = useState("desc");
+  const [sortBy, setSortBy] = useState(() => searchParams.get("sortBy") || "");
+  const [sortOrder, setSortOrder] = useState(() => searchParams.get("sortOrder") || "desc");
   const [selectedIds, setSelectedIds] = useState(new Set());
 
   const handleSort = (key) => {
@@ -616,7 +651,14 @@ export default function BugTrackerPage() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Skip the very first run — filters restored from the URL on mount (e.g.
+  // page=3 after navigating back) shouldn't be immediately reset to page 1.
+  const filtersMounted = useRef(false);
   useEffect(() => {
+    if (!filtersMounted.current) {
+      filtersMounted.current = true;
+      return;
+    }
     setPage(1);
     setSelectedIds(new Set());
   }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, sortBy, sortOrder]);
@@ -626,6 +668,24 @@ export default function BugTrackerPage() {
   useEffect(() => {
     setSelectedIds(new Set());
   }, [page]);
+
+  // Mirror filters/sort/page into the URL so browser Back restores this exact
+  // view instead of resetting to defaults — router.replace doesn't add a new
+  // history entry, it just keeps the *current* one (and whatever the user
+  // navigates to next, e.g. /view/[id]) carrying the latest query string.
+  useEffect(() => {
+    const params = new URLSearchParams();
+    if (debouncedSearch) params.set("search", debouncedSearch);
+    if (clientEmails.length) params.set("clientEmails", clientEmails.join(","));
+    if (docType) params.set("docType", docType);
+    if (issueType) params.set("issueType", issueType);
+    if (bugStatusFilter) params.set("bugStatus", bugStatusFilter);
+    if (page > 1) params.set("page", String(page));
+    if (sortBy) params.set("sortBy", sortBy);
+    if (sortOrder && sortOrder !== "desc") params.set("sortOrder", sortOrder);
+    const qs = params.toString();
+    router.replace(qs ? `/bug-tracker?${qs}` : "/bug-tracker", { scroll: false });
+  }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, page, sortBy, sortOrder, router]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["bug-tracker", { debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, sortBy, sortOrder, page }],
@@ -822,7 +882,7 @@ export default function BugTrackerPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearch(""); setCompanies([]); setDocType(""); setIssueType(""); setBugStatusFilter(""); }}
+              onClick={() => { setSearch(""); setClientEmails([]); setDocType(""); setIssueType(""); setBugStatusFilter(""); }}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--text-muted)", cursor: "pointer" }}
             >
               <X size={13} />

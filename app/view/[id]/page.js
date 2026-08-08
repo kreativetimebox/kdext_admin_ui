@@ -149,7 +149,7 @@ export default function ViewDocumentPage() {
       <Navbar />
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-y-auto">
+        <main className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
 
           {/* Back bar */}
           <div
@@ -218,7 +218,11 @@ export default function ViewDocumentPage() {
             </div>
           ) : (
             <>
-              <div className="flex min-w-0">
+              {/* Each column scrolls independently — this row is height-bound
+                  (flex-1 min-h-0) so the two overflow-y-auto columns below can
+                  actually clip and scroll on their own instead of growing to
+                  their content height and leaving `main` as the only scroller. */}
+              <div className="flex flex-1 min-h-0 min-w-0">
                 {/* File Viewer */}
                 <div
                   className="w-[460px] shrink-0 flex flex-col overflow-hidden border-r"
@@ -270,8 +274,8 @@ export default function ViewDocumentPage() {
                   </div>
                 </div>
 
-                {/* Data panel */}
-                <div className="flex-1 min-w-0 p-8 flex flex-col gap-8">
+                {/* Data panel — its own scroll container, independent of the File Viewer column */}
+                <div className="flex-1 min-w-0 min-h-0 overflow-y-auto p-8 flex flex-col gap-8">
                   {/* Reprocess: re-run the pipeline and overwrite this result in
                       place (keeps the original request_id). */}
                   <ReprocessControl

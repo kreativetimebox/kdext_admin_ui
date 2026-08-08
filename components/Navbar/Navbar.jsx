@@ -199,12 +199,12 @@ export default function Navbar() {
             {showBugTracker    && <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />}
           </>
         )}
-        {/* DEXAI Satori + Announcements — visible to every signed-in user. */}
+        {/* DEXAI Satori + What's New — visible to every signed-in user. */}
         {!loading && user && (
           <NavLink href="/satori"         label="DEXAI Satori"    icon={Sparkles}     active={pathname === "/satori"} />
         )}
         {!loading && user && (
-          <NavLink href="/announcements"  label="Announcements"   icon={Megaphone}    active={pathname === "/announcements"} />
+          <NavLink href="/announcements"  label="What's New"      icon={Megaphone}    active={pathname === "/announcements"} />
         )}
         {/* User Logs tab - super users (full Team Members/Clients/HITL Workload
             view) and CLIENT_ADMIN (their own restricted CLIENT_USER management view) */}

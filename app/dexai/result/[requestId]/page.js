@@ -18,6 +18,9 @@ import {
   User as UserIcon,
   Clock,
   Calendar,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
@@ -48,6 +51,10 @@ function formatDuration(ms) {
   const rem = (s % 60).toFixed(0);
   return `${m}m ${rem}s`;
 }
+
+const ZOOM_STEP = 0.25;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 3;
 
 function isImagePath(path) {
   if (!path) return false;
@@ -262,9 +269,14 @@ function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
 
 function FileRender({ url, originalFilename, documentPath }) {
   const [errored, setErrored] = useState(false);
+  const [zoom, setZoom] = useState(1);
 
   const isImage = isImagePath(documentPath) || isImagePath(originalFilename || "");
   const isPdf = isPdfPath(documentPath) || isPdfPath(originalFilename || "");
+
+  const zoomIn = () => setZoom((z) => Math.min(+(z + ZOOM_STEP).toFixed(2), ZOOM_MAX));
+  const zoomOut = () => setZoom((z) => Math.max(+(z - ZOOM_STEP).toFixed(2), ZOOM_MIN));
+  const zoomReset = () => setZoom(1);
 
   if (!url) {
     return (
@@ -339,21 +351,59 @@ function FileRender({ url, originalFilename, documentPath }) {
   }
 
   if (isImage) {
+    const zoomBtnStyle = {
+      display: "flex", alignItems: "center", justifyContent: "center",
+      width: 24, height: 24, borderRadius: 6, cursor: "pointer",
+      border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--text-muted)",
+    };
     return (
-      /* eslint-disable-next-line @next/next/no-img-element */
-      <img
-        src={url}
-        alt={originalFilename || "document"}
-        onError={() => setErrored(true)}
-        style={{
-          width: "100%",
-          maxHeight: 620,
-          objectFit: "contain",
-          borderRadius: 10,
-          background: "var(--input-bg)",
-          border: "1px solid var(--panel-border)",
-        }}
-      />
+      <div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4, marginBottom: 8 }}>
+          <button onClick={zoomOut} disabled={zoom <= ZOOM_MIN} title="Zoom out" style={zoomBtnStyle}>
+            <ZoomOut size={13} />
+          </button>
+          <button
+            onClick={zoomReset}
+            title="Reset zoom"
+            style={{ ...zoomBtnStyle, width: "auto", padding: "0 8px", fontSize: 11, fontFamily: "ui-monospace, monospace" }}
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button onClick={zoomIn} disabled={zoom >= ZOOM_MAX} title="Zoom in" style={zoomBtnStyle}>
+            <ZoomIn size={13} />
+          </button>
+          <button onClick={zoomReset} title="Reset" style={zoomBtnStyle}>
+            <RotateCcw size={12} />
+          </button>
+        </div>
+        <div
+          style={{
+            width: "100%",
+            maxHeight: 620,
+            overflow: "auto",
+            display: "flex",
+            justifyContent: "center",
+            borderRadius: 10,
+            background: "var(--input-bg)",
+            border: "1px solid var(--panel-border)",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={url}
+            alt={originalFilename || "document"}
+            onError={() => setErrored(true)}
+            style={{
+              maxWidth: "100%",
+              maxHeight: 620,
+              objectFit: "contain",
+              transform: `scale(${zoom})`,
+              transformOrigin: "top center",
+              transition: "transform 0.15s ease",
+            }}
+          />
+        </div>
+      </div>
     );
   }
 

@@ -121,7 +121,7 @@ export default function AnnouncementsPage() {
       files.forEach((f) => fd.append("files", f));
       await axios.post("/api/announcements", fd);
       setTitle(""); setBody(""); setFiles([]); setStatus("Active"); setAnnouncedAt("");
-      toast.success("Announcement posted");
+      toast.success("Posted");
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
     } catch (err) {
       toast.error(err.response?.data?.error || "Failed to post");
@@ -131,7 +131,7 @@ export default function AnnouncementsPage() {
   };
 
   const remove = async (id) => {
-    if (!window.confirm("Delete this announcement?")) return;
+    if (!window.confirm("Delete this update?")) return;
     try {
       await axios.delete(`/api/announcements/${id}`);
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
@@ -167,7 +167,7 @@ export default function AnnouncementsPage() {
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
           <Megaphone size={22} style={{ color: "var(--accent, #2563eb)" }} />
           <div>
-            <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>Announcements</h1>
+            <h1 style={{ fontSize: 26, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>What&apos;s New</h1>
             <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Updates from the team</p>
           </div>
         </div>
@@ -185,7 +185,7 @@ export default function AnnouncementsPage() {
             <RichBodyEditor
               value={body}
               onChange={setBody}
-              placeholder="Write your announcement… (text, links, email addresses — anything)"
+              placeholder="Write your update… (text, links, email addresses — anything)"
             />
             {files.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
@@ -247,7 +247,7 @@ export default function AnnouncementsPage() {
         {isLoading ? (
           <p style={{ color: "var(--text-muted)" }}>Loading…</p>
         ) : announcements.length === 0 ? (
-          <p style={{ color: "var(--text-muted)" }}>No announcements yet.</p>
+          <p style={{ color: "var(--text-muted)" }}>No updates yet.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {announcements.map((a) => {
