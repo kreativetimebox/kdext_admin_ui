@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import sanitizeHtml from "sanitize-html";
 import { verifyAuthToken } from "@/lib/auth";
 import { dexaiQuery, dexaiTransaction } from "@/lib/dexaidb";
 
@@ -10,6 +11,26 @@ const ALLOWED_TYPES = [
   "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp",
 ];
 const ALLOWED_STATUSES = ["Active", "Resolved", "Maintenance", "Release Note", "Documentation"];
+
+// The composer's rich-text toolbar (bold/italic/underline/font-size/color)
+// only ever produces this shape via execCommand — allowlisted narrowly since
+// this HTML is rendered verbatim (dangerouslySetInnerHTML) for every signed-in
+// viewer, not just the posting admin.
+const BODY_SANITIZE_OPTIONS = {
+  allowedTags: ["b", "strong", "i", "em", "u", "span", "font", "div", "p", "br"],
+  allowedAttributes: {
+    span: ["style"],
+    font: ["style", "color", "size"],
+    div: ["style"],
+    p: ["style"],
+  },
+  allowedStyles: {
+    "*": {
+      color: [/^#[0-9a-f]{3,8}$/i, /^rgb\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)$/i],
+      "font-size": [/^\d+(\.\d+)?px$/],
+    },
+  },
+};
 
 // Everyone signed in can read the announcement feed.
 export async function GET(req) {
@@ -47,7 +68,8 @@ export async function POST(req) {
   try {
     const form = await req.formData();
     const title = (form.get("title") || "").toString().trim();
-    const body = (form.get("body") || "").toString();
+    const bodyRaw = (form.get("body") || "").toString();
+    const body = sanitizeHtml(bodyRaw, BODY_SANITIZE_OPTIONS).trim();
     const files = form.getAll("files").filter((f) => f && typeof f.arrayBuffer === "function");
 
     // Optional status tag; must be one of the allowed values if provided.
@@ -66,7 +88,10 @@ export async function POST(req) {
       if (!Number.isNaN(d.getTime())) announcedAt = d.toISOString();
     }
 
-    if (!title && !body && files.length === 0) {
+    // A contentEditable body with no real content still serializes to
+    // boilerplate like "<div><br></div>" — strip tags to check for actual text.
+    const bodyHasText = sanitizeHtml(body, { allowedTags: [], allowedAttributes: {} }).trim().length > 0;
+    if (!title && !bodyHasText && files.length === 0) {
       return NextResponse.json({ error: "Nothing to post" }, { status: 400 });
     }
 
@@ -95,7 +120,7 @@ export async function POST(req) {
       const ins = await client.query(
         `INSERT INTO announcements (title, body, status, announced_at, created_by, created_by_email)
          VALUES ($1, $2, $3, COALESCE($4::timestamptz, now()), $5, $6) RETURNING id, created_at`,
-        [title || null, body || null, status, announcedAt, user.userId || null, user.email || null]
+        [title || null, bodyHasText ? body : null, status, announcedAt, user.userId || null, user.email || null]
       );
       const id = ins.rows[0].id;
       for (const f of prepared) {

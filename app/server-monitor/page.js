@@ -12,9 +12,6 @@ import {
   Box,
   FileText,
   RefreshCw,
-  Play,
-  Square,
-  RotateCw,
   X,
   Download,
 } from "lucide-react";
@@ -311,7 +308,7 @@ export default function ServerMonitorPage() {
                   key={c.id}
                   style={{
                     display: "flex", alignItems: "center", gap: 10, padding: "10px 16px",
-                    borderBottom: "1px solid var(--panel-border)",
+                    borderBottom: "1px solid var(--panel-border)", flexWrap: "wrap",
                     background: selected?.id === c.id ? "var(--input-bg)" : "transparent",
                   }}
                 >
@@ -327,14 +324,19 @@ export default function ServerMonitorPage() {
                   <button title="Logs" onClick={() => openLogs(c)} style={iconBtn}>
                     <FileText size={15} />
                   </button>
-                  {canControl && (isRunning(c) ? (
+                  {canControl && (
                     <>
-                      <button title="Restart" disabled={busy === c.id} onClick={() => doAction(c, "restart")} style={iconBtn}><RotateCw size={15} /></button>
-                      <button title="Stop" disabled={busy === c.id} onClick={() => doAction(c, "stop")} style={iconBtn}><Square size={15} /></button>
+                      {isRunning(c) ? (
+                        <>
+                          <button disabled={busy === c.id} onClick={() => doAction(c, "restart")} style={actionBtn("#3b82f6", busy === c.id)}>Restart</button>
+                          <button disabled={busy === c.id} onClick={() => doAction(c, "stop")} style={actionBtn("#f59e0b", busy === c.id)}>Stop</button>
+                        </>
+                      ) : (
+                        <button disabled={busy === c.id} onClick={() => doAction(c, "start")} style={actionBtn("#22c55e", busy === c.id)}>Start</button>
+                      )}
+                      <button disabled={busy === c.id} onClick={() => doAction(c, "remove")} style={actionBtn("#ef4444", busy === c.id)}>Remove</button>
                     </>
-                  ) : (
-                    <button title="Start" disabled={busy === c.id} onClick={() => doAction(c, "start")} style={iconBtn}><Play size={15} /></button>
-                  ))}
+                  )}
                 </div>
               ))
             )}
@@ -391,3 +393,14 @@ const iconBtn = {
   background: "var(--input-bg)", border: "1px solid var(--panel-border)",
   color: "var(--foreground)", flexShrink: 0,
 };
+
+// Colored, labeled lifecycle-action buttons (Start/Restart/Stop/Remove) — each
+// action gets its own color so the row reads at a glance without icons.
+const actionBtn = (color, disabled) => ({
+  display: "flex", alignItems: "center", justifyContent: "center",
+  padding: "6px 12px", height: 30, borderRadius: 6, cursor: disabled ? "default" : "pointer",
+  background: color, border: "none", color: "#fff",
+  fontSize: 12.5, fontWeight: 600, flexShrink: 0,
+  opacity: disabled ? 0.55 : 1,
+  whiteSpace: "nowrap",
+});

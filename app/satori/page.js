@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Sparkles, Send, Plus, Trash2, MessageSquare, History } from "lucide-react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import Navbar from "@/components/Navbar/Navbar";
 
 export const dynamic = "force-dynamic";
@@ -240,6 +242,55 @@ export default function SatoriPage() {
           </div>
         </main>
       </div>
+      <style jsx global>{`
+        .satori-md > *:first-child { margin-top: 0; }
+        .satori-md > *:last-child { margin-bottom: 0; }
+        .satori-md p { margin: 0 0 10px; }
+        .satori-md h1, .satori-md h2, .satori-md h3, .satori-md h4 {
+          margin: 16px 0 8px; font-weight: 700; line-height: 1.3;
+        }
+        .satori-md h1 { font-size: 1.25em; }
+        .satori-md h2 { font-size: 1.15em; }
+        .satori-md h3 { font-size: 1.05em; }
+        .satori-md h4 { font-size: 1em; }
+        .satori-md ul, .satori-md ol { margin: 0 0 10px; padding-left: 22px; }
+        .satori-md li { margin: 3px 0; }
+        .satori-md li > p { margin: 0; }
+        .satori-md strong { font-weight: 700; }
+        .satori-md em { font-style: italic; }
+        .satori-md hr { margin: 14px 0; border: none; border-top: 1px solid currentColor; opacity: 0.15; }
+        .satori-md a { color: inherit; text-decoration: underline; }
+        .satori-md code {
+          font-family: ui-monospace, SFMono-Regular, monospace; font-size: 0.9em;
+          background: rgba(127, 127, 127, 0.2); border-radius: 4px; padding: 2px 5px;
+        }
+        .satori-md pre {
+          background: rgba(127, 127, 127, 0.15); border-radius: 8px; padding: 10px 12px;
+          overflow-x: auto; margin: 0 0 10px;
+        }
+        .satori-md pre code { background: none; padding: 0; }
+        .satori-md table { border-collapse: collapse; margin: 0 0 10px; font-size: 0.95em; }
+        .satori-md th, .satori-md td { border: 1px solid rgba(127, 127, 127, 0.35); padding: 4px 8px; }
+        .satori-md th { font-weight: 700; }
+      `}</style>
+    </div>
+  );
+}
+
+// Renders assistant replies (and user messages) as markdown — the model
+// consistently answers with headings/bold/lists/code, and showing that
+// literally (### Step-by-step, **bold**, etc.) as plain text reads as broken.
+function MessageMarkdown({ content }) {
+  return (
+    <div className="satori-md">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          a: ({ node, ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 }
@@ -260,14 +311,13 @@ function MessageBubble({ role, content, typing }) {
           borderRadius: 14,
           fontSize: 14.5,
           lineHeight: 1.55,
-          whiteSpace: "pre-wrap",
           wordBreak: "break-word",
           background: isUser ? "var(--brand-gradient, #2563eb)" : "var(--input-bg)",
           color: isUser ? "#fff" : "var(--foreground)",
           border: isUser ? "none" : "1px solid var(--panel-border)",
         }}
       >
-        {typing ? <TypingDots /> : content}
+        {typing ? <TypingDots /> : <MessageMarkdown content={content} />}
       </div>
     </div>
   );

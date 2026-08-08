@@ -7,6 +7,7 @@ import toast from "react-hot-toast";
 import { Megaphone, Paperclip, FileText, Image as ImageIcon, Trash2, Send, X, ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
+import RichBodyEditor from "@/components/Announcements/RichBodyEditor";
 
 export const dynamic = "force-dynamic";
 
@@ -74,13 +75,22 @@ export default function AnnouncementsPage() {
   const isSuperUser = user && user.roles?.includes("SUPER_ADMIN");
 
   const [title, setTitle] = useState("");
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(""); // plain text and/or raw HTML tags, typed directly
   const [files, setFiles] = useState([]);
   const [status, setStatus] = useState("Active");
   const [announcedAt, setAnnouncedAt] = useState(""); // datetime-local; blank = now
   const [posting, setPosting] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const fileRef = useRef(null);
+
+  // Body may be plain text, HTML tags, or a mix — strip tags to check whether
+  // there's any real text before treating it as content worth posting.
+  const bodyHasText = (html) => {
+    if (typeof document === "undefined") return !!html?.trim();
+    const div = document.createElement("div");
+    div.innerHTML = html || "";
+    return (div.textContent || "").trim().length > 0;
+  };
 
   const { data: announcements = [], isLoading } = useQuery({
     queryKey: ["announcements"],
@@ -96,7 +106,7 @@ export default function AnnouncementsPage() {
   const removeFile = (i) => setFiles((prev) => prev.filter((_, idx) => idx !== i));
 
   const post = async () => {
-    if (!title.trim() && !body.trim() && files.length === 0) {
+    if (!title.trim() && !bodyHasText(body) && files.length === 0) {
       toast.error("Add a title, text, or a file first");
       return;
     }
@@ -172,13 +182,10 @@ export default function AnnouncementsPage() {
               style={{ width: "100%", padding: "10px 12px", marginBottom: 10, fontSize: 15, fontWeight: 600,
                 background: "var(--input-bg)", border: "1px solid var(--panel-border)", borderRadius: 8, color: "var(--foreground)" }}
             />
-            <textarea
+            <RichBodyEditor
               value={body}
-              onChange={(e) => setBody(e.target.value)}
+              onChange={setBody}
               placeholder="Write your announcement… (text, links, email addresses — anything)"
-              rows={5}
-              style={{ width: "100%", padding: "10px 12px", fontSize: 14, resize: "vertical",
-                background: "var(--input-bg)", border: "1px solid var(--panel-border)", borderRadius: 8, color: "var(--foreground)" }}
             />
             {files.length > 0 && (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
@@ -293,9 +300,15 @@ export default function AnnouncementsPage() {
                   {open && hasDetail && (
                     <div style={{ padding: "0 18px 18px 48px", borderTop: "1px solid var(--panel-border)" }}>
                       {a.body && (
-                        <p style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "var(--foreground)", margin: "14px 0 0", lineHeight: 1.55 }}>
-                          {a.body}
-                        </p>
+                        // Server-sanitized (allowlisted tags/styles only — see
+                        // BODY_SANITIZE_OPTIONS in the API route) before storage,
+                        // so this is safe to render as-is. white-space: pre-wrap
+                        // keeps plain-typed line breaks intact alongside any
+                        // literal HTML tags, which render as real formatting.
+                        <div
+                          style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "var(--foreground)", margin: "14px 0 0", lineHeight: 1.55 }}
+                          dangerouslySetInnerHTML={{ __html: a.body }}
+                        />
                       )}
                       {a.attachments?.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
