@@ -15,11 +15,12 @@ env:
   REMOTE_DIR: /home/ubuntu/kdext_admin_ui
   APP_NAME: kdext_manual_anaylizer
   APP_PORT: "3004"
-  DB_HOST: 52.57.179.51
+  DB_HOST: kdext-financeai-db.c1gucy88ma99.ap-southeast-2.rds.amazonaws.com
   DB_PORT: "5432"
   DB_NAME: postgres
   DB_PASSWORD: AQ1lVaY3lJUHNb3yp655
-  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db-eu.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:5432/postgres?sslmode=require
+  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db.c1gucy88ma99.ap-southeast-2.rds.amazonaws.com:5432/postgres
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -54,7 +55,7 @@ jobs:
           DB_PORT_VALUE="${{ env.DB_PORT }}"
           DB_NAME_VALUE="${{ env.DB_NAME }}"
           DB_PASSWORD_VALUE="${{ env.DB_PASSWORD }}"
-          MAIN_FINANCE_DB_URL_VALUE="${{ env.MAIN_FINANCE_DB_URL }}"
+          MAIN_FINANCE_DB_URL_VALUE="${{ secrets.MAIN_FINANCE_DB_URL }}"
           # Same broker as the Gateway — used to publish document.corrected on HITL publish.
           RABBITMQ_URL_VALUE="${{ secrets.RABBITMQ_URL }}"
 
