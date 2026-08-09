@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Megaphone, Paperclip, FileText, Image as ImageIcon, Trash2, Send, X, ChevronDown, ChevronRight } from "lucide-react";
+import { Megaphone, Paperclip, FileText, Image as ImageIcon, Trash2, Pencil, Send, X, ChevronDown, ChevronRight } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import RichBodyEditor from "@/components/Announcements/RichBodyEditor";
@@ -81,6 +81,10 @@ export default function AnnouncementsPage() {
   const [announcedAt, setAnnouncedAt] = useState(""); // datetime-local; blank = now
   const [posting, setPosting] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
+  const [editingId, setEditingId] = useState(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editBody, setEditBody] = useState("");
+  const [savingEdit, setSavingEdit] = useState(false);
   const fileRef = useRef(null);
 
   // Body may be plain text, HTML tags, or a mix — strip tags to check whether
@@ -146,6 +150,37 @@ export default function AnnouncementsPage() {
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
     } catch {
       toast.error("Failed to update status");
+    }
+  };
+
+  const startEdit = (a) => {
+    setEditingId(a.id);
+    setEditTitle(a.title || "");
+    setEditBody(a.body || "");
+    setExpandedId(a.id);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+    setEditBody("");
+  };
+
+  const saveEdit = async (id) => {
+    if (!editTitle.trim() && !bodyHasText(editBody)) {
+      toast.error("Add a title or some text first");
+      return;
+    }
+    setSavingEdit(true);
+    try {
+      await axios.patch(`/api/announcements/${id}`, { title: editTitle, body: editBody });
+      toast.success("Updated");
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      cancelEdit();
+    } catch (err) {
+      toast.error(err.response?.data?.error || "Failed to update");
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -251,7 +286,8 @@ export default function AnnouncementsPage() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {announcements.map((a) => {
-              const open = expandedId === a.id;
+              const isEditing = editingId === a.id;
+              const open = expandedId === a.id || isEditing;
               const hasDetail = !!a.body || a.attachments?.length > 0;
               return (
                 <div key={a.id} style={{ border: "1px solid var(--panel-border)", borderRadius: 12, background: "var(--panel-bg, var(--input-bg))", overflow: "hidden" }}>
@@ -265,9 +301,20 @@ export default function AnnouncementsPage() {
                     </span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {a.title || "(untitled)"}
-                        </h3>
+                        {isEditing ? (
+                          <input
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            onClick={(e) => e.stopPropagation()}
+                            placeholder="Title"
+                            style={{ flex: 1, minWidth: 120, fontSize: 15, fontWeight: 600, padding: "6px 10px",
+                              background: "var(--input-bg)", border: "1px solid var(--panel-border)", borderRadius: 6, color: "var(--foreground)" }}
+                          />
+                        ) : (
+                          <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--foreground)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {a.title || "(untitled)"}
+                          </h3>
+                        )}
                         {isSuperUser ? (
                           <span onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <StatusTag status={a.status} />
@@ -289,26 +336,61 @@ export default function AnnouncementsPage() {
                         {a.created_by_email || "Admin"} · {formatDate(a.announced_at)}
                       </div>
                     </div>
-                    {isSuperUser && (
-                      <button title="Delete" onClick={(e) => { e.stopPropagation(); remove(a.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
-                        <Trash2 size={16} />
-                      </button>
+                    {isSuperUser && !isEditing && (
+                      <>
+                        <button title="Edit" onClick={(e) => { e.stopPropagation(); startEdit(a); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
+                          <Pencil size={16} />
+                        </button>
+                        <button title="Delete" onClick={(e) => { e.stopPropagation(); remove(a.id); }} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
+                          <Trash2 size={16} />
+                        </button>
+                      </>
                     )}
                   </div>
 
-                  {/* Expanded detail — body + attachments. */}
-                  {open && hasDetail && (
+                  {/* Expanded detail — edit form, or read-only body + attachments. */}
+                  {open && (hasDetail || isEditing) && (
                     <div style={{ padding: "0 18px 18px 48px", borderTop: "1px solid var(--panel-border)" }}>
-                      {a.body && (
-                        // Server-sanitized (allowlisted tags/styles only — see
-                        // BODY_SANITIZE_OPTIONS in the API route) before storage,
-                        // so this is safe to render as-is. white-space: pre-wrap
-                        // keeps plain-typed line breaks intact alongside any
-                        // literal HTML tags, which render as real formatting.
-                        <div
-                          style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "var(--foreground)", margin: "14px 0 0", lineHeight: 1.55 }}
-                          dangerouslySetInnerHTML={{ __html: a.body }}
-                        />
+                      {isEditing ? (
+                        <>
+                          <div style={{ marginTop: 14 }}>
+                            <RichBodyEditor
+                              value={editBody}
+                              onChange={setEditBody}
+                              placeholder="Write your update… (text, links, email addresses — anything)"
+                            />
+                          </div>
+                          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                            <button
+                              onClick={() => saveEdit(a.id)}
+                              disabled={savingEdit}
+                              style={{ padding: "7px 16px", borderRadius: 8, background: "var(--accent, #2563eb)", color: "#fff",
+                                border: "none", cursor: savingEdit ? "default" : "pointer", fontSize: 13, fontWeight: 600, opacity: savingEdit ? 0.6 : 1 }}
+                            >
+                              {savingEdit ? "Saving…" : "Save"}
+                            </button>
+                            <button
+                              onClick={cancelEdit}
+                              disabled={savingEdit}
+                              style={{ padding: "7px 16px", borderRadius: 8, background: "var(--input-bg)", color: "var(--foreground)",
+                                border: "1px solid var(--panel-border)", cursor: savingEdit ? "default" : "pointer", fontSize: 13, fontWeight: 600 }}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        a.body && (
+                          // Server-sanitized (allowlisted tags/styles only — see
+                          // BODY_SANITIZE_OPTIONS in the API route) before storage,
+                          // so this is safe to render as-is. white-space: pre-wrap
+                          // keeps plain-typed line breaks intact alongside any
+                          // literal HTML tags, which render as real formatting.
+                          <div
+                            style={{ whiteSpace: "pre-wrap", wordBreak: "break-word", fontSize: 14, color: "var(--foreground)", margin: "14px 0 0", lineHeight: 1.55 }}
+                            dangerouslySetInnerHTML={{ __html: a.body }}
+                          />
+                        )
                       )}
                       {a.attachments?.length > 0 && (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 14 }}>
