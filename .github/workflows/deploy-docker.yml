@@ -54,7 +54,7 @@ jobs:
           DB_PORT_VALUE="${{ env.DB_PORT }}"
           DB_NAME_VALUE="${{ env.DB_NAME }}"
           DB_PASSWORD_VALUE="${{ env.DB_PASSWORD }}"
-          MAIN_FINANCE_DB_URL_VALUE="${{ secrets.MAIN_FINANCE_DB_URL }}"
+          MAIN_FINANCE_DB_URL_VALUE="${{ env.MAIN_FINANCE_DB_URL }}"
           # Same broker as the Gateway — used to publish document.corrected on HITL publish.
           RABBITMQ_URL_VALUE="${{ secrets.RABBITMQ_URL }}"
 
