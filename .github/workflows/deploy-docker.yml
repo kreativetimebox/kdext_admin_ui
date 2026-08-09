@@ -1,7 +1,5 @@
 name: Deploy
 
-# SSH into the EC2 host, upload the source tree, build the Docker image there,
-# and swap the running container.
 on:
   push:
     branches:
@@ -15,11 +13,13 @@ env:
   REMOTE_DIR: /home/ubuntu/kdext_admin_ui
   APP_NAME: kdext_manual_anaylizer
   APP_PORT: "3004"
-  DB_HOST: kdext-financeai-db.c1gucy88ma99.ap-southeast-2.rds.amazonaws.com
+  DB_HOST: 52.57.179.51
   DB_PORT: "5432"
   DB_NAME: postgres
   DB_PASSWORD: AQ1lVaY3lJUHNb3yp655
-  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db.c1gucy88ma99.ap-southeast-2.rds.amazonaws.com:5432/postgres
+  # Updated Frankfurt DB URLs
+  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@52.57.179.51:5432/postgres?sslmode=require
+  FRANKFURT_DEXAI_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@52.57.179.51:5432/postgres?sslmode=require
 
 jobs:
   deploy:
@@ -55,14 +55,14 @@ jobs:
           DB_PORT_VALUE="${{ env.DB_PORT }}"
           DB_NAME_VALUE="${{ env.DB_NAME }}"
           DB_PASSWORD_VALUE="${{ env.DB_PASSWORD }}"
-          MAIN_FINANCE_DB_URL_VALUE="${{ secrets.MAIN_FINANCE_DB_URL }}"
-          # Same broker as the Gateway — used to publish document.corrected on HITL publish.
+          MAIN_FINANCE_DB_URL_VALUE="${{ env.MAIN_FINANCE_DB_URL }}"
+          DEXAI_DB_URL_VALUE="${{ env.FRANKFURT_DEXAI_DB_URL }}"
           RABBITMQ_URL_VALUE="${{ secrets.RABBITMQ_URL }}"
 
           ssh -i ~/.ssh/id_deploy -p "$SSH_PORT" \
             -o ServerAliveInterval=60 -o ServerAliveCountMax=30 \
             -T \
-            "$SSH_USER@$SSH_HOST" "REMOTE_DIR='${{ env.REMOTE_DIR }}' DB_HOST_VALUE='$DB_HOST_VALUE' DB_PORT_VALUE='$DB_PORT_VALUE' DB_NAME_VALUE='$DB_NAME_VALUE' DB_PASSWORD_VALUE='$DB_PASSWORD_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' RABBITMQ_URL_VALUE='$RABBITMQ_URL_VALUE' bash -s" << 'EOF'
+            "$SSH_USER@$SSH_HOST" "REMOTE_DIR='${{ env.REMOTE_DIR }}' DB_HOST_VALUE='$DB_HOST_VALUE' DB_PORT_VALUE='$DB_PORT_VALUE' DB_NAME_VALUE='$DB_NAME_VALUE' DB_PASSWORD_VALUE='$DB_PASSWORD_VALUE' MAIN_FINANCE_DB_URL_VALUE='$MAIN_FINANCE_DB_URL_VALUE' DEXAI_DB_URL_VALUE='$DEXAI_DB_URL_VALUE' RABBITMQ_URL_VALUE='$RABBITMQ_URL_VALUE' bash -s" << 'EOF'
           set -euo pipefail
           cd "$REMOTE_DIR"
 
@@ -71,7 +71,6 @@ jobs:
           PORT=3004
 
           echo "🔨 Building image on server..."
-          # BuildKit is required for the Dockerfile's cache mounts (npm + .next/cache).
           DOCKER_BUILDKIT=1 docker build -t ${IMAGE}:latest .
 
           echo "🧹 Removing old container..."
@@ -80,12 +79,13 @@ jobs:
           echo "🚀 Starting container..."
           docker run -d --name ${APP} \
             -p ${PORT}:3004 \
+            --add-host=kdext-financeai-db-eu.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:52.57.179.51 \
             --restart unless-stopped \
             -e NODE_ENV=production \
             -e PORT=3004 \
             -e HOSTNAME=0.0.0.0 \
             -e COOKIE_SECURE=false \
-            -e DEXAI_DB_URL="${{ secrets.DEXAI_DB_URL }}" \
+            -e DEXAI_DB_URL="$DEXAI_DB_URL_VALUE" \
             -e MAIN_FINANCE_DB_URL="$MAIN_FINANCE_DB_URL_VALUE" \
             -e AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
             -e AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
@@ -111,7 +111,6 @@ jobs:
             if curl -fs http://localhost:${PORT}/api/health >/dev/null 2>&1 || \
                curl -fs http://localhost:${PORT} >/dev/null 2>&1; then
               echo "✅ Healthy"
-              # Each deploy orphans the previous deps/builder layers.
               docker image prune -f >/dev/null 2>&1 || true
               exit 0
             fi
