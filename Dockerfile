@@ -7,7 +7,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 
 WORKDIR /app
 COPY package.json package-lock.json ./
-# Cache the npm download store across builds so repeat `npm ci` runs are fast.
 RUN --mount=type=cache,target=/root/.npm npm ci
 
 # Stage 2: builder
@@ -18,10 +17,12 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
-# Persist Next's build cache across builds -> incremental rebuilds are much faster.
-RUN --mount=type=cache,target=/app/.next/cache npm run build
 
-# Stage 3: runner — Next standalone output (minimal, self-contained)
+# Disable Next.js build-level caching for Server Actions & Manifests
+# to prevent "Failed to find Server Action" errors on new deployments.
+RUN npm run build
+
+# Stage 3: runner — Next standalone output
 FROM node:20-slim AS runner
 WORKDIR /app
 
@@ -30,8 +31,6 @@ ENV PORT=3004
 ENV HOSTNAME=0.0.0.0
 ENV NEXT_TELEMETRY_DISABLED=1
 
-# standalone/ carries server.js + only the node_modules actually traced at build,
-# so there's no full node_modules copy and no `npm prune` step.
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
