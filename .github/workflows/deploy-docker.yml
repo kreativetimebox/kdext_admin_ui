@@ -15,7 +15,7 @@ env:
   REMOTE_DIR: /home/ubuntu/kdext_admin_ui
   APP_NAME: kdext_manual_anaylizer
   APP_PORT: "3004"
-  DB_HOST: kdext-financeai-db.c1gucy88ma99.ap-southeast-2.rds.amazonaws.com
+  DB_HOST: kdext-financeai-db-eu.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com
   DB_PORT: "5432"
   DB_NAME: postgres
   DB_PASSWORD: AQ1lVaY3lJUHNb3yp655
