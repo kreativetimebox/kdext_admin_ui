@@ -18,7 +18,7 @@ env:
   DB_NAME: postgres
   DB_PASSWORD: AQ1lVaY3lJUHNb3yp655
   # Updated Frankfurt DB URLs
-  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@52.57.179.51:5432/postgres?sslmode=require
+  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:5432/postgres?sslmode=require
   FRANKFURT_DEXAI_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@52.57.179.51:5432/postgres?sslmode=require
 
 jobs:
