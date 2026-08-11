@@ -135,6 +135,7 @@ function StatusBadge({ status }) {
 }
 
 function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
+  const router = useRouter();
   const [issueType, setIssueType] = useState(data?.issue_type || "");
   const [issueDescription, setIssueDescription] = useState(data?.issue_description || "");
   const [saving, setSaving] = useState(false);
@@ -147,19 +148,21 @@ function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
   async function save(patch) {
     if (!resultId) {
       toast.error("This document has no result_id yet — bug tracking isn't available until processing completes");
-      return;
+      return false;
     }
     setSaving(true);
     try {
       const res = await axios.post(`/api/document/${encodeURIComponent(resultId)}/update-bug-tracking`, patch);
       if (res.data?.ok === false) {
         toast.error(res.data.error || "Failed to save");
-        return;
+        return false;
       }
       onSaved(res.data);
       toast.success("Saved");
+      return true;
     } catch (err) {
       toast.error(err?.response?.data?.error || "Failed to save");
+      return false;
     } finally {
       setSaving(false);
     }
@@ -208,10 +211,19 @@ function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
         <select
           value={issueType}
           disabled={saving}
-          onChange={(e) => {
+          onChange={async (e) => {
             const val = e.target.value;
             setIssueType(val);
-            save({ issueType: val || null });
+            const ok = await save({ issueType: val || null });
+            // Flagging a document with a real issue type turns it into a bug --
+            // jump to the Bug Tracker, filtered down to this same record. Pin
+            // clientEmails too, else the HITL-default client filter there can
+            // hide this row if it belongs to a different client.
+            if (ok && val) {
+              const qs = new URLSearchParams({ search: resultId });
+              if (data?.user?.email) qs.set("clientEmails", data.user.email);
+              router.push(`/bug-tracker?${qs.toString()}`);
+            }
           }}
           style={fieldStyle}
         >
