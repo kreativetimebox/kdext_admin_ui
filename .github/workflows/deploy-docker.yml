@@ -13,13 +13,14 @@ env:
   REMOTE_DIR: /home/ubuntu/kdext_admin_ui
   APP_NAME: kdext_manual_anaylizer
   APP_PORT: "3004"
-  DB_HOST: 52.57.179.51
+  DB_HOST: dext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com
   DB_PORT: "5432"
   DB_NAME: postgres
   DB_PASSWORD: AQ1lVaY3lJUHNb3yp655
   # Updated Frankfurt DB URLs
-  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:5432/postgres?sslmode=require
-  FRANKFURT_DEXAI_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@52.57.179.51:5432/postgres?sslmode=require
+  MAIN_FINANCE_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:5432/postgres
+
+  FRANKFURT_DEXAI_DB_URL: postgresql://financedb_user:AQ1lVaY3lJUHNb3yp655@kdext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:5432/postgres
 
 jobs:
   deploy:
@@ -79,7 +80,7 @@ jobs:
           echo "🚀 Starting container..."
           docker run -d --name ${APP} \
             -p ${PORT}:3004 \
-            --add-host=kdext-financeai-db-eu.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:52.57.179.51 \
+            --add-host=dext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com \
             --restart unless-stopped \
             -e NODE_ENV=production \
             -e PORT=3004 \
