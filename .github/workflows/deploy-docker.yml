@@ -80,7 +80,7 @@ jobs:
           echo "🚀 Starting container..."
           docker run -d --name ${APP} \
             -p ${PORT}:3004 \
-            --add-host=dext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com \
+            --add-host=kdext-financeai-db.cbg6ooo0qdhf.eu-central-1.rds.amazonaws.com:63.185.255.234 \
             --restart unless-stopped \
             -e NODE_ENV=production \
             -e PORT=3004 \
