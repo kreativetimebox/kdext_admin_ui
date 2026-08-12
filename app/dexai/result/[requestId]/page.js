@@ -135,7 +135,6 @@ function StatusBadge({ status }) {
 }
 
 function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
-  const router = useRouter();
   const [issueType, setIssueType] = useState(data?.issue_type || "");
   const [issueDescription, setIssueDescription] = useState(data?.issue_description || "");
   const [saving, setSaving] = useState(false);
@@ -214,16 +213,11 @@ function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
           onChange={async (e) => {
             const val = e.target.value;
             setIssueType(val);
-            const ok = await save({ issueType: val || null });
-            // Flagging a document with a real issue type turns it into a bug --
-            // jump to the Bug Tracker, filtered down to this same record. Pin
-            // clientEmails too, else the HITL-default client filter there can
-            // hide this row if it belongs to a different client.
-            if (ok && val) {
-              const qs = new URLSearchParams({ search: resultId });
-              if (data?.user?.email) qs.set("clientEmails", data.user.email);
-              router.push(`/bug-tracker?${qs.toString()}`);
-            }
+            // This only saves the draft issue_type -- the row doesn't become
+            // a tracked bug (bug_flagged_at/bug_tracker_id) until the HITL
+            // editor's Publish is clicked, so stay on this page rather than
+            // jumping to the Bug Tracker.
+            await save({ issueType: val || null });
           }}
           style={fieldStyle}
         >

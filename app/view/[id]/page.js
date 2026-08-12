@@ -19,7 +19,6 @@ import RawResults from "@/components/Results/RawResults";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 
 function BugTrackingPanel({ docId, doc, onSaved, onCommentsChanged }) {
-  const router = useRouter();
   const [issueType, setIssueType] = useState(doc?.issue_type || "");
   const [issueDescription, setIssueDescription] = useState(doc?.issue_description || "");
   const [saving, setSaving] = useState(false);
@@ -64,16 +63,11 @@ function BugTrackingPanel({ docId, doc, onSaved, onCommentsChanged }) {
             onChange={async (e) => {
               const val = e.target.value;
               setIssueType(val);
-              const ok = await save({ issueType: val || null });
-              // Flagging a document with a real issue type turns it into a bug --
-              // jump to the Bug Tracker, filtered down to this same record. Pin
-              // clientEmails too, else the HITL-default client filter there can
-              // hide this row if it belongs to a different client.
-              if (ok && val) {
-                const qs = new URLSearchParams({ search: docId });
-                if (doc?.user?.email) qs.set("clientEmails", doc.user.email);
-                router.push(`/bug-tracker?${qs.toString()}`);
-              }
+              // This only saves the draft issue_type -- the row doesn't
+              // become a tracked bug (bug_flagged_at/bug_tracker_id) until
+              // Publish is clicked below, so stay on this page rather than
+              // jumping to the Bug Tracker.
+              await save({ issueType: val || null });
             }}
             className="text-sm px-2 py-1.5 rounded border"
             style={{ borderColor: "var(--input-border)", background: "var(--input-bg)", color: "var(--foreground)" }}
