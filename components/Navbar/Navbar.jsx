@@ -99,6 +99,10 @@ export default function Navbar() {
   const showDashboard = !pa || pa.dashboard !== false;
   const showBusinessAudit = !pa || pa.businessAudit !== false;
   const showBugTracker = !pa || pa.bugTracker !== false;
+  // hitlEdit is opt-in — only shown when explicitly granted (pa.hitlEdit === true).
+  // For admin roles (pa is null) this stays false; admins always see the tab
+  // via canSeeCoreTabs branch below which renders it unconditionally.
+  const showHitlEdit = pa?.hitlEdit === true;
   // Same audience as the Servers/Alerts tabs below.
   const canSeeAlerts = !loading && user && user.roles?.some((r) => ["SUPER_ADMIN", "SERVER_MONITOR"].includes(r));
 
@@ -184,11 +188,13 @@ export default function Navbar() {
             Visible to CLIENT_ADMIN/CLIENT_USER too — their queries are scoped
             server-side to just their own client's data (lib/clientAccess.js). */}
         {isClientPortal ? (
-          /* Plain CLIENT: Dashboard + Business Audit + Bug Tracker (no HITL Edit),
+          /* Plain CLIENT: Dashboard + Business Audit + Bug Tracker (+ optionally
+             HITL Edit if the hitlEdit page-access flag was granted to this user),
              each further gated by the user's per-page permissions. */
           <>
             {showDashboard     && <NavLink href="/"               label="Home"            icon={Home}         active={pathname === "/"} />}
             {showBusinessAudit && <NavLink href="/dexai"          label="Business Audit"   icon={Users}        active={pathname.startsWith("/dexai")} />}
+            {showHitlEdit      && <NavLink href="/missing-fields" label="HITL Edit"        icon={ShieldCheck}  active={pathname === "/missing-fields"} />}
             {showBugTracker    && <NavLink href="/bug-tracker"    label="Bug Tracker"     icon={Bug}          active={pathname === "/bug-tracker"} />}
           </>
         ) : canSeeCoreTabs && (

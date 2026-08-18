@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Search, ChevronUp, ChevronDown, ChevronRight, Plus, UserX, UserCheck, X, Eye, EyeOff, Pencil, KeyRound, RefreshCw, Copy, UserPlus } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronRight, Plus, UserX, UserCheck, X, Eye, EyeOff, Pencil, KeyRound, RefreshCw, Copy, UserPlus, ShieldCheck } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import { TEAM_ROLES } from "@/lib/constants";
@@ -125,6 +125,7 @@ function ClientAdminUserLogsPage() {
   const queryClient = useQueryClient();
   const [showAddModal, setShowAddModal] = useState(false);
   const [credentialsUser, setCredentialsUser] = useState(null);
+  const [editPageAccessUser, setEditPageAccessUser] = useState(null);
 
   const { data: users = [], isLoading, error } = useQuery({
     queryKey: ["client-users"],
@@ -244,6 +245,14 @@ function ClientAdminUserLogsPage() {
                           <div style={{ display: "inline-flex", gap: 8 }}>
                             <button
                               type="button"
+                              title="Edit page access"
+                              onClick={() => setEditPageAccessUser(u)}
+                              style={iconBtnStyle(false)}
+                            >
+                              <ShieldCheck size={14} />
+                            </button>
+                            <button
+                              type="button"
                               title="View/edit password"
                               onClick={() => setCredentialsUser(u)}
                               style={iconBtnStyle(false)}
@@ -286,6 +295,17 @@ function ClientAdminUserLogsPage() {
           fetchUrl={`/api/client-users/${credentialsUser.internal_user_id}/credentials`}
           saveUrl={`/api/client-users/${credentialsUser.internal_user_id}/credentials`}
           onClose={() => setCredentialsUser(null)}
+        />
+      )}
+
+      {editPageAccessUser && (
+        <EditPageAccessModal
+          user={editPageAccessUser}
+          onClose={() => setEditPageAccessUser(null)}
+          onSaved={() => {
+            setEditPageAccessUser(null);
+            refresh();
+          }}
         />
       )}
     </div>
@@ -381,6 +401,91 @@ function AddClientUserModal({ onClose, onSaved }) {
         </div>
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 22 }}>
+          <button type="button" onClick={onClose} disabled={saving} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "1px solid #d1d5db", background: "#f3f4f6", color: "#111827", cursor: "pointer" }}>
+            Cancel
+          </button>
+          <button type="button" onClick={handleSave} disabled={saving} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "none", background: "var(--accent)", color: "#fff", cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Saving..." : "Save"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Modal for viewing/editing page access permissions for a CLIENT sub-user.
+// Used by CLIENT_ADMIN in their own User Logs view.
+function EditPageAccessModal({ user, onClose, onSaved }) {
+  const currentAccess = user.page_access && typeof user.page_access === "object" ? user.page_access : {};
+  const [access, setAccess] = useState({
+    dashboard:     currentAccess.dashboard     !== false,
+    businessAudit: currentAccess.businessAudit !== false,
+    bugTracker:    currentAccess.bugTracker    !== false,
+    hitlEdit:      currentAccess.hitlEdit      === true,
+  });
+  const [saving, setSaving] = useState(false);
+
+  const toggle = (k) => setAccess((p) => ({ ...p, [k]: !p[k] }));
+
+  const PAGE_FLAGS = [
+    { key: "dashboard",     label: "Dashboard" },
+    { key: "businessAudit", label: "Business Audit" },
+    { key: "bugTracker",    label: "Bug Tracker" },
+    { key: "hitlEdit",      label: "HITL Edit (Missing Fields)", accent: true },
+  ];
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      await axios.patch(`/api/client-users/${user.internal_user_id}`, { pageAccess: access });
+      toast.success("Page access updated — user must log out and back in for changes to take effect");
+      onSaved();
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to update page access");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 400, maxWidth: "90vw", background: "#ffffff", borderRadius: 12, border: "1px solid #e5e7eb", boxShadow: "0 12px 40px rgba(0,0,0,0.25)", padding: 22 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+          <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: "#111827" }}>Page Access</h2>
+          <button type="button" onClick={onClose} style={{ background: "transparent", border: "none", cursor: "pointer", color: "#6b7280" }}>
+            <X size={18} />
+          </button>
+        </div>
+        <p style={{ margin: "0 0 16px", fontSize: 12.5, color: "#6b7280" }}>
+          {user.email} — toggle which pages this user can visit.
+        </p>
+
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {PAGE_FLAGS.map((p) => (
+            <label
+              key={p.key}
+              style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "#111827", cursor: "pointer", padding: "8px 10px", borderRadius: 8, background: access[p.key] ? (p.accent ? "rgba(37,99,235,0.07)" : "rgba(34,197,94,0.07)") : "#f9fafb", border: `1px solid ${access[p.key] ? (p.accent ? "#93c5fd" : "#86efac") : "#e5e7eb"}`, transition: "background 0.15s, border-color 0.15s" }}
+            >
+              <input
+                type="checkbox"
+                checked={access[p.key]}
+                onChange={() => toggle(p.key)}
+                style={{ width: 15, height: 15, accentColor: p.accent ? "#2563eb" : "#16a34a", cursor: "pointer" }}
+              />
+              <span style={{ fontWeight: p.accent ? 600 : 400 }}>{p.label}</span>
+              {p.accent && (
+                <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", padding: "2px 7px", borderRadius: 999, background: "rgba(37,99,235,0.12)", color: "#2563eb" }}>
+                  Opt-in
+                </span>
+              )}
+            </label>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 20 }}>
           <button type="button" onClick={onClose} disabled={saving} style={{ padding: "8px 16px", fontSize: 13, fontWeight: 600, borderRadius: 8, border: "1px solid #d1d5db", background: "#f3f4f6", color: "#111827", cursor: "pointer" }}>
             Cancel
           </button>
@@ -1105,6 +1210,7 @@ function ClientsTab() {
   const [addSubUserClient, setAddSubUserClient] = useState(null);
   const [bulkProvisioning, setBulkProvisioning] = useState(false);
   const [expandedClients, setExpandedClients] = useState(new Set());
+  const [editSubUserPageAccess, setEditSubUserPageAccess] = useState(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
@@ -1335,7 +1441,16 @@ function ClientsTab() {
                               {cu.is_active ? "Active" : "Inactive"}
                             </span>
                           </td>
-                          <td />
+                          <td style={{ padding: "10px 16px", textAlign: "right" }}>
+                            <button
+                              type="button"
+                              title="Edit page access"
+                              onClick={() => setEditSubUserPageAccess(cu)}
+                              style={iconBtnStyle(false)}
+                            >
+                              <ShieldCheck size={13} />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                   </Fragment>
@@ -1375,6 +1490,17 @@ function ClientsTab() {
           }}
         />
       )}
+
+      {editSubUserPageAccess && (
+        <EditPageAccessModal
+          user={editSubUserPageAccess}
+          onClose={() => setEditSubUserPageAccess(null)}
+          onSaved={() => {
+            setEditSubUserPageAccess(null);
+            queryClient.invalidateQueries({ queryKey: ["client-users-all"] });
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -1387,7 +1513,7 @@ function AddSubUserModal({ client, onClose, onSaved }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [password, setPassword] = useState("");
-  const [access, setAccess] = useState({ dashboard: true, businessAudit: true, bugTracker: true });
+  const [access, setAccess] = useState({ dashboard: true, businessAudit: true, bugTracker: true, hitlEdit: false });
   const [saving, setSaving] = useState(false);
 
   const toggle = (k) => setAccess((p) => ({ ...p, [k]: !p[k] }));
@@ -1420,6 +1546,7 @@ function AddSubUserModal({ client, onClose, onSaved }) {
     { key: "dashboard", label: "Dashboard" },
     { key: "businessAudit", label: "Business Audit" },
     { key: "bugTracker", label: "Bug Tracker" },
+    { key: "hitlEdit", label: "HITL Edit (Missing Fields)" },
   ];
 
   return (

@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { useAuth } from "@/lib/useAuth";
 
 // HITL reviewers land on this client's data by default; they can change it.
-const DEFAULT_HITL_CLIENT_EMAIL = "itadmin@capium.com";
+
 import {
   Search,
   Eye,
@@ -26,6 +26,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   MessageSquare,
+  Lock,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
@@ -53,7 +54,6 @@ const TABLE_HEADER_COLUMNS = [
   { label: "View", key: null },
   { label: "Bug ID", key: "bug_tracker_id" },
   { label: "Result ID", key: "result_id" },
-  { label: "HITL Assigned", key: "hitl_assigned_to" },
   { label: "Bug Status", key: "bug_status" },
   { label: "Client Email", key: "client_email" },
   { label: "Document Type", key: "ocr_document_type" },
@@ -477,9 +477,9 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "32px 64px 150px 120px 150px 140px 120px 160px 130px 150px 96px";
+const ROW_GRID = "32px 32px 32px 150px 160px 140px 140px 160px 96px";
 
-function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, selected, onToggleSelect }) {
+function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -519,39 +519,43 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
       </span>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
-        {doc.result_id ? (
-          // A real <a> (via next/link) rather than a JS-only onClick, so
-          // right-click → "Open in new tab" / middle-click / ctrl-click all
-          // work like a normal link, not just the Eye button's programmatic nav.
-          <Link
-            href={`/view/${encodeURIComponent(doc.result_id)}`}
-            style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textDecoration: "none" }}
-            title={doc.result_id}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {doc.result_id}
-          </Link>
-        ) : (
-          <span
-            style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-            title={doc.request_id}
-          >
-            {doc.request_id}
-          </span>
-        )}
-        {doc.result_id && doc.request_id && (
-          <span
-            style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-            title={doc.request_id}
-          >
-            {doc.request_id}
-          </span>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          {doc.result_id ? (
+            <span
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              title={doc.result_id}
+            >
+              {doc.result_id}
+            </span>
+          ) : (
+            <span
+              style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+              title={doc.request_id}
+            >
+              {doc.request_id}
+            </span>
+          )}
+          {lockInfo && (
+            <span
+              title={`In use by ${lockInfo.userEmail || lockInfo.userName}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: 99,
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#ef4444",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Lock size={10} /> In Use
+            </span>
+          )}
+        </div>
       </div>
-
-      <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.hitl_assigned_to || ""}>
-        {doc.hitl_assigned_to || "—"}
-      </span>
 
       <BugStatusDropCell docId={doc.result_id} currentStatus={doc.bug_status} onBugStatusChanged={onBugStatusChanged} />
 
@@ -581,9 +585,6 @@ const PAGE_SIZE = 50;
 const SEARCH_DEBOUNCE_MS = 350;
 
 /* ── Main page ────────────────────────────────────────────── */
-// useSearchParams() (used below to restore filters on back-navigation)
-// requires a Suspense boundary even with dynamic = "force-dynamic" — Next
-// still generates a static shell at build time and errors without one.
 export default function BugTrackerPage() {
   return (
     <Suspense fallback={null}>
@@ -596,13 +597,10 @@ function BugTrackerContent() {
   const { initTheme } = useThemeStore();
   const { setActiveId } = useDocumentStore();
   const router = useRouter();
-  // Read once on mount to seed filter state below — restores whatever was on
-  // the URL when navigating back from a document (see the URL-sync effect
-  // further down), instead of every filter resetting to its default.
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
-  const hitlDefaultApplied = useRef(false);
+
 
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(() => searchParams.get("search") || "");
@@ -621,6 +619,13 @@ function BugTrackerContent() {
   const [sortOrder, setSortOrder] = useState(() => searchParams.get("sortOrder") || "desc");
   const [selectedIds, setSelectedIds] = useState(new Set());
 
+  const { data: locksData } = useQuery({
+    queryKey: ["document-locks"],
+    queryFn: async () => (await axios.get("/api/document-locks")).data,
+    refetchInterval: 10000,
+  });
+  const activeLocks = locksData?.locks || {};
+
   const handleSort = (key) => {
     if (sortBy === key) {
       setSortOrder((o) => (o === "asc" ? "desc" : "asc"));
@@ -632,27 +637,12 @@ function BugTrackerContent() {
 
   useEffect(() => { initTheme(); }, [initTheme]);
 
-  // HITL reviewers default to itadmin@capium's data (applied once, then freely
-  // changeable). Non-HITL roles (admins/clients) keep the unfiltered default.
-  useEffect(() => {
-    if (hitlDefaultApplied.current || !user?.roles) return;
-    // Staff who use this page (admins + HITL reviewers), not client-scoped
-    // accounts (server forces those to their own client anyway).
-    const isStaff = user.roles.some((r) => ["SUPER_ADMIN", "ADMIN", "HITL"].includes(r));
-    hitlDefaultApplied.current = true;
-    if (isStaff && clientEmails.length === 0) {
-      setClientEmails([DEFAULT_HITL_CLIENT_EMAIL]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(t);
   }, [search]);
 
-  // Skip the very first run — filters restored from the URL on mount (e.g.
-  // page=3 after navigating back) shouldn't be immediately reset to page 1.
   const filtersMounted = useRef(false);
   useEffect(() => {
     if (!filtersMounted.current) {
@@ -663,16 +653,10 @@ function BugTrackerContent() {
     setSelectedIds(new Set());
   }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, sortBy, sortOrder]);
 
-  // A new page of rows means the previous selection no longer corresponds
-  // to what's on screen.
   useEffect(() => {
     setSelectedIds(new Set());
   }, [page]);
 
-  // Mirror filters/sort/page into the URL so browser Back restores this exact
-  // view instead of resetting to defaults — router.replace doesn't add a new
-  // history entry, it just keeps the *current* one (and whatever the user
-  // navigates to next, e.g. /view/[id]) carrying the latest query string.
   useEffect(() => {
     const params = new URLSearchParams();
     if (debouncedSearch) params.set("search", debouncedSearch);
@@ -693,9 +677,6 @@ function BugTrackerContent() {
       const res = await axios.get("/api/bug-tracker", {
         params: {
           search: debouncedSearch,
-          // A search is a global find (e.g. a Bug ID is unique across clients),
-          // so it ignores the client filter — otherwise the default itadmin
-          // filter would hide matches from other clients.
           clientEmails: debouncedSearch ? "" : clientEmails.join(","),
           docType,
           issueType,
@@ -710,7 +691,6 @@ function BugTrackerContent() {
     },
     placeholderData: keepPreviousData,
     staleTime: 15 * 1000,
-    onError: () => toast.error("Failed to load bug tracker"),
   });
 
   const { data: filterOptions } = useQuery({
@@ -738,9 +718,14 @@ function BugTrackerContent() {
   const docTypeOptions = filterOptions?.docTypes || [];
 
   const handleView = (resultId) => {
-    if (resultId == null) {
-      toast.error("This document has no result_id yet — it hasn't finished processing");
-      return;
+    if (!resultId) return;
+    const lock = activeLocks[String(resultId)];
+    if (
+      lock &&
+      String(lock.userId) !== String(user?.id) &&
+      lock.userEmail?.toLowerCase() !== user?.email?.toLowerCase()
+    ) {
+      toast.error(`Document is currently open by ${lock.userEmail || lock.userName}`);
     }
     setActiveId(resultId);
     router.push(`/view/${encodeURIComponent(resultId)}`);
@@ -803,7 +788,6 @@ function BugTrackerContent() {
 
   const exportParams = {
     search: debouncedSearch,
-    // Match the table: a search ignores the client filter (global find).
     clientEmails: debouncedSearch ? "" : clientEmails.join(","),
     docType,
     issueType,
@@ -912,10 +896,6 @@ function BugTrackerContent() {
 
         {/* Table */}
         <div style={{ background: "var(--panel-bg)", border: "1px solid var(--panel-border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
-          {/* Header and rows share one horizontal scroll container so a
-              column's header can never drift out of line with its cells —
-              scrolling the body scrolls the header by the same amount since
-              they're the same scroll box, not two independent ones. */}
           <div style={{ overflowX: "auto" }}>
           <div style={{ minWidth: "max-content" }}>
           <div style={{ display: "grid", gridTemplateColumns: ROW_GRID, gap: 16, padding: "12px 20px", background: "var(--input-bg)", borderBottom: "1px solid var(--panel-border)" }}>
@@ -962,6 +942,7 @@ function BugTrackerContent() {
                   onEdit={setEditingRow}
                   onViewComments={setViewingCommentsRow}
                   onBugStatusChanged={handleBugStatusChanged}
+                  lockInfo={activeLocks[String(doc.id)] || activeLocks[String(doc.result_id)]}
                   selected={selectedIds.has(doc.id)}
                   onToggleSelect={toggleSelectOne}
                 />

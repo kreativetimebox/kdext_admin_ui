@@ -27,6 +27,7 @@ import {
   ArrowDown,
   ArrowUpDown,
   ShieldCheck,
+  Lock,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
@@ -38,10 +39,7 @@ import { bulkSetBugStatus, bulkAssignHitl } from "@/lib/bulkDocumentActions";
 
 // Same allow-list as app/missing-fields/page.js's assign-hitl gate — kept as
 // a separate copy per this codebase's convention rather than a shared import.
-const HITL_ASSIGN_ALLOWED = ["financeai@financeai.com", "rashika@financeai.com"];
-function emailCanAssign(email = "") {
-  return HITL_ASSIGN_ALLOWED.includes(email.toLowerCase());
-}
+
 
 function menuItemBaseStyle(active) {
   return {
@@ -221,7 +219,6 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Result ID", key: "result_id" },
   { label: "Processing", key: "processing_duration_ms" },
   { label: "Status", key: "status" },
-  { label: "HITL Assign", key: "hitl_assigned_to" },
   { label: "Created At", key: "created_at" },
   // { label: "Anomalous", key: "is_anomalous" },
   // { label: "Duplicate", key: "is_duplicate" },
@@ -239,7 +236,7 @@ const TABLE_HEADER_COLUMNS = [
 // apart (different minmax/fr tokens for the Document Type/Key Environment
 // columns), which misaligned every column since the header's row.
 const ROW_GRID =
-  "32px 160px minmax(170px, 1.2fr) 100px 100px 150px 100px 100px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 140px 130px 160px 150px 150px";
+  "32px 160px minmax(170px, 1.2fr) 100px 100px 150px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 140px 130px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
   const active = sortKey && sortBy === sortKey;
@@ -551,7 +548,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAssigned, canAssign, canEdit, selected, onToggleSelect }) {
+function Row({ record, onView, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -578,33 +575,8 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
       />
 
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {canEdit && record.validation === false && record.result_id != null && (
-          <button
-            onClick={() => onEdit(record.result_id)}
-            title="Open result in HITL Edit"
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "6px 12px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 600,
-              border: "1px solid #c2410c",
-              background: "#ea580c",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 2px 6px rgba(124,45,18,0.35)",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <Pencil size={12} />
-            Edit
-          </button>
-        )}
-
         <button
-          onClick={() => onView(record.request_id)}
+          onClick={() => onView(record.result_id ?? record.request_id)}
           style={{
             display: "inline-flex",
             alignItems: "center",
@@ -623,25 +595,45 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
           }}
         >
           <Eye size={12} />
-          {/* View */}
         </button>
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
-        <span
-          style={{
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: "var(--accent)",
-            fontFamily: "ui-monospace, SFMono-Regular, monospace",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-          title={record.result_id ? String(record.result_id) : record.request_id}
-        >
-          {record.result_id ?? record.request_id ?? "—"}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: "var(--accent)",
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={record.result_id ? String(record.result_id) : record.request_id}
+          >
+            {record.result_id ?? record.request_id ?? "—"}
+          </span>
+          {lockInfo && (
+            <span
+              title={`In use by ${lockInfo.userEmail || lockInfo.userName}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: 99,
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#ef4444",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Lock size={10} /> In Use
+            </span>
+          )}
+        </div>
         {record.result_id != null && record.request_id && (
           <span
             style={{
@@ -675,20 +667,9 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
 
       <StatusBadge status={record.status} />
 
-      <HitlAssignCell
-        docId={record.result_id}
-        currentId={record.hitl_assigned_to}
-        hitlUsers={hitlUsers}
-        onAssigned={onAssigned}
-        canAssign={canAssign}
-      />
-<span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-  {formatDate(record.created_at || record.submitted_at)}
-</span>
-
-      {/* <FlagBadge value={record.is_anomalous} />
-      <FlagBadge value={record.is_duplicate} />
-      <FraudRiskBadge level={record.fraud_risk_level} /> */}
+      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        {formatDate(record.created_at || record.submitted_at)}
+      </span>
 
       <span
         style={{
@@ -719,20 +700,6 @@ function ResultRow({ record, onView, onEdit, onBugStatusChanged, hitlUsers, onAs
         onChanged={onBugStatusChanged}
       />
 
-      {/* <span
-        style={{
-          fontSize: 12,
-          color: "var(--foreground)",
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-        }}
-        title={record.issue_type || ""}
-      >
-        {record.issue_type || "—"}
-      </span> */}
-
-
       <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
         {formatDate(record.updated_at || record.completed_at)}
       </span>
@@ -752,7 +719,7 @@ export default function UserResultsPage({ params }) {
   const { user: authUser } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const canAssign = emailCanAssign(authUser?.email || "");
+  const canAssign = true;
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
@@ -764,6 +731,13 @@ export default function UserResultsPage({ params }) {
   const [sortBy, setSortBy] = useState("");
   const [sortOrder, setSortOrder] = useState("desc");
   const [selectedIds, setSelectedIds] = useState(new Set());
+
+  const { data: locksData } = useQuery({
+    queryKey: ["document-locks"],
+    queryFn: async () => (await axios.get("/api/document-locks")).data,
+    refetchInterval: 10000,
+  });
+  const activeLocks = locksData?.locks || {};
 
   const handleSort = (key) => {
     if (sortBy === key) {
@@ -840,16 +814,6 @@ export default function UserResultsPage({ params }) {
     staleTime: 10 * 60 * 1000,
   });
 
-  const { data: hitlData } = useQuery({
-    queryKey: ["hitl-users"],
-    queryFn: async () => {
-      const res = await axios.get("/api/hitl-users");
-      return res.data.users || [];
-    },
-    staleTime: 10 * 60 * 1000,
-  });
-  const hitlUsers = hitlData || [];
-
   const user = userQuery.data;
   const records = resultsQuery.data?.records || [];
   const total = resultsQuery.data?.total ?? 0;
@@ -860,12 +824,17 @@ export default function UserResultsPage({ params }) {
   const docTypeOptions = filterOptions?.docTypes || [];
   const keyEnvOptions = filterOptions?.keyEnvironments || [];
 
-  const handleView = (requestId) => {
-    router.push(`/dexai/result/${encodeURIComponent(requestId)}`);
-  };
-
-  const handleAssigned = () => {
-    queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
+  const handleView = (resultId) => {
+    const lock = activeLocks[String(resultId)];
+    if (
+      lock &&
+      String(lock.userId) !== String(authUser?.id) &&
+      lock.userEmail?.toLowerCase() !== authUser?.email?.toLowerCase()
+    ) {
+      toast.error(`Document is currently open by ${lock.userEmail || lock.userName}`);
+    }
+    setActiveId(resultId);
+    router.push(`/view/${encodeURIComponent(resultId)}`);
   };
 
   const handleBugStatusChanged = () => {
@@ -906,27 +875,7 @@ export default function UserResultsPage({ params }) {
           queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
           return result;
         }),
-    },
-    ...(canAssign
-      ? [
-          {
-            key: "hitlAssign",
-            label: "HITL Assign",
-            placeholder: "Assign to…",
-            options: hitlUsers.map((u) => ({ value: u.id, label: u.label })),
-            confirmText: (value, count) => {
-              const user = hitlUsers.find((u) => String(u.id) === String(value));
-              return `Assign ${count} selected document(s) to ${user?.label || value}?`;
-            },
-            run: (value, onProgress) =>
-              bulkAssignHitl([...selectedIds], value, { onProgress }).then((result) => {
-                setSelectedIds(new Set());
-                queryClient.invalidateQueries({ queryKey: ["dexai", "user-results", userId] });
-                return result;
-              }),
-          },
-        ]
-      : []),
+    }
   ];
 
   const exportParams = {
@@ -941,14 +890,6 @@ export default function UserResultsPage({ params }) {
   };
   const exportUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/export?${new URLSearchParams(exportParams).toString()}`;
   const downloadDocumentsUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/download-documents?${new URLSearchParams(exportParams).toString()}`;
-
-  // "To be tested" rows → open the result directly in the HITL edit view.
-  // The view route resolves a document by its result_id.
-  const handleEdit = (resultId) => {
-    if (!resultId) return;
-    setActiveId(resultId);
-    router.push(`/view/${encodeURIComponent(resultId)}`);
-  };
 
   return (
     <div
@@ -1311,18 +1252,14 @@ export default function UserResultsPage({ params }) {
                 </p>
               </div>
             ) : (
-              records.map((r) => (
-                <ResultRow
-                  key={r.request_id}
-                  record={r}
+              records.map((record) => (
+                <Row
+                  key={record.result_id ?? record.request_id}
+                  record={record}
                   onView={handleView}
-                  onEdit={handleEdit}
                   onBugStatusChanged={handleBugStatusChanged}
-                  hitlUsers={hitlUsers}
-                  onAssigned={handleAssigned}
-                  canAssign={canAssign}
-                  canEdit={!isClientRole}
-                  selected={r.result_id != null && selectedIds.has(r.result_id)}
+                  lockInfo={activeLocks[String(record.result_id)] || activeLocks[String(record.request_id)]}
+                  selected={record.result_id ? selectedIds.has(record.result_id) : false}
                   onToggleSelect={toggleSelectOne}
                 />
               ))

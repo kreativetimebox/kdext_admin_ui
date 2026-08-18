@@ -24,6 +24,7 @@ import {
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
+  Lock,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
@@ -33,10 +34,7 @@ import ValidationDot from "@/components/Results/ValidationDot";
 import BulkActionBar from "@/components/Grid/BulkActionBar";
 import { bulkSetBugStatus, bulkSetHitlStatus, bulkAssignHitl } from "@/lib/bulkDocumentActions";
 
-const HITL_ASSIGN_ALLOWED = ["financeai@financeai.com", "rashika@financeai.com"];
-function emailCanAssign(email = "") {
-  return HITL_ASSIGN_ALLOWED.includes(email.toLowerCase());
-}
+
 
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
@@ -45,7 +43,6 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Result ID", key: "result_id" },
   { label: "HITL Status", key: "hitl_status" },
   { label: "Validation", key: "validation" },
-  { label: "HITL", key: null },
   { label: "Created At", key: "created_at" },
   { label: "Bug Status", key: "bug_status" },
   // { label: "Issue Type", key: "issue_type" },
@@ -58,7 +55,7 @@ const TABLE_HEADER_COLUMNS = [
 // Single source of truth for both the header row and each MissingFieldRow
 // below — a header/row template drift caused a real column-misalignment bug
 // earlier, so this is shared rather than duplicated inline.
-const ROW_GRID = "32px 90px minmax(200px, 1.2fr) 130px 140px 180px 130px 160px minmax(180px, 1.2fr) 180px 130px 1fr 130px";
+const ROW_GRID = "32px 90px minmax(200px, 1.2fr) 130px 140px 130px 160px minmax(180px, 1.2fr) 180px 1fr";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
@@ -688,7 +685,7 @@ function KeyEnvBadge({ env }) {
 }
 
 /* ── Missing fields row ───────────────────────────────────── */
-function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, onBugStatusChanged, canAssign, selected, onToggleSelect }) {
+function MissingFieldRow({ doc, onView, onStatusChanged, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   const nullFields = doc.missing_fields || [];
 
@@ -739,20 +736,41 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
       </button>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 600,
-            color: "var(--accent)",
-            fontFamily: "ui-monospace, SFMono-Regular, monospace",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-          title={doc.result_id ?? doc.id}
-        >
-          {doc.result_id ?? doc.id}
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 600,
+              color: "var(--accent)",
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={doc.result_id ?? doc.id}
+          >
+            {doc.result_id ?? doc.id}
+          </span>
+          {lockInfo && (
+            <span
+              title={`In use by ${lockInfo.userEmail || lockInfo.userName}`}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 3,
+                fontSize: 10,
+                fontWeight: 700,
+                padding: "1px 6px",
+                borderRadius: 99,
+                background: "rgba(239, 68, 68, 0.15)",
+                color: "#ef4444",
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Lock size={10} /> In Use
+            </span>
+          )}
+        </div>
         {doc.request_id && (
           <span
             style={{
@@ -778,25 +796,18 @@ function MissingFieldRow({ doc, onView, hitlUsers, onAssigned, onStatusChanged, 
 
       <ValidationDot validation={doc.validation} />
 
-      <HitlAssignCell
-        docId={doc.id}
-        currentId={doc.hitl_assigned_to}
-        hitlUsers={hitlUsers}
-        onAssigned={onAssigned}
-        canAssign={canAssign}
-      />
-          <span
-            style={{
-              fontSize: 12,
-              color: "var(--text-muted)",
-              whiteSpace: "nowrap",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-            }}
-            title={doc.created_at || ""}
-          >
-            {formatDate(doc.created_at)}
-          </span>
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+        title={doc.created_at || ""}
+      >
+        {formatDate(doc.created_at)}
+      </span>
 
       <BugStatusDropCell
         docId={doc.id}
@@ -875,9 +886,8 @@ export default function MissingFieldsPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
 
-  const canAssign = emailCanAssign(user?.email || "");
+  const canAssign = true;
 
-  const hitlDefaultApplied = useRef(false);
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -961,6 +971,13 @@ export default function MissingFieldsPage() {
     onError: () => toast.error("Failed to load documents"),
   });
 
+  const { data: locksData } = useQuery({
+    queryKey: ["document-locks"],
+    queryFn: async () => (await axios.get("/api/document-locks")).data,
+    refetchInterval: 10000,
+  });
+  const activeLocks = locksData?.locks || {};
+
   const { data: filterOptions } = useQuery({
     queryKey: ["filter-options"],
     queryFn: async () => {
@@ -993,33 +1010,6 @@ export default function MissingFieldsPage() {
     sublabel: c.email,
   }));
 
-useEffect(() => {
-  if (
-    hitlDefaultApplied.current ||
-    !user?.roles ||
-    !filterOptions?.clients?.length
-  ) {
-    return;
-  }
-
-  // Apply default for admins/HITL users
-  if (!user.roles.some((r) => ["SUPER_ADMIN", "ADMIN", "HITL"].includes(r))) {
-    return;
-  }
-
-  const itadmin = filterOptions.clients.find(
-    (c) => (c.email || "").toLowerCase() === "itadmin@capium.com"
-  );
-
-  if (itadmin && !clientId) {
-    setClientId(String(itadmin.id));
-  }
-
-  // Mark as applied after checking the client list
-  hitlDefaultApplied.current = true;
-
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [user, filterOptions]);
   const businessOptions = [
     { value: "NULL", label: "No Company" },
     ...(filterOptions?.businesses || []).map((b) => ({ value: b, label: b })),
@@ -1028,6 +1018,14 @@ useEffect(() => {
   const keyEnvironments = filterOptions?.keyEnvironments || [];
 
   const handleView = (docId) => {
+    const lock = activeLocks[String(docId)];
+    if (
+      lock &&
+      String(lock.userId) !== String(user?.id) &&
+      lock.userEmail?.toLowerCase() !== user?.email?.toLowerCase()
+    ) {
+      toast.error(`Document is currently open by ${lock.userEmail || lock.userName}`);
+    }
     setActiveId(docId);
     router.push(`/view/${encodeURIComponent(docId)}`);
   };
@@ -1446,7 +1444,6 @@ useEffect(() => {
                 sortBy={sortBy}
                 sortOrder={sortOrder}
                 onSort={handleSort}
-                align={col.label === "HITL" ? "center" : "left"}
               />
             ))}
           </div>
@@ -1477,7 +1474,16 @@ useEffect(() => {
               </div>
             ) : (
               documents.map((doc) => (
-                <MissingFieldRow key={doc.id} doc={doc} onView={handleView} hitlUsers={hitlUsers} onAssigned={handleAssigned} onStatusChanged={handleStatusChanged} onBugStatusChanged={handleBugStatusChanged} canAssign={canAssign} selected={selectedIds.has(doc.id)} onToggleSelect={toggleSelectOne} />
+                <MissingFieldRow
+                  key={doc.id}
+                  doc={doc}
+                  onView={handleView}
+                  onStatusChanged={handleStatusChanged}
+                  onBugStatusChanged={handleBugStatusChanged}
+                  lockInfo={activeLocks[String(doc.id)] || activeLocks[String(doc.result_id)]}
+                  selected={selectedIds.has(doc.id)}
+                  onToggleSelect={toggleSelectOne}
+                />
               ))
             )}
           </div>

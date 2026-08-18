@@ -25,7 +25,7 @@ const CLIENT_ROLES = ["CLIENT_ADMIN", "CLIENT_USER"];
 const CLIENT_ALLOWED_PREFIXES = [
   "/", "/dexai", "/missing-fields", "/bug-tracker", "/user-logs", "/view",
   "/api/dexai", "/api/missing-fields", "/api/bug-tracker", "/api/document",
-  "/api/hitl-users", "/api/filter-options", "/api/client-users", "/api/auth",
+  "/api/document-locks", "/api/hitl-users", "/api/filter-options", "/api/client-users", "/api/auth",
   ...ANNOUNCEMENT_PREFIXES,
 ];
 
@@ -36,9 +36,9 @@ const CLIENT_ALLOWED_PREFIXES = [
 // Servers/Alerts. This is CLIENT_ALLOWED_PREFIXES minus the HITL-edit pages.
 const CLIENT_PORTAL_ROLES = ["CLIENT"];
 const CLIENT_PORTAL_PREFIXES = [
-  "/", "/dexai", "/bug-tracker", "/user-logs", "/view",
-  "/api/dexai", "/api/bug-tracker", "/api/document",
-  "/api/hitl-users", "/api/filter-options", "/api/client-users", "/api/auth",
+  "/", "/dexai", "/missing-fields", "/bug-tracker", "/user-logs", "/view",
+  "/api/dexai", "/api/missing-fields", "/api/bug-tracker", "/api/document",
+  "/api/document-locks", "/api/hitl-users", "/api/filter-options", "/api/client-users", "/api/auth",
   ...ANNOUNCEMENT_PREFIXES,
 ];
 
@@ -111,10 +111,14 @@ export async function middleware(request) {
         const onDashboard = pathname === "/";
         const onBusinessAudit = pathname === "/dexai" || pathname.startsWith("/dexai/");
         const onBugTracker = pathname === "/bug-tracker" || pathname.startsWith("/bug-tracker/") || pathname.startsWith("/api/bug-tracker");
+        // hitlEdit defaults to false (opt-in) — only CLIENT/CLIENT_USER users
+        // who have been explicitly granted this flag can reach /missing-fields.
+        const onHitlEdit = pathname === "/missing-fields" || pathname.startsWith("/missing-fields/") || pathname.startsWith("/api/missing-fields");
         const blocked =
           (pa.dashboard === false && onDashboard) ||
           (pa.businessAudit === false && onBusinessAudit) ||
-          (pa.bugTracker === false && onBugTracker);
+          (pa.bugTracker === false && onBugTracker) ||
+          (pa.hitlEdit !== true && onHitlEdit);
         if (blocked) {
           const dest =
             pa.dashboard !== false ? "/" :

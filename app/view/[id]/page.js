@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { ArrowLeft, Database } from "lucide-react";
+import { ArrowLeft, Database, Lock, ShieldAlert, RefreshCw } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
@@ -136,8 +136,72 @@ export default function ViewDocumentPage() {
   // Result tabs: "hitl" = editable HITL-updated copy, "original" = read-only
   // original extraction (formatted_result).
   const [resultTab, setResultTab] = useState("hitl");
+  const [lockState, setLockState] = useState({ status: "checking", lockedBy: null });
+  const tabIdRef = useRef(null);
+
+  if (!tabIdRef.current) {
+    tabIdRef.current = "tab_" + Math.random().toString(36).slice(2) + "_" + Date.now();
+  }
 
   useEffect(() => { initTheme(); }, [initTheme]);
+
+  // Acquire document lock on mount, send periodic heartbeats, release on exit.
+  useEffect(() => {
+    if (!id) return;
+
+    let heartbeatTimer = null;
+    let isMounted = true;
+    const tabId = tabIdRef.current;
+
+    async function acquireLock() {
+      try {
+        const res = await axios.post(`/api/document/${encodeURIComponent(id)}/lock`, {
+          action: "acquire",
+          tabId,
+        });
+        if (!isMounted) return;
+        if (res.data?.success) {
+          setLockState({ status: "acquired", lockedBy: null });
+          heartbeatTimer = setInterval(() => {
+            axios
+              .post(`/api/document/${encodeURIComponent(id)}/lock`, { action: "heartbeat", tabId })
+              .then((hb) => {
+                if (hb.data && !hb.data.success && isMounted) {
+                  setLockState({ status: "blocked", lockedBy: hb.data.lockedBy || null });
+                }
+              })
+              .catch(() => {});
+          }, 12000);
+        } else {
+          setLockState({ status: "blocked", lockedBy: res.data?.lockedBy || null });
+        }
+      } catch (err) {
+        if (!isMounted) return;
+        // On error, default to allowed so network hiccups don't permanently break viewing
+        setLockState({ status: "acquired", lockedBy: null });
+      }
+    }
+
+    acquireLock();
+
+    const handleBeforeUnload = () => {
+      try {
+        navigator.sendBeacon(
+          `/api/document/${encodeURIComponent(id)}/lock`,
+          new Blob([JSON.stringify({ action: "release", tabId })], { type: "application/json" })
+        );
+      } catch {}
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      isMounted = false;
+      if (heartbeatTimer) clearInterval(heartbeatTimer);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      axios.post(`/api/document/${encodeURIComponent(id)}/lock`, { action: "release", tabId }).catch(() => {});
+    };
+  }, [id]);
 
   const { data: doc, isLoading } = useQuery({
     queryKey: ["document", id],
@@ -145,7 +209,7 @@ export default function ViewDocumentPage() {
       const res = await axios.get(`/api/document/${id}`);
       return res.data;
     },
-    enabled: !!id,
+    enabled: !!id && lockState.status !== "blocked",
     staleTime: 30 * 60 * 1000,
     onError: () => toast.error("Failed to load document"),
   });
@@ -213,7 +277,92 @@ export default function ViewDocumentPage() {
             )}
           </div>
 
-          {isLoading ? (
+          {lockState.status === "blocked" ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8 text-center" style={{ background: "var(--background)" }}>
+              <div
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: "50%",
+                  background: "rgba(239, 68, 68, 0.12)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#ef4444",
+                }}
+              >
+                <Lock size={32} />
+              </div>
+              <div style={{ maxWidth: 460 }}>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--foreground)", marginBottom: 8 }}>
+                  Document In Use
+                </h2>
+                <p style={{ fontSize: 14, color: "var(--text-muted)", lineHeight: 1.6 }}>
+                  This document (<span style={{ fontFamily: "monospace", fontWeight: 600, color: "var(--accent)" }}>{id}</span>) is currently open and being reviewed by{" "}
+                  <strong style={{ color: "var(--foreground)" }}>
+                    {lockState.lockedBy?.userEmail || lockState.lockedBy?.userName || "another reviewer"}
+                  </strong>.
+                </p>
+                <p style={{ fontSize: 12.5, color: "var(--text-muted)", marginTop: 8 }}>
+                  To prevent conflicting edits, only one reviewer can open a document at a time.
+                </p>
+              </div>
+              <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
+                <button
+                  type="button"
+                  onClick={() => router.back()}
+                  style={{
+                    padding: "9px 20px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    border: "1px solid var(--panel-border)",
+                    background: "var(--input-bg)",
+                    color: "var(--foreground)",
+                    cursor: "pointer",
+                  }}
+                >
+                  Go Back
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setLockState({ status: "checking", lockedBy: null });
+                    try {
+                      const res = await axios.post(`/api/document/${encodeURIComponent(id)}/lock`, {
+                        action: "acquire",
+                        tabId: tabIdRef.current,
+                      });
+                      if (res.data?.success) {
+                        setLockState({ status: "acquired", lockedBy: null });
+                        toast.success("Document lock acquired");
+                      } else {
+                        setLockState({ status: "blocked", lockedBy: res.data?.lockedBy || null });
+                        toast.error("Document is still in use");
+                      }
+                    } catch {
+                      setLockState({ status: "blocked", lockedBy: null });
+                    }
+                  }}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "9px 20px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    border: "none",
+                    background: "var(--accent)",
+                    color: "#fff",
+                    cursor: "pointer",
+                  }}
+                >
+                  <RefreshCw size={14} /> Retry Access
+                </button>
+              </div>
+            </div>
+          ) : isLoading || lockState.status === "checking" ? (
             <div className="flex-1 flex items-center justify-center" style={{ color: "var(--text-muted)" }}>
               Loading document...
             </div>

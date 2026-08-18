@@ -1,23 +1,36 @@
 import { NextResponse } from "next/server";
 import { verifyAuthToken } from "@/lib/auth";
-import { setClientUserActive } from "@/lib/clientUsers";
+import { setClientUserActive, updateClientUserPageAccess } from "@/lib/clientUsers";
+import { dexaiQuery } from "@/lib/dexaidb";
 
-async function requireClientAdmin(req) {
+// Resolves the correct clientId for the target user when the caller is a
+// SUPER_ADMIN (who has no clientId themselves but can manage any client).
+async function resolveClientId(internalUserId) {
+  const r = await dexaiQuery(
+    `SELECT client_id FROM internal_users WHERE internal_user_id = $1 AND client_id IS NOT NULL`,
+    [internalUserId]
+  );
+  return r.rows[0]?.client_id ?? null;
+}
+
+async function requireClientAdminOrSuper(req) {
   const user = await verifyAuthToken(req);
   if (!user) {
     return { error: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
-  if (!user.roles?.some((r) => ["CLIENT_ADMIN", "CLIENT"].includes(r))) {
+  const isSuper = user.roles?.includes("SUPER_ADMIN");
+  const isClientMgr = user.roles?.some((r) => ["CLIENT_ADMIN", "CLIENT"].includes(r));
+  if (!isSuper && !isClientMgr) {
     return { error: NextResponse.json({ error: "Forbidden" }, { status: 403 }) };
   }
-  if (!user.clientId) {
+  if (isClientMgr && !user.clientId) {
     return { error: NextResponse.json({ error: "This account has no client scope" }, { status: 403 }) };
   }
-  return { user };
+  return { user, isSuper };
 }
 
 export async function PATCH(req, { params }) {
-  const { error, user } = await requireClientAdmin(req);
+  const { error, user, isSuper } = await requireClientAdminOrSuper(req);
   if (error) return error;
 
   try {
@@ -27,13 +40,39 @@ export async function PATCH(req, { params }) {
       return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
     }
 
-    const { isActive } = await req.json();
-    const updated = await setClientUserActive(id, user.clientId, !!isActive);
-    if (!updated) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    const body = await req.json();
+
+    // SUPER_ADMIN has no clientId of their own — look it up from the target row.
+    const clientId = isSuper ? await resolveClientId(id) : user.clientId;
+    if (!clientId) {
+      return NextResponse.json({ error: "User not found or not a client sub-user" }, { status: 404 });
     }
 
-    return NextResponse.json({ user: updated }, { status: 200 });
+    // pageAccess update (may be sent alone or alongside isActive)
+    if (body.pageAccess !== undefined) {
+      if (typeof body.pageAccess !== "object" || body.pageAccess === null) {
+        return NextResponse.json({ error: "pageAccess must be an object" }, { status: 400 });
+      }
+      const updated = await updateClientUserPageAccess(id, clientId, body.pageAccess);
+      if (!updated) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      // If only pageAccess was sent, return now.
+      if (body.isActive === undefined) {
+        return NextResponse.json({ user: updated }, { status: 200 });
+      }
+    }
+
+    // isActive toggle
+    if (body.isActive !== undefined) {
+      const updated = await setClientUserActive(id, clientId, !!body.isActive);
+      if (!updated) {
+        return NextResponse.json({ error: "User not found" }, { status: 404 });
+      }
+      return NextResponse.json({ user: updated }, { status: 200 });
+    }
+
+    return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   } catch (err) {
     console.error("PATCH /api/client-users/[internalUserId] error:", err);
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
