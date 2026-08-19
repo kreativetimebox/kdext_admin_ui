@@ -171,35 +171,37 @@ export default function ViewDocumentPage() {
                 }
               })
               .catch(() => {});
-          }, 12000);
+          }, 3000);
         } else {
           setLockState({ status: "blocked", lockedBy: res.data?.lockedBy || null });
         }
       } catch (err) {
         if (!isMounted) return;
-        // On error, default to allowed so network hiccups don't permanently break viewing
         setLockState({ status: "acquired", lockedBy: null });
       }
     }
 
     acquireLock();
 
-    const handleBeforeUnload = () => {
+    const releaseLockNow = () => {
       try {
         navigator.sendBeacon(
           `/api/document/${encodeURIComponent(id)}/lock`,
           new Blob([JSON.stringify({ action: "release", tabId })], { type: "application/json" })
         );
       } catch {}
+      axios.post(`/api/document/${encodeURIComponent(id)}/lock`, { action: "release", tabId }).catch(() => {});
     };
 
-    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("beforeunload", releaseLockNow);
+    window.addEventListener("pagehide", releaseLockNow);
 
     return () => {
       isMounted = false;
       if (heartbeatTimer) clearInterval(heartbeatTimer);
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-      axios.post(`/api/document/${encodeURIComponent(id)}/lock`, { action: "release", tabId }).catch(() => {});
+      window.removeEventListener("beforeunload", releaseLockNow);
+      window.removeEventListener("pagehide", releaseLockNow);
+      releaseLockNow();
     };
   }, [id]);
 

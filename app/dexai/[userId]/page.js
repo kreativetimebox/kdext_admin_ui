@@ -223,11 +223,10 @@ const TABLE_HEADER_COLUMNS = [
   // { label: "Anomalous", key: "is_anomalous" },
   // { label: "Duplicate", key: "is_duplicate" },
   // { label: "Fraud Risk", key: "fraud_risk_level" },
-  // { label: "Document Type", key: "document_type" },
+  { label: "Document Type", key: "document_type" },
   { label: "Key Environment", key: "key_environment" },
   { label: "Validation", key: "validation" },
   { label: "Bug Status", key: "bug_status" },
-  { label: "Issue Type", key: "issue_type" },
   { label: "Updated At", key: "updated_at" },
 ];
 
@@ -735,7 +734,7 @@ export default function UserResultsPage({ params }) {
   const { data: locksData } = useQuery({
     queryKey: ["document-locks"],
     queryFn: async () => (await axios.get("/api/document-locks")).data,
-    refetchInterval: 10000,
+    refetchInterval: 3000,
   });
   const activeLocks = locksData?.locks || {};
 

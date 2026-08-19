@@ -974,7 +974,7 @@ export default function MissingFieldsPage() {
   const { data: locksData } = useQuery({
     queryKey: ["document-locks"],
     queryFn: async () => (await axios.get("/api/document-locks")).data,
-    refetchInterval: 10000,
+    refetchInterval: 3000,
   });
   const activeLocks = locksData?.locks || {};
 
