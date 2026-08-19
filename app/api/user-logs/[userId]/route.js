@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAuthToken } from "@/lib/auth";
-import { updateClient } from "@/lib/dexai";
+import { updateClient, deleteClient } from "@/lib/dexai";
 import { dexaiQuery } from "@/lib/dexaidb";
 
 async function requireSuperAdmin(req) {
@@ -49,3 +49,27 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ error: err.message || "Failed to update client" }, { status: 400 });
   }
 }
+
+export async function DELETE(req, { params }) {
+  const { error } = await requireSuperAdmin(req);
+  if (error) return error;
+
+  try {
+    const { userId } = await params;
+    const id = Number(userId);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+    }
+
+    const deleted = await deleteClient(id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Client not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, client: deleted }, { status: 200 });
+  } catch (err) {
+    console.error("DELETE /api/user-logs/[userId] error:", err);
+    return NextResponse.json({ error: err.message || "Failed to delete client" }, { status: 500 });
+  }
+}
+

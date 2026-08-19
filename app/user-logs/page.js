@@ -4,7 +4,7 @@ import { useEffect, useState, useRef, useMemo, Fragment } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { Search, ChevronUp, ChevronDown, ChevronRight, Plus, UserX, UserCheck, X, Eye, EyeOff, Pencil, KeyRound, RefreshCw, Copy, UserPlus, ShieldCheck } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronRight, Plus, UserX, UserCheck, X, Eye, EyeOff, Pencil, KeyRound, RefreshCw, Copy, UserPlus, ShieldCheck, Trash2 } from "lucide-react";
 import { useAuth } from "@/lib/useAuth";
 import Navbar from "@/components/Navbar/Navbar";
 import { TEAM_ROLES } from "@/lib/constants";
@@ -266,6 +266,23 @@ function ClientAdminUserLogsPage() {
                               style={iconBtnStyle(false, u.is_active ? "#ef4444" : "#16a34a")}
                             >
                               {u.is_active ? <UserX size={14} /> : <UserCheck size={14} />}
+                            </button>
+                            <button
+                              type="button"
+                              title="Delete user"
+                              onClick={async () => {
+                                if (!window.confirm(`Are you sure you want to delete user "${u.email}"?`)) return;
+                                try {
+                                  await axios.delete(`/api/client-users/${u.internal_user_id}`);
+                                  toast.success("User deleted");
+                                  queryClient.invalidateQueries({ queryKey: ["client-users"] });
+                                } catch (err) {
+                                  toast.error(err?.response?.data?.error || "Failed to delete user");
+                                }
+                              }}
+                              style={iconBtnStyle(false, "#ef4444")}
+                            >
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         )}
@@ -1237,7 +1254,10 @@ function ClientsTab() {
   const clientUsersByClientId = useMemo(() => {
     const map = {};
     for (const cu of clientUsersAll) {
-      (map[cu.client_id] ??= []).push(cu);
+      if (cu.client_id != null) {
+        const cid = String(cu.client_id);
+        (map[cid] ??= []).push(cu);
+      }
     }
     return map;
   }, [clientUsersAll]);
@@ -1348,7 +1368,7 @@ function ClientsTab() {
             </thead>
             <tbody>
               {users.map((u, idx) => {
-                const children = clientUsersByClientId[u.user_id] || [];
+                const children = clientUsersByClientId[String(u.user_id)] || clientUsersByClientId[u.user_id] || [];
                 const isExpanded = expandedClients.has(u.user_id);
                 const isLastClient = idx === users.length - 1;
                 return (
@@ -1397,6 +1417,24 @@ function ClientsTab() {
                           <button type="button" title="Portal credentials" onClick={() => setCredentialsClient(u)} style={iconBtnStyle(false)}>
                             <KeyRound size={14} />
                           </button>
+                          <button
+                            type="button"
+                            title="Delete client"
+                            onClick={async () => {
+                              if (!window.confirm(`Are you sure you want to delete client "${u.email || u.user_id}"? All associated sub-users and portal access will be permanently removed.`)) return;
+                              try {
+                                await axios.delete(`/api/user-logs/${u.user_id}`);
+                                toast.success("Client deleted");
+                                queryClient.invalidateQueries({ queryKey: ["clients"] });
+                                queryClient.invalidateQueries({ queryKey: ["client-users-all"] });
+                              } catch (err) {
+                                toast.error(err?.response?.data?.error || "Failed to delete client");
+                              }
+                            }}
+                            style={iconBtnStyle(false, "#ef4444")}
+                          >
+                            <Trash2 size={14} />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -1442,17 +1480,37 @@ function ClientsTab() {
                             </span>
                           </td>
                           <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                            <button
-                              type="button"
-                              title="Edit page access"
-                              onClick={() => setEditSubUserPageAccess(cu)}
-                              style={iconBtnStyle(false)}
-                            >
-                              <ShieldCheck size={13} />
-                            </button>
+                            <div style={{ display: "inline-flex", gap: 8, justifyContent: "flex-end" }}>
+                              <button
+                                type="button"
+                                title="Edit page access"
+                                onClick={() => setEditSubUserPageAccess(cu)}
+                                style={iconBtnStyle(false)}
+                              >
+                                <ShieldCheck size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                title="Delete sub-user"
+                                onClick={async () => {
+                                  if (!window.confirm(`Are you sure you want to delete sub-user "${cu.email}"?`)) return;
+                                  try {
+                                    await axios.delete(`/api/client-users/${cu.internal_user_id}`);
+                                    toast.success("Sub-user deleted");
+                                    queryClient.invalidateQueries({ queryKey: ["client-users-all"] });
+                                  } catch (err) {
+                                    toast.error(err?.response?.data?.error || "Failed to delete sub-user");
+                                  }
+                                }}
+                                style={iconBtnStyle(false, "#ef4444")}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
+
                   </Fragment>
                 );
               })}
@@ -1485,8 +1543,11 @@ function ClientsTab() {
           client={addSubUserClient}
           onClose={() => setAddSubUserClient(null)}
           onSaved={() => {
+            const cid = addSubUserClient.user_id;
+            setExpandedClients((prev) => new Set(prev).add(cid));
             setAddSubUserClient(null);
             queryClient.invalidateQueries({ queryKey: ["client-users-all"] });
+            queryClient.invalidateQueries({ queryKey: ["clients"] });
           }}
         />
       )}

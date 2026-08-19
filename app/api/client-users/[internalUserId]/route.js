@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { verifyAuthToken } from "@/lib/auth";
-import { setClientUserActive, updateClientUserPageAccess } from "@/lib/clientUsers";
+import { setClientUserActive, updateClientUserPageAccess, deleteClientUser } from "@/lib/clientUsers";
 import { dexaiQuery } from "@/lib/dexaidb";
 
 // Resolves the correct clientId for the target user when the caller is a
@@ -78,3 +78,32 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ error: "Failed to update user" }, { status: 500 });
   }
 }
+
+export async function DELETE(req, { params }) {
+  const { error, user, isSuper } = await requireClientAdminOrSuper(req);
+  if (error) return error;
+
+  try {
+    const { internalUserId } = await params;
+    const id = Number(internalUserId);
+    if (!Number.isFinite(id)) {
+      return NextResponse.json({ error: "Invalid user id" }, { status: 400 });
+    }
+
+    const clientId = isSuper ? await resolveClientId(id) : user.clientId;
+    if (!clientId) {
+      return NextResponse.json({ error: "User not found or not a client sub-user" }, { status: 404 });
+    }
+
+    const deleted = await deleteClientUser(id, clientId);
+    if (!deleted) {
+      return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true, user: deleted }, { status: 200 });
+  } catch (err) {
+    console.error("DELETE /api/client-users/[internalUserId] error:", err);
+    return NextResponse.json({ error: "Failed to delete user" }, { status: 500 });
+  }
+}
+
