@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateHitlResult } from "@/lib/queries";
-import { publishDocumentCorrected } from "@/lib/events";
+import { sendDocumentCorrectedNotification } from "@/lib/webhooks";
 import { assertOwnsDocument } from "@/lib/clientAccess";
 
 const AUDIT_LIMIT = 50;
@@ -65,30 +65,38 @@ export async function POST(request, { params }) {
     }
 
     // Notify the customer's registered webhook that the document was corrected.
-    // Best-effort: a broker hiccup must never fail the reviewer's save. The
-    // event is published to RabbitMQ; the Gateway's webhook worker delivers it.
+    // Fetches the active webhook URL & secret from the database, signs with HMAC-SHA256,
+    // dispatches HTTP POST, and logs the delivery attempt in webhook_deliveries.
+    let notifications = [];
     if (updated.request_id && updated.user_id != null) {
       try {
-        await publishDocumentCorrected({
+        notifications = await sendDocumentCorrectedNotification({
           documentId: updated.request_id,
           userId: updated.user_id,
+          resultId: updated.id,
+          documentType: updated.ocr_document_type,
+          clientDocumentType: updated.client_document_type,
+          keyEnvironment: updated.key_environment,
           version: updated.result_version,
         });
       } catch (pubErr) {
         console.error(
-          "Failed to publish document.corrected event:",
+          "[webhooks] Failed to send document.corrected notification:",
           pubErr?.message || pubErr
         );
       }
     }
 
     return NextResponse.json(
-      // The DB column is hitl_updated_result; expose it as hitl_updated_result
-      // so the frontend reads the saved HITL data (incl. the appended audit)
-      // back into the editable tab.
-      { success: true, id: updated.id, hitl_updated_result: updated.hitl_results },
+      {
+        success: true,
+        id: updated.id,
+        hitl_updated_result: updated.hitl_results,
+        notifications,
+      },
       { status: 200 }
     );
+
   } catch (error) {
     console.error("POST /api/document/[id]/update error:", error);
     return NextResponse.json({ error: "Failed to save document" }, { status: 500 });
