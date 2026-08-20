@@ -1,6 +1,6 @@
-# syntax=docker/dockerfile:1
 # Stage 1: dependencies
 FROM node:20-slim AS deps
+
 
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
