@@ -266,7 +266,7 @@ function StatusBadge({ status }) {
 
 /* ── Bug tracker stats ────────────────────────────────────── */
 const BUG_STATS_GRID = "1.4fr 0.8fr 0.8fr";
-const DOC_TYPE_STATS_GRID = "1.6fr 0.8fr 0.9fr 0.8fr 0.7fr";
+const DOC_TYPE_STATS_GRID = "1.8fr 0.7fr 0.9fr 0.9fr 0.8fr 1fr 0.7fr 0.7fr";
 
 function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClientRole }) {
   const { data, isLoading } = useQuery({
@@ -280,15 +280,24 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
     staleTime: 30 * 1000,
   });
 
-  const totals = data?.totals || { open: 0, toBeTested: 0, closed: 0 };
+  const totals = data?.totals || { open: 0, modelTuning: 0, reprocessing: 0, toBeTested: 0, invalidBadImageClosed: 0, closed: 0 };
   const byDocType = data?.byDocType || [];
-  const totalIssues = totals.open + totals.toBeTested + totals.closed;
+  const totalIssues =
+    (totals.open || 0) +
+    (totals.modelTuning || 0) +
+    (totals.reprocessing || 0) +
+    (totals.toBeTested || 0) +
+    (totals.invalidBadImageClosed || 0) +
+    (totals.closed || 0);
   const pct = (n) => (totalIssues > 0 ? `${Math.round((n / totalIssues) * 100)}%` : "—");
 
   const totalsRows = [
-    { label: "Open", value: totals.open, color: "#ef4444" },
-    { label: "To Be Tested", value: totals.toBeTested, color: "#f97316" },
-    { label: "Closed", value: totals.closed, color: "#22c55e" },
+    { label: "Open", value: totals.open || 0, color: "#ef4444" },
+    { label: "Model Tuning", value: totals.modelTuning || 0, color: "#a855f7" },
+    { label: "Reprocessing", value: totals.reprocessing || 0, color: "#06b6d4" },
+    { label: "To Be Tested", value: totals.toBeTested || 0, color: "#f97316" },
+    { label: "Invalid Bad Image Closed", value: totals.invalidBadImageClosed || 0, color: "#94a3b8" },
+    { label: "Closed", value: totals.closed || 0, color: "#22c55e" },
   ];
 
   return (
@@ -393,48 +402,62 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
             overflow: "hidden",
           }}
         >
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: DOC_TYPE_STATS_GRID,
-              gap: 12,
-              padding: "11px 20px",
-              background: "var(--input-bg)",
-              borderBottom: "1px solid var(--panel-border)",
-            }}
-          >
-            {["Document Type", "Open", "To Be Tested", "Closed", "Total"].map((h) => (
-              <span
-                key={h}
-                style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
-              >
-                {h}
-              </span>
-            ))}
-          </div>
-
-          {isLoading ? (
-            <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
-          ) : byDocType.length === 0 ? (
-            <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No tracked issues</div>
-          ) : (
-            byDocType.map((r) => (
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ minWidth: 640 }}>
               <div
-                key={r.document_type}
-                style={{ display: "grid", gridTemplateColumns: DOC_TYPE_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: DOC_TYPE_STATS_GRID,
+                  gap: 12,
+                  padding: "11px 20px",
+                  background: "var(--input-bg)",
+                  borderBottom: "1px solid var(--panel-border)",
+                }}
               >
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {r.document_type}
-                </span>
-                <span style={{ fontSize: 13, color: "#ef4444" }}>{formatNumber(r.open)}</span>
-                <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.toBeTested)}</span>
-                <span style={{ fontSize: 13, color: "#22c55e" }}>{formatNumber(r.closed)}</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
-                  {formatNumber(r.open + r.toBeTested + r.closed)}
-                </span>
+                {["Document Type", "Open", "Model Tuning", "Reprocess", "To Test", "Invalid Closed", "Closed", "Total"].map((h) => (
+                  <span
+                    key={h}
+                    style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
+                  >
+                    {h}
+                  </span>
+                ))}
               </div>
-            ))
-          )}
+
+              {isLoading ? (
+                <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
+              ) : byDocType.length === 0 ? (
+                <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No tracked issues</div>
+              ) : (
+                byDocType.map((r) => (
+                  <div
+                    key={r.document_type}
+                    style={{ display: "grid", gridTemplateColumns: DOC_TYPE_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {r.document_type}
+                    </span>
+                    <span style={{ fontSize: 13, color: "#ef4444" }}>{formatNumber(r.open)}</span>
+                    <span style={{ fontSize: 13, color: "#a855f7" }}>{formatNumber(r.modelTuning)}</span>
+                    <span style={{ fontSize: 13, color: "#06b6d4" }}>{formatNumber(r.reprocessing)}</span>
+                    <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.toBeTested)}</span>
+                    <span style={{ fontSize: 13, color: "#94a3b8" }}>{formatNumber(r.invalidBadImageClosed)}</span>
+                    <span style={{ fontSize: 13, color: "#22c55e" }}>{formatNumber(r.closed)}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
+                      {formatNumber(
+                        (r.open || 0) +
+                        (r.modelTuning || 0) +
+                        (r.reprocessing || 0) +
+                        (r.toBeTested || 0) +
+                        (r.invalidBadImageClosed || 0) +
+                        (r.closed || 0)
+                      )}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       </section>
     </>

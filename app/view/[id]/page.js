@@ -7,7 +7,7 @@ import axios from "axios";
 import toast from "react-hot-toast";
 import { ArrowLeft, Database, Lock, ShieldAlert, RefreshCw } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
-import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
+import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
 import FileViewer from "@/components/Viewer/FileViewer";
@@ -111,6 +111,24 @@ function BugTrackingPanel({ docId, doc, onSaved, onCommentsChanged }) {
           >
             <option value="" disabled>—</option>
             {BUG_STATUSES.map((s) => (
+              <option key={s} value={s}>{s === "TO_BE_TESTED" ? "To Be Tested" : s}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-[11px] font-semibold uppercase tracking-wide" style={{ color: "var(--text-muted)" }}>
+            Action Status
+          </label>
+          <select
+            value={doc?.action_status || ""}
+            disabled={saving}
+            onChange={(e) => save({ actionStatus: e.target.value || null })}
+            className="text-sm px-2 py-1.5 rounded border"
+            style={{ borderColor: "var(--input-border)", background: "var(--input-bg)", color: "var(--foreground)" }}
+          >
+            <option value="">— None —</option>
+            {ACTION_STATUSES.map((s) => (
               <option key={s} value={s}>{s}</option>
             ))}
           </select>

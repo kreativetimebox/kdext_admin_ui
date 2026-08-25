@@ -23,7 +23,7 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
-import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
+import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
 import { copyToClipboard } from "@/lib/clipboard";
 import Navbar from "@/components/Navbar/Navbar";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
@@ -258,6 +258,23 @@ function BugTrackingPanel({ resultId, data, onSaved, onCommentsChanged }) {
         >
           <option value="" disabled>—</option>
           {BUG_STATUSES.map((s) => (
+            <option key={s} value={s}>{s === "TO_BE_TESTED" ? "To Be Tested" : s}</option>
+          ))}
+        </select>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+          Action Status
+        </label>
+        <select
+          value={data?.action_status || ""}
+          disabled={saving}
+          onChange={(e) => save({ actionStatus: e.target.value || null })}
+          style={fieldStyle}
+        >
+          <option value="">— None —</option>
+          {ACTION_STATUSES.map((s) => (
             <option key={s} value={s}>{s}</option>
           ))}
         </select>

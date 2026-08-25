@@ -384,16 +384,22 @@ function FraudRiskBadge({ level }) {
   );
 }
 
-const BUG_STATUS_COLORS = {
-  Open: { bg: "rgba(239,68,68,0.12)", color: "#ef4444" },
-  TO_BE_TESTED: { bg: "rgba(249,115,22,0.12)", color: "#f97316" },
-  Closed: { bg: "rgba(34,197,94,0.12)", color: "#22c55e" },
+const BUG_STATUS_STYLES = {
+  OPEN:         { label: "Open",         bg: "rgba(239,68,68,0.12)",  color: "#ef4444" },
+  TO_BE_TESTED: { label: "To Be Tested", bg: "rgba(249,115,22,0.12)", color: "#f97316" },
+  CLOSED:       { label: "Closed",       bg: "rgba(34,197,94,0.12)",  color: "#22c55e" },
 };
+
+function bugStyleFor(status) {
+  if (!status) return { label: "—", bg: "var(--input-bg)", color: "var(--text-muted)" };
+  const key = String(status).toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return BUG_STATUS_STYLES[key] || { label: status === "TO_BE_TESTED" ? "To Be Tested" : status, bg: "var(--input-bg)", color: "var(--text-muted)" };
+}
 
 function BugStatusCell({ resultId, bugStatus, onChanged }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const c = BUG_STATUS_COLORS[bugStatus] || { bg: "var(--input-bg)", color: "var(--text-muted)" };
+  const c = bugStyleFor(bugStatus);
 
   async function choose(val) {
     setOpen(false);
@@ -426,7 +432,7 @@ function BugStatusCell({ resultId, bugStatus, onChanged }) {
           border: "none", cursor: saving ? "wait" : "pointer", whiteSpace: "nowrap", opacity: saving ? 0.6 : 1,
         }}
       >
-        {saving ? "…" : (bugStatus || "—")}
+        {saving ? "…" : c.label}
         <ChevronDown size={9} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.12s" }} />
       </button>
       {open && (
@@ -439,18 +445,23 @@ function BugStatusCell({ resultId, bugStatus, onChanged }) {
               boxShadow: "var(--shadow-md)", padding: 4,
             }}
           >
-            {BUG_STATUSES.map((val) => (
-              <div
-                key={val}
-                onClick={() => choose(val)}
-                style={{
-                  padding: "8px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer",
-                  color: "var(--foreground)", background: val === bugStatus ? "var(--input-bg)" : "transparent",
-                }}
-              >
-                {val}
-              </div>
-            ))}
+            {BUG_STATUSES.map((val) => {
+              const ss = bugStyleFor(val);
+              return (
+                <div
+                  key={val}
+                  onClick={() => choose(val)}
+                  style={{
+                    padding: "8px 10px", borderRadius: 6, fontSize: 12, cursor: "pointer",
+                    color: "var(--foreground)", background: val === bugStatus ? "var(--input-bg)" : "transparent",
+                    display: "flex", alignItems: "center", gap: 8,
+                  }}
+                >
+                  <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: ss.color, flexShrink: 0 }} />
+                  <span>{ss.label}</span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
@@ -866,8 +877,8 @@ export default function UserResultsPage({ params }) {
       key: "bugStatus",
       label: "Bug Status",
       placeholder: "Bug status…",
-      options: BUG_STATUSES.map((s) => ({ value: s, label: s })),
-      confirmText: (value, count) => `Set bug status to "${value}" for ${count} selected document(s)?`,
+      options: BUG_STATUSES.map((s) => ({ value: s, label: bugStyleFor(s).label })),
+      confirmText: (value, count) => `Set bug status to "${bugStyleFor(value).label}" for ${count} selected document(s)?`,
       run: (value, onProgress) =>
         bulkSetBugStatus([...selectedIds], value, { onProgress }).then((result) => {
           setSelectedIds(new Set());

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { updateBugTracking } from "@/lib/queries";
-import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
+import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
 import { assertOwnsDocument } from "@/lib/clientAccess";
 
 export async function POST(req, { params }) {
@@ -11,17 +11,21 @@ export async function POST(req, { params }) {
     if (ownershipError) return ownershipError;
 
     const body = await req.json();
-    const { issueType, issueDescription, bugStatus } = body || {};
+    const { issueType, issueDescription, bugStatus, actionStatus } = body || {};
 
     if (issueType !== undefined && issueType !== null && !ISSUE_TYPES.includes(issueType)) {
       return NextResponse.json({ ok: false, error: "Invalid issue type" }, { status: 400 });
     }
 
-    if (bugStatus !== undefined && !BUG_STATUSES.includes(bugStatus)) {
+    if (bugStatus !== undefined && bugStatus !== null && !BUG_STATUSES.includes(bugStatus)) {
       return NextResponse.json({ ok: false, error: "Invalid bug status" }, { status: 400 });
     }
 
-    const updated = await updateBugTracking(id, { issueType, issueDescription, bugStatus });
+    if (actionStatus !== undefined && actionStatus !== null && !ACTION_STATUSES.includes(actionStatus)) {
+      return NextResponse.json({ ok: false, error: "Invalid action status" }, { status: 400 });
+    }
+
+    const updated = await updateBugTracking(id, { issueType, issueDescription, bugStatus, actionStatus });
     if (!updated) {
       return NextResponse.json({ ok: false, error: "Document not found" }, { status: 404 });
     }

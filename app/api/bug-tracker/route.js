@@ -12,6 +12,7 @@ export async function GET(req) {
     const docType = searchParams.get("docType") || "";
     const issueType = searchParams.get("issueType") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
+    const actionStatus = searchParams.get("actionStatus") || "";
     const sortBy = searchParams.get("sortBy") || "";
     const sortOrder = searchParams.get("sortOrder") || "desc";
     const page = Number(searchParams.get("page")) || 1;
@@ -31,6 +32,7 @@ export async function GET(req) {
       docType,
       issueType,
       bugStatus,
+      actionStatus,
       clientId: isClientRole ? clientId : "",
       sortBy,
       sortOrder,

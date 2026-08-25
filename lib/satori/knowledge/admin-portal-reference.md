@@ -179,6 +179,7 @@ PDFs/images, pick a status, set a date/time (blank = now), click Post.
 - HITL Status: Completed / TO_BE_TESTED / Pending — where a document sits in the review pipeline.
 - Validation: green dot = passed validation/finalized; red = still needs review.
 - Bug Status: Open / TO_BE_TESTED / Closed — lifecycle of a logged issue.
+- Action Status: Model Tuning / Reprocessing / Invalid Bad Image Closed — triage / pipeline action for bug resolution.
 - Key Environment: Sandbox / Testing / Production — which API key environment produced the
   document.
 - Result ID (e.g. `PDR-136578`) is the primary identifier, with the `req_…` request ID beneath it;

@@ -29,12 +29,12 @@ import {
   Lock,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
-import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
+import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
 import BulkActionBar from "@/components/Grid/BulkActionBar";
-import { bulkSetBugStatus } from "@/lib/bulkDocumentActions";
+import { bulkSetBugStatus, bulkSetActionStatus } from "@/lib/bulkDocumentActions";
 
 export const dynamic = "force-dynamic";
 
@@ -55,6 +55,7 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Bug ID", key: "bug_tracker_id" },
   { label: "Result ID", key: "result_id" },
   { label: "Bug Status", key: "bug_status" },
+  { label: "Action Status", key: "action_status" },
   { label: "Client Email", key: "client_email" },
   { label: "Document Type", key: "ocr_document_type" },
   { label: "Bug Created At", key: "bug_flagged_at" },
@@ -78,6 +79,7 @@ function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
         gap: 4,
         cursor: sortKey ? "pointer" : "default",
         userSelect: "none",
+        whiteSpace: "nowrap",
       }}
     >
       {label}
@@ -221,13 +223,15 @@ function SearchableDropdown({
 
 /* ── Bug status styles + per-row dropdown (SUPER_ADMIN only) ────────── */
 const BUG_STATUS_STYLES = {
-  OPEN:          { label: "Open",         bg: "rgba(239,68,68,0.12)",  color: "#ef4444" },
-  TO_BE_TESTED:  { label: "To Be Tested", bg: "rgba(249,115,22,0.12)", color: "#f97316" },
-  CLOSED:        { label: "Closed",       bg: "rgba(34,197,94,0.12)",  color: "#22c55e" },
+  OPEN:         { label: "Open",         bg: "rgba(239,68,68,0.12)",  color: "#ef4444" },
+  TO_BE_TESTED: { label: "To Be Tested", bg: "rgba(249,115,22,0.12)", color: "#f97316" },
+  CLOSED:       { label: "Closed",       bg: "rgba(34,197,94,0.12)",  color: "#22c55e" },
 };
 
 function bugStyleFor(status) {
-  return BUG_STATUS_STYLES[status?.toUpperCase().replace(/\s+/g, "_")] || { label: status || "—", bg: "var(--tag-bg)", color: "var(--text-muted)" };
+  if (!status) return { label: "—", bg: "var(--tag-bg)", color: "var(--text-muted)" };
+  const key = String(status).toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return BUG_STATUS_STYLES[key] || { label: status === "TO_BE_TESTED" ? "To Be Tested" : status, bg: "var(--tag-bg)", color: "var(--text-muted)" };
 }
 
 function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
@@ -277,7 +281,7 @@ function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
       </button>
 
       {open && (
-        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 70, width: 150, background: "var(--menu-bg)", border: "1px solid var(--panel-border)", borderRadius: 8, boxShadow: "var(--shadow-sm)", padding: 4 }}>
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 70, minWidth: 150, width: "max-content", background: "var(--menu-bg)", border: "1px solid var(--panel-border)", borderRadius: 8, boxShadow: "var(--shadow-sm)", padding: 4 }}>
           {BUG_STATUSES.map((val) => {
             const ss = bugStyleFor(val);
             const active = val === currentStatus;
@@ -288,7 +292,118 @@ function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
                 onClick={() => choose(val)}
                 onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = active ? "var(--input-bg)" : "transparent"; }}
-                style={{ padding: "8px 10px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, background: active ? "var(--input-bg)" : "transparent" }}
+                style={{ padding: "8px 10px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, background: active ? "var(--input-bg)" : "transparent", whiteSpace: "nowrap" }}
+              >
+                <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: ss?.color || "var(--text-muted)", flexShrink: 0 }} />
+                <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: "var(--foreground)" }}>{ss?.label || val}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Action status styles + per-row dropdown (Model Tuning, Reprocessing, Invalid Bad Image Closed) ── */
+const ACTION_STATUS_STYLES = {
+  MODEL_TUNING:             { label: "Model Tuning",             bg: "rgba(168,85,247,0.12)", color: "#a855f7" },
+  REPROCESSING:             { label: "Reprocessing",             bg: "rgba(6,182,212,0.12)",  color: "#06b6d4" },
+  INVALID_BAD_IMAGE_CLOSED: { label: "Invalid Bad Image Closed", bg: "rgba(148,163,184,0.12)", color: "#94a3b8" },
+};
+
+function actionStyleFor(action) {
+  if (!action || action === "None") return { label: "None", bg: "var(--input-bg)", color: "var(--text-muted)" };
+  const key = String(action).toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return ACTION_STATUS_STYLES[key] || { label: action, bg: "var(--tag-bg)", color: "var(--text-muted)" };
+}
+
+function ActionStatusDropCell({ docId, currentStatus, onActionStatusChanged }) {
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    function onDocClick(e) {
+      if (ref.current && !ref.current.contains(e.target)) setOpen(false);
+    }
+    if (open) document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [open]);
+
+  const s = actionStyleFor(currentStatus);
+
+  async function choose(val) {
+    if (val === currentStatus || (!val && !currentStatus)) { setOpen(false); return; }
+    setSaving(true);
+    setOpen(false);
+    try {
+      const res = await axios.post(`/api/document/${encodeURIComponent(docId)}/update-bug-tracking`, { actionStatus: val || null });
+      if (res.data?.ok === false) {
+        toast.error(res.data.error || "Failed to update action status");
+        return;
+      }
+      onActionStatusChanged(docId, val || null);
+      toast.success("Action status updated");
+    } catch (err) {
+      toast.error(err?.response?.data?.error || "Failed to update action status");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-flex" }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        disabled={saving}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "4px 9px",
+          borderRadius: 6,
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: "0.04em",
+          background: s.bg,
+          color: s.color,
+          border: currentStatus ? `1px solid ${s.color}33` : "1px solid var(--panel-border)",
+          cursor: saving ? "wait" : "pointer",
+          whiteSpace: "nowrap",
+          outline: "none",
+          opacity: saving ? 0.6 : 1,
+        }}
+      >
+        {currentStatus && <span style={{ display: "inline-block", width: 6, height: 6, borderRadius: "50%", background: s.color, flexShrink: 0 }} />}
+        {saving ? "…" : s.label}
+        <ChevronDown size={10} style={{ flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.12s" }} />
+      </button>
+
+      {open && (
+        <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, zIndex: 70, minWidth: 200, width: "max-content", background: "var(--menu-bg)", border: "1px solid var(--panel-border)", borderRadius: 8, boxShadow: "var(--shadow-sm)", padding: 4 }}>
+          <div
+            role="button"
+            onClick={() => choose(null)}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = !currentStatus ? "var(--input-bg)" : "transparent"; }}
+            style={{ padding: "8px 10px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, background: !currentStatus ? "var(--input-bg)" : "transparent", whiteSpace: "nowrap", color: "var(--text-muted)", fontSize: 12, fontWeight: !currentStatus ? 700 : 500 }}
+          >
+            <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--text-muted)", opacity: 0.5, flexShrink: 0 }} />
+            <span>None</span>
+          </div>
+          {ACTION_STATUSES.map((val) => {
+            const ss = actionStyleFor(val);
+            const active = val === currentStatus;
+            return (
+              <div
+                key={val}
+                role="button"
+                onClick={() => choose(val)}
+                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = active ? "var(--input-bg)" : "transparent"; }}
+                style={{ padding: "8px 10px", borderRadius: 6, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, background: active ? "var(--input-bg)" : "transparent", whiteSpace: "nowrap" }}
               >
                 <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: ss?.color || "var(--text-muted)", flexShrink: 0 }} />
                 <span style={{ fontSize: 12, fontWeight: active ? 700 : 500, color: "var(--foreground)" }}>{ss?.label || val}</span>
@@ -306,13 +421,18 @@ function EditBugModal({ row, onClose, onSaved }) {
   const [issueType, setIssueType] = useState(row.issue_type || "");
   const [issueDescription, setIssueDescription] = useState(row.issue_description || "");
   const [bugStatusVal, setBugStatusVal] = useState(row.bug_status || "");
+  const [actionStatusVal, setActionStatusVal] = useState(row.action_status || "");
   const [saving, setSaving] = useState(false);
 
   async function handleSave() {
     setSaving(true);
     try {
-      const patch = { issueType: issueType || null, issueDescription: issueDescription || null };
-      if (bugStatusVal) patch.bugStatus = bugStatusVal;
+      const patch = {
+        issueType: issueType || null,
+        issueDescription: issueDescription || null,
+        bugStatus: bugStatusVal || null,
+        actionStatus: actionStatusVal || null,
+      };
 
       const res = await axios.post(`/api/document/${encodeURIComponent(row.result_id)}/update-bug-tracking`, patch);
       if (res.data?.ok === false) {
@@ -401,7 +521,17 @@ function EditBugModal({ row, onClose, onSaved }) {
             <select value={bugStatusVal} disabled={saving} onChange={(e) => setBugStatusVal(e.target.value)} style={fieldStyle}>
               <option value="" disabled>—</option>
               {BUG_STATUSES.map((s) => (
-                <option key={s} value={s}>{s}</option>
+                <option key={s} value={s}>{bugStyleFor(s).label}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Action Status</label>
+            <select value={actionStatusVal} disabled={saving} onChange={(e) => setActionStatusVal(e.target.value)} style={fieldStyle}>
+              <option value="">— None —</option>
+              {ACTION_STATUSES.map((s) => (
+                <option key={s} value={s}>{actionStyleFor(s).label}</option>
               ))}
             </select>
           </div>
@@ -476,10 +606,10 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
   );
 }
 
-/* ── Table row ────────────────────────────────────────────────────── */
-const ROW_GRID = "32px 32px 32px 150px 160px 140px 140px 160px 96px";
+/* ── Table row (11 columns: select, edit, view, bug_id, result_id, bug_status, action_status, client_email, doc_type, flagged_at, comments) ── */
+const ROW_GRID = "32px 36px 36px 120px 150px 130px 190px minmax(180px, 1.2fr) 130px 170px 80px";
 
-function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
+function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, onActionStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -559,6 +689,8 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
 
       <BugStatusDropCell docId={doc.result_id} currentStatus={doc.bug_status} onBugStatusChanged={onBugStatusChanged} />
 
+      <ActionStatusDropCell docId={doc.result_id} currentStatus={doc.action_status} onActionStatusChanged={onActionStatusChanged} />
+
       <span style={{ fontSize: 12, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={doc.client_email || ""}>
         {doc.client_email || "—"}
       </span>
@@ -611,6 +743,7 @@ function BugTrackerContent() {
   const [docType, setDocType] = useState(() => searchParams.get("docType") || "");
   const [issueType, setIssueType] = useState(() => searchParams.get("issueType") || "");
   const [bugStatusFilter, setBugStatusFilter] = useState(() => searchParams.get("bugStatus") || "");
+  const [actionStatusFilter, setActionStatusFilter] = useState(() => searchParams.get("actionStatus") || "");
   const [page, setPage] = useState(() => Number(searchParams.get("page")) || 1);
   const [docs, setDocs] = useState([]);
   const [editingRow, setEditingRow] = useState(null);
@@ -651,7 +784,7 @@ function BugTrackerContent() {
     }
     setPage(1);
     setSelectedIds(new Set());
-  }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, sortBy, sortOrder]);
+  }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, actionStatusFilter, sortBy, sortOrder]);
 
   useEffect(() => {
     setSelectedIds(new Set());
@@ -664,15 +797,16 @@ function BugTrackerContent() {
     if (docType) params.set("docType", docType);
     if (issueType) params.set("issueType", issueType);
     if (bugStatusFilter) params.set("bugStatus", bugStatusFilter);
+    if (actionStatusFilter) params.set("actionStatus", actionStatusFilter);
     if (page > 1) params.set("page", String(page));
     if (sortBy) params.set("sortBy", sortBy);
     if (sortOrder && sortOrder !== "desc") params.set("sortOrder", sortOrder);
     const qs = params.toString();
     router.replace(qs ? `/bug-tracker?${qs}` : "/bug-tracker", { scroll: false });
-  }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, page, sortBy, sortOrder, router]);
+  }, [debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, actionStatusFilter, page, sortBy, sortOrder, router]);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ["bug-tracker", { debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, sortBy, sortOrder, page }],
+    queryKey: ["bug-tracker", { debouncedSearch, clientEmails, docType, issueType, bugStatusFilter, actionStatusFilter, sortBy, sortOrder, page }],
     queryFn: async () => {
       const res = await axios.get("/api/bug-tracker", {
         params: {
@@ -681,6 +815,7 @@ function BugTrackerContent() {
           docType,
           issueType,
           bugStatus: bugStatusFilter,
+          actionStatus: actionStatusFilter,
           sortBy,
           sortOrder,
           page,
@@ -736,11 +871,16 @@ function BugTrackerContent() {
     queryClient.invalidateQueries({ queryKey: ["bug-tracker"] });
   };
 
+  const handleActionStatusChanged = (resultId, newAction) => {
+    setDocs((prev) => prev.map((d) => (d.result_id === resultId ? { ...d, action_status: newAction } : d)));
+    queryClient.invalidateQueries({ queryKey: ["bug-tracker"] });
+  };
+
   const handleEditSaved = (rowId, res) => {
     setDocs((prev) =>
       prev.map((d) =>
         d.id === rowId
-          ? { ...d, issue_type: res.issue_type, issue_description: res.issue_description, bug_status: res.bug_status }
+          ? { ...d, issue_type: res.issue_type, issue_description: res.issue_description, bug_status: res.bug_status, action_status: res.action_status }
           : d
       )
     );
@@ -773,8 +913,8 @@ function BugTrackerContent() {
       key: "bugStatus",
       label: "Bug Status",
       placeholder: "Bug status…",
-      options: BUG_STATUSES.map((s) => ({ value: s, label: s })),
-      confirmText: (value, count) => `Set bug status to "${value}" for ${count} selected document(s)?`,
+      options: BUG_STATUSES.map((s) => ({ value: s, label: bugStyleFor(s).label })),
+      confirmText: (value, count) => `Set bug status to "${bugStyleFor(value).label}" for ${count} selected document(s)?`,
       run: (value, onProgress) =>
         bulkSetBugStatus([...selectedIds], value, { onProgress }).then((result) => {
           setSelectedIds(new Set());
@@ -782,9 +922,28 @@ function BugTrackerContent() {
           return result;
         }),
     },
+    {
+      key: "actionStatus",
+      label: "Action Status",
+      placeholder: "Action status…",
+      options: [
+        { value: "", label: "— Clear / None —" },
+        ...ACTION_STATUSES.map((s) => ({ value: s, label: actionStyleFor(s).label })),
+      ],
+      confirmText: (value, count) =>
+        value
+          ? `Set action status to "${actionStyleFor(value).label}" for ${count} selected document(s)?`
+          : `Clear action status for ${count} selected document(s)?`,
+      run: (value, onProgress) =>
+        bulkSetActionStatus([...selectedIds], value || null, { onProgress }).then((result) => {
+          setSelectedIds(new Set());
+          queryClient.invalidateQueries({ queryKey: ["bug-tracker"] });
+          return result;
+        }),
+    },
   ];
 
-  const hasFilters = search || clientEmails.length || docType || issueType || bugStatusFilter;
+  const hasFilters = search || clientEmails.length || docType || issueType || bugStatusFilter || actionStatusFilter;
 
   const exportParams = {
     search: debouncedSearch,
@@ -792,6 +951,7 @@ function BugTrackerContent() {
     docType,
     issueType,
     bugStatus: bugStatusFilter,
+    actionStatus: actionStatusFilter,
     sortBy,
     sortOrder,
   };
@@ -848,9 +1008,18 @@ function BugTrackerContent() {
             placeholder="All Bug Statuses"
             searchPlaceholder="Search bug status..."
             emptyText="No bug statuses"
-            options={[...BUG_STATUSES.map((s) => ({ value: s, label: s })), { value: "NULL", label: "No Status" }]}
+            options={[...BUG_STATUSES.map((s) => ({ value: s, label: bugStyleFor(s).label })), { value: "NULL", label: "No Status" }]}
             value={bugStatusFilter}
             onChange={setBugStatusFilter}
+          />
+
+          <SearchableDropdown
+            placeholder="All Action Statuses"
+            searchPlaceholder="Search action status..."
+            emptyText="No action statuses"
+            options={[...ACTION_STATUSES.map((s) => ({ value: s, label: actionStyleFor(s).label })), { value: "NULL", label: "No Action" }]}
+            value={actionStatusFilter}
+            onChange={setActionStatusFilter}
           />
 
           <div style={{ flex: 1, minWidth: 240, position: "relative" }}>
@@ -866,7 +1035,7 @@ function BugTrackerContent() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearch(""); setClientEmails([]); setDocType(""); setIssueType(""); setBugStatusFilter(""); }}
+              onClick={() => { setSearch(""); setClientEmails([]); setDocType(""); setIssueType(""); setBugStatusFilter(""); setActionStatusFilter(""); }}
               style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8, fontSize: 13, fontWeight: 500, border: "1px solid var(--panel-border)", background: "var(--input-bg)", color: "var(--text-muted)", cursor: "pointer" }}
             >
               <X size={13} />
@@ -942,6 +1111,7 @@ function BugTrackerContent() {
                   onEdit={setEditingRow}
                   onViewComments={setViewingCommentsRow}
                   onBugStatusChanged={handleBugStatusChanged}
+                  onActionStatusChanged={handleActionStatusChanged}
                   lockInfo={activeLocks[String(doc.id)] || activeLocks[String(doc.result_id)]}
                   selected={selectedIds.has(doc.id)}
                   onToggleSelect={toggleSelectOne}

@@ -11,6 +11,7 @@ const COLUMNS = [
   { key: "transaction_id", label: "Transaction ID" },
   { key: "ocr_document_type", label: "Document Type" },
   { key: "bug_status", label: "Bug Status" },
+  { key: "action_status", label: "Action Status" },
   { key: "issue_type", label: "Issue Type" },
   { key: "issue_description", label: "Issue Description" },
   { key: "hitl_assigned_to", label: "HITL Assigned" },
@@ -26,6 +27,7 @@ export async function GET(req) {
     const docType = searchParams.get("docType") || "";
     const issueType = searchParams.get("issueType") || "";
     const bugStatus = searchParams.get("bugStatus") || "";
+    const actionStatus = searchParams.get("actionStatus") || "";
     const sortBy = searchParams.get("sortBy") || "";
     const sortOrder = searchParams.get("sortOrder") || "desc";
 
@@ -40,6 +42,7 @@ export async function GET(req) {
       docType,
       issueType,
       bugStatus,
+      actionStatus,
       clientId: isClientRole ? clientId : "",
       sortBy,
       sortOrder,

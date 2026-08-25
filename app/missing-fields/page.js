@@ -566,10 +566,16 @@ function StatusDropCell({ docId, currentStatus, onStatusChanged }) {
 
 /* ── Bug status styles + per-row dropdown ────────────────────────────── */
 const BUG_STATUS_STYLES = {
-  OPEN:          { label: "Open",         bg: "rgba(239,68,68,0.12)",  color: "#ef4444" },
-  TO_BE_TESTED:  { label: "To Be Tested", bg: "rgba(249,115,22,0.12)", color: "#f97316" },
-  CLOSED:        { label: "Closed",       bg: "rgba(34,197,94,0.12)",  color: "#22c55e" },
+  OPEN:         { label: "Open",         bg: "rgba(239,68,68,0.12)",  color: "#ef4444" },
+  TO_BE_TESTED: { label: "To Be Tested", bg: "rgba(249,115,22,0.12)", color: "#f97316" },
+  CLOSED:       { label: "Closed",       bg: "rgba(34,197,94,0.12)",  color: "#22c55e" },
 };
+
+function bugStyleFor(status) {
+  if (!status) return { label: "—", bg: "var(--tag-bg)", color: "var(--text-muted)" };
+  const key = String(status).toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  return BUG_STATUS_STYLES[key] || { label: status === "TO_BE_TESTED" ? "To Be Tested" : status, bg: "var(--tag-bg)", color: "var(--text-muted)" };
+}
 
 function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
   const [open, setOpen] = useState(false);
@@ -584,7 +590,7 @@ function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [open]);
 
-  const s = BUG_STATUS_STYLES[currentStatus?.toUpperCase().replace(/\s+/g, "_")] || { label: currentStatus || "—", bg: "var(--tag-bg)", color: "var(--text-muted)" };
+  const s = bugStyleFor(currentStatus);
 
   async function choose(val) {
     if (val === currentStatus) { setOpen(false); return; }
@@ -631,7 +637,7 @@ function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
           }}
         >
           {BUG_STATUSES.map((val) => {
-            const ss = BUG_STATUS_STYLES[val.toUpperCase().replace(/\s+/g, "_")];
+            const ss = bugStyleFor(val);
             const active = val === currentStatus;
             return (
               <div
@@ -1075,8 +1081,8 @@ export default function MissingFieldsPage() {
       key: "bugStatus",
       label: "Bug Status",
       placeholder: "Bug status…",
-      options: BUG_STATUSES.map((s) => ({ value: s, label: s })),
-      confirmText: (value, count) => `Set bug status to "${value}" for ${count} selected document(s)?`,
+      options: BUG_STATUSES.map((s) => ({ value: s, label: bugStyleFor(s).label })),
+      confirmText: (value, count) => `Set bug status to "${bugStyleFor(value).label}" for ${count} selected document(s)?`,
       run: (value, onProgress) =>
         bulkSetBugStatus([...selectedIds], value, { onProgress }).then((result) => {
           setSelectedIds(new Set());
