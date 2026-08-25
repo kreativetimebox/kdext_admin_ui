@@ -305,11 +305,12 @@ function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
   );
 }
 
-/* ── Action status styles + per-row dropdown (Model Tuning, Reprocessing, Invalid Bad Image Closed) ── */
+/* ── Action status styles + per-row dropdown (Enhancement, Model Tuning, Invalid doc, Tech Issue) ── */
 const ACTION_STATUS_STYLES = {
-  MODEL_TUNING:             { label: "Model Tuning",             bg: "rgba(168,85,247,0.12)", color: "#a855f7" },
-  REPROCESSING:             { label: "Reprocessing",             bg: "rgba(6,182,212,0.12)",  color: "#06b6d4" },
-  INVALID_BAD_IMAGE_CLOSED: { label: "Invalid Bad Image Closed", bg: "rgba(148,163,184,0.12)", color: "#94a3b8" },
+  ENHANCEMENT:  { label: "Enhancement",  bg: "rgba(59,130,246,0.12)",  color: "#3b82f6" },
+  MODEL_TUNING: { label: "Model Tuning", bg: "rgba(168,85,247,0.12)", color: "#a855f7" },
+  INVALID_DOC:  { label: "Invalid doc",  bg: "rgba(148,163,184,0.12)", color: "#94a3b8" },
+  TECH_ISSUE:   { label: "Tech Issue",   bg: "rgba(249,115,22,0.12)",  color: "#f97316" },
 };
 
 function actionStyleFor(action) {

@@ -266,7 +266,7 @@ function StatusBadge({ status }) {
 
 /* ── Bug tracker stats ────────────────────────────────────── */
 const BUG_STATS_GRID = "1.4fr 0.8fr 0.8fr";
-const DOC_TYPE_STATS_GRID = "1.8fr 0.7fr 0.9fr 0.9fr 0.8fr 1fr 0.7fr 0.7fr";
+const DOC_TYPE_STATS_GRID = "1.5fr 0.6fr 0.7fr 0.6fr 0.8fr 0.9fr 0.8fr 0.8fr 0.6fr";
 
 function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClientRole }) {
   const { data, isLoading } = useQuery({
@@ -280,24 +280,26 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
     staleTime: 30 * 1000,
   });
 
-  const totals = data?.totals || { open: 0, modelTuning: 0, reprocessing: 0, toBeTested: 0, invalidBadImageClosed: 0, closed: 0 };
+  const totals = data?.totals || { open: 0, toBeTested: 0, closed: 0, enhancement: 0, modelTuning: 0, invalidDoc: 0, techIssue: 0 };
   const byDocType = data?.byDocType || [];
   const totalIssues =
     (totals.open || 0) +
-    (totals.modelTuning || 0) +
-    (totals.reprocessing || 0) +
     (totals.toBeTested || 0) +
-    (totals.invalidBadImageClosed || 0) +
-    (totals.closed || 0);
+    (totals.closed || 0) +
+    (totals.enhancement || 0) +
+    (totals.modelTuning || 0) +
+    (totals.invalidDoc || 0) +
+    (totals.techIssue || 0);
   const pct = (n) => (totalIssues > 0 ? `${Math.round((n / totalIssues) * 100)}%` : "—");
 
   const totalsRows = [
     { label: "Open", value: totals.open || 0, color: "#ef4444" },
-    { label: "Model Tuning", value: totals.modelTuning || 0, color: "#a855f7" },
-    { label: "Reprocessing", value: totals.reprocessing || 0, color: "#06b6d4" },
     { label: "To Be Tested", value: totals.toBeTested || 0, color: "#f97316" },
-    { label: "Invalid Bad Image Closed", value: totals.invalidBadImageClosed || 0, color: "#94a3b8" },
     { label: "Closed", value: totals.closed || 0, color: "#22c55e" },
+    { label: "Enhancement", value: totals.enhancement || 0, color: "#3b82f6" },
+    { label: "Model Tuning", value: totals.modelTuning || 0, color: "#a855f7" },
+    { label: "Invalid doc", value: totals.invalidDoc || 0, color: "#94a3b8" },
+    { label: "Tech Issue", value: totals.techIssue || 0, color: "#f97316" },
   ];
 
   return (
@@ -403,7 +405,7 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
           }}
         >
           <div style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: 640 }}>
+            <div style={{ minWidth: 700 }}>
               <div
                 style={{
                   display: "grid",
@@ -414,7 +416,7 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
                   borderBottom: "1px solid var(--panel-border)",
                 }}
               >
-                {["Document Type", "Open", "Model Tuning", "Reprocess", "To Test", "Invalid Closed", "Closed", "Total"].map((h) => (
+                {["Document Type", "Open", "To Test", "Closed", "Enhance", "Model Tune", "Invalid Doc", "Tech Issue", "Total"].map((h) => (
                   <span
                     key={h}
                     style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
@@ -438,19 +440,21 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
                       {r.document_type}
                     </span>
                     <span style={{ fontSize: 13, color: "#ef4444" }}>{formatNumber(r.open)}</span>
-                    <span style={{ fontSize: 13, color: "#a855f7" }}>{formatNumber(r.modelTuning)}</span>
-                    <span style={{ fontSize: 13, color: "#06b6d4" }}>{formatNumber(r.reprocessing)}</span>
                     <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.toBeTested)}</span>
-                    <span style={{ fontSize: 13, color: "#94a3b8" }}>{formatNumber(r.invalidBadImageClosed)}</span>
                     <span style={{ fontSize: 13, color: "#22c55e" }}>{formatNumber(r.closed)}</span>
+                    <span style={{ fontSize: 13, color: "#3b82f6" }}>{formatNumber(r.enhancement)}</span>
+                    <span style={{ fontSize: 13, color: "#a855f7" }}>{formatNumber(r.modelTuning)}</span>
+                    <span style={{ fontSize: 13, color: "#94a3b8" }}>{formatNumber(r.invalidDoc)}</span>
+                    <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.techIssue)}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
                       {formatNumber(
                         (r.open || 0) +
-                        (r.modelTuning || 0) +
-                        (r.reprocessing || 0) +
                         (r.toBeTested || 0) +
-                        (r.invalidBadImageClosed || 0) +
-                        (r.closed || 0)
+                        (r.closed || 0) +
+                        (r.enhancement || 0) +
+                        (r.modelTuning || 0) +
+                        (r.invalidDoc || 0) +
+                        (r.techIssue || 0)
                       )}
                     </span>
                   </div>
