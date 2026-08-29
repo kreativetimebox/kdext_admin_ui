@@ -52,10 +52,7 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Missing Fields", key: "missing_count" },
 ];
 
-// Single source of truth for both the header row and each MissingFieldRow
-// below — a header/row template drift caused a real column-misalignment bug
-// earlier, so this is shared rather than duplicated inline.
-const ROW_GRID = "32px 90px minmax(200px, 1.2fr) 130px 140px 130px 160px minmax(180px, 1.2fr) 180px 1fr";
+const ROW_GRID = "32px 56px 200px 130px 130px 160px 130px 140px 130px minmax(220px, 1fr)";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
@@ -723,8 +720,8 @@ function MissingFieldRow({ doc, onView, onStatusChanged, onBugStatusChanged, loc
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          gap: 6,
-          padding: "7px 14px",
+          width: 32,
+          height: 32,
           borderRadius: 8,
           fontSize: 13,
           fontWeight: 600,
@@ -738,7 +735,6 @@ function MissingFieldRow({ doc, onView, onStatusChanged, onBugStatusChanged, loc
         }}
       >
         <Eye size={13} />
-        {/* View */}
       </button>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
@@ -856,6 +852,11 @@ function MissingFieldRow({ doc, onView, onStatusChanged, onBugStatusChanged, loc
           background: "var(--tag-purple-bg)",
           color: "var(--tag-purple-color)",
           textAlign: "center",
+          justifySelf: "start",
+          maxWidth: "100%",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
       >
         {doc.ocr_document_type || "Unknown"}

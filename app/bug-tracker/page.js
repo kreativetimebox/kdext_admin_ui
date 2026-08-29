@@ -608,7 +608,7 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
 }
 
 /* ── Table row (11 columns: select, edit, view, bug_id, result_id, bug_status, action_status, client_email, doc_type, flagged_at, comments) ── */
-const ROW_GRID = "32px 36px 36px 120px 150px 130px 190px minmax(180px, 1.2fr) 130px 170px 80px";
+const ROW_GRID = "32px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px";
 
 function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, onActionStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
