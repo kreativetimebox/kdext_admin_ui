@@ -436,7 +436,7 @@ export default function TransactionsPage() {
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Result ID", "Transaction ID", "Document Type", "Status", "Submitted"].map((h) => (
+            {["Result ID", "Transaction ID", "Type", "Status", "Submitted"].map((h) => (
               <span
                 key={h}
                 style={{

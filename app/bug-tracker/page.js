@@ -57,7 +57,7 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Bug Status", key: "bug_status" },
   { label: "Action Status", key: "action_status" },
   { label: "Client Email", key: "client_email" },
-  { label: "Document Type", key: "ocr_document_type" },
+  { label: "Type", key: "ocr_document_type" },
   { label: "Bug Created At", key: "bug_flagged_at" },
   { label: "Comments", key: null },
 ];

@@ -21,8 +21,6 @@ import {
   Calendar,
   FileText,
   Pencil,
-  Download,
-  FileArchive,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -215,29 +213,23 @@ function HitlAssignCell({ docId, currentId, hitlUsers, onAssigned, canAssign }) 
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
 const TABLE_HEADER_COLUMNS = [
-  { label: "", key: null },
+  { label: "Action", key: null },
   { label: "Result ID", key: "result_id" },
+  { label: "Request ID", key: "request_id" },
   { label: "Processing", key: "processing_duration_ms" },
   { label: "Status", key: "status" },
-  { label: "Created At", key: "created_at" },
-  // { label: "Anomalous", key: "is_anomalous" },
-  // { label: "Duplicate", key: "is_duplicate" },
-  // { label: "Fraud Risk", key: "fraud_risk_level" },
-  { label: "Document Type", key: "document_type" },
-  { label: "Key Environment", key: "key_environment" },
+  { label: "Type", key: "document_type" },
+  { label: "Environment", key: "key_environment" },
   { label: "Validation", key: "validation" },
   { label: "Bug Status", key: "bug_status" },
+  { label: "Created At", key: "created_at" },
   { label: "Updated At", key: "updated_at" },
 ];
 
-// Single source of truth for both the header row and each ResultRow below —
-// previously these were two independently hand-typed strings that drifted
-// apart (different minmax/fr tokens for the Document Type/Key Environment
-// columns), which misaligned every column since the header's row.
 const ROW_GRID =
-  "32px 160px minmax(170px, 1.2fr) 100px 100px 150px 110px minmax(130px, 0.9fr) minmax(120px, 0.8fr) 140px 130px";
+  "32px 56px 150px 190px 110px 120px 140px 140px 120px 130px 160px 160px";
 
-function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
+function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
   return (
     <span
@@ -249,9 +241,12 @@ function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort }) {
         textTransform: "uppercase",
         letterSpacing: "0.05em",
         color: active ? "var(--foreground)" : "var(--text-muted)",
+        textAlign: align,
         display: "inline-flex",
         alignItems: "center",
+        justifyContent: align === "center" ? "center" : "flex-start",
         gap: 4,
+        width: "100%",
         cursor: sortKey ? "pointer" : "default",
         userSelect: "none",
       }}
@@ -302,13 +297,14 @@ function KeyEnvBadge({ env }) {
   return (
     <span
       style={{
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "3px 8px",
+        fontSize: 12,
+        fontWeight: 500,
+        padding: "4px 10px",
         borderRadius: 6,
         background: c.bg,
         color: c.color,
         textTransform: "capitalize",
+        textAlign: "center",
         justifySelf: "start",
         maxWidth: "100%",
         overflow: "hidden",
@@ -584,82 +580,78 @@ function Row({ record, onView, onBugStatusChanged, lockInfo, selected, onToggleS
         style={{ cursor: record.result_id == null ? "not-allowed" : "pointer" }}
       />
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <button
-          onClick={() => onView(record.result_id ?? record.request_id)}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 6,
-            padding: "6px 12px",
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 600,
-            border: "none",
-            background:
-              "var(--brand-gradient)",
-            color: "#fff",
-            cursor: "pointer",
-            boxShadow: hovered ? "0 4px 14px rgba(20,14,53,0.26)" : "0 2px 6px rgba(20,14,53,0.18)",
-            transition: "all 0.15s ease",
-          }}
-        >
-          <Eye size={12} />
-        </button>
-      </div>
+      <button
+        onClick={() => onView(record.result_id ?? record.request_id)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          fontSize: 13,
+          fontWeight: 600,
+          background: "var(--brand-gradient)",
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
+          boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
+          transform: hovered ? "translateY(-1px)" : "translateY(0)",
+          transition: "all 0.2s",
+        }}
+      >
+        <Eye size={13} />
+      </button>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
+        <span
+          style={{
+            fontSize: 12.5,
+            fontWeight: 600,
+            color: "var(--accent)",
+            fontFamily: "ui-monospace, SFMono-Regular, monospace",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+          }}
+          title={record.result_id ? String(record.result_id) : "—"}
+        >
+          {record.result_id ?? "—"}
+        </span>
+        {lockInfo && (
           <span
+            title={`In use by ${lockInfo.userEmail || lockInfo.userName}`}
             style={{
-              fontSize: 12.5,
-              fontWeight: 600,
-              color: "var(--accent)",
-              fontFamily: "ui-monospace, SFMono-Regular, monospace",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-            title={record.result_id ? String(record.result_id) : record.request_id}
-          >
-            {record.result_id ?? record.request_id ?? "—"}
-          </span>
-          {lockInfo && (
-            <span
-              title={`In use by ${lockInfo.userEmail || lockInfo.userName}`}
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 3,
-                fontSize: 10,
-                fontWeight: 700,
-                padding: "1px 6px",
-                borderRadius: 99,
-                background: "rgba(239, 68, 68, 0.15)",
-                color: "#ef4444",
-                whiteSpace: "nowrap",
-              }}
-            >
-              <Lock size={10} /> In Use
-            </span>
-          )}
-        </div>
-        {record.result_id != null && record.request_id && (
-          <span
-            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 3,
               fontSize: 10,
-              color: "var(--text-muted)",
-              fontFamily: "ui-monospace, SFMono-Regular, monospace",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
+              fontWeight: 700,
+              padding: "1px 6px",
+              borderRadius: 99,
+              background: "rgba(239, 68, 68, 0.15)",
+              color: "#ef4444",
               whiteSpace: "nowrap",
             }}
-            title={record.request_id}
           >
-            {record.request_id}
+            <Lock size={10} /> In Use
           </span>
         )}
       </div>
+
+      <span
+        style={{
+          fontSize: 11.5,
+          color: "var(--text-muted)",
+          fontFamily: "ui-monospace, SFMono-Regular, monospace",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+        title={record.request_id || "—"}
+      >
+        {record.request_id || "—"}
+      </span>
 
       <span
         style={{
@@ -669,6 +661,7 @@ function Row({ record, onView, onBugStatusChanged, lockInfo, selected, onToggleS
           display: "flex",
           alignItems: "center",
           gap: 4,
+          whiteSpace: "nowrap",
         }}
       >
         <Clock size={11} style={{ color: "var(--text-muted)" }} />
@@ -676,10 +669,6 @@ function Row({ record, onView, onBugStatusChanged, lockInfo, selected, onToggleS
       </span>
 
       <StatusBadge status={record.status} />
-
-      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-        {formatDate(record.created_at || record.submitted_at)}
-      </span>
 
       <span
         style={{
@@ -710,7 +699,29 @@ function Row({ record, onView, onBugStatusChanged, lockInfo, selected, onToggleS
         onChanged={onBugStatusChanged}
       />
 
-      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+        title={record.created_at || record.submitted_at || ""}
+      >
+        {formatDate(record.created_at || record.submitted_at)}
+      </span>
+
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--text-muted)",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+        title={record.updated_at || record.completed_at || ""}
+      >
         {formatDate(record.updated_at || record.completed_at)}
       </span>
 
@@ -734,7 +745,7 @@ export default function UserResultsPage({ params }) {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [docType, setDocType] = useState("");
   const [status, setStatus] = useState("");
-  const [keyEnv, setKeyEnv] = useState("");
+  const [keyEnv, setKeyEnv] = useState("production");
   const [bugStatus, setBugStatus] = useState("");
   const [issueType, setIssueType] = useState("");
   const [page, setPage] = useState(1);
@@ -832,7 +843,10 @@ export default function UserResultsPage({ params }) {
   // docType/status/keyEnv/search are all applied server-side now (see the
   // useQuery above), so `records` is already exactly what should render.
   const docTypeOptions = filterOptions?.docTypes || [];
-  const keyEnvOptions = filterOptions?.keyEnvironments || [];
+  const keyEnvironments = filterOptions?.keyEnvironments || [];
+  const keyEnvOptions = Array.from(
+    new Set(["production", ...keyEnvironments.map((e) => String(e).toLowerCase())])
+  );
 
   const handleView = (resultId) => {
     const lock = activeLocks[String(resultId)];
@@ -887,19 +901,6 @@ export default function UserResultsPage({ params }) {
         }),
     }
   ];
-
-  const exportParams = {
-    search: debouncedSearch,
-    docType,
-    status,
-    keyEnvironment: keyEnv,
-    bugStatus,
-    issueType,
-    sortBy,
-    sortOrder,
-  };
-  const exportUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/export?${new URLSearchParams(exportParams).toString()}`;
-  const downloadDocumentsUrl = `/api/dexai/users/${encodeURIComponent(userId)}/results/download-documents?${new URLSearchParams(exportParams).toString()}`;
 
   return (
     <div
@@ -1084,7 +1085,7 @@ export default function UserResultsPage({ params }) {
           />
 
           <FilterDropdown
-            label="Key Environment"
+            label="Environment"
             value={keyEnv}
             options={keyEnvOptions}
             onChange={setKeyEnv}
@@ -1104,13 +1105,13 @@ export default function UserResultsPage({ params }) {
             onChange={setIssueType}
           />
 
-          {(search || docType || status || keyEnv || bugStatus || issueType) && (
+          {(search || docType || status || (keyEnv && keyEnv.toLowerCase() !== "production") || bugStatus || issueType) && (
             <button
               onClick={() => {
                 setSearch("");
                 setDocType("");
                 setStatus("");
-                setKeyEnv("");
+                setKeyEnv("production");
                 setBugStatus("");
                 setIssueType("");
               }}
@@ -1132,49 +1133,6 @@ export default function UserResultsPage({ params }) {
               Clear
             </button>
           )}
-
-          <a
-            href={exportUrl}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 14px",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              border: "1px solid var(--panel-border)",
-              background: "var(--brand-gradient)",
-              color: "#fff",
-              cursor: "pointer",
-              textDecoration: "none",
-            }}
-          >
-            <Download size={13} />
-            Export CSV
-          </a>
-
-          <a
-            href={downloadDocumentsUrl}
-            title="Downloads a zip of the source documents for up to the first 100 rows matching the current filters"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 14px",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              border: "1px solid var(--panel-border)",
-              background: "var(--input-bg)",
-              color: "var(--foreground)",
-              cursor: "pointer",
-              textDecoration: "none",
-            }}
-          >
-            <FileArchive size={13} />
-            Download Documents
-          </a>
         </div>
 
         <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} actions={bulkActions} />
@@ -1256,7 +1214,7 @@ export default function UserResultsPage({ params }) {
                   No results found
                 </p>
                 <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-                  {search || docType || status || keyEnv
+                  {search || docType || status || (keyEnv && keyEnv.toLowerCase() !== "production") || bugStatus || issueType
                     ? "Try adjusting your filters"
                     : "This user has no document processing requests"}
                 </p>

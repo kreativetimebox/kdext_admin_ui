@@ -9,7 +9,7 @@ const COLUMNS = [
   { key: "request_id", label: "Request ID" },
   { key: "result_id", label: "Result ID" },
   { key: "transaction_id", label: "Transaction ID" },
-  { key: "ocr_document_type", label: "Document Type" },
+  { key: "ocr_document_type", label: "Type" },
   { key: "bug_status", label: "Bug Status" },
   { key: "action_status", label: "Action Status" },
   { key: "issue_type", label: "Issue Type" },

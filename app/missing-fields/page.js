@@ -19,8 +19,6 @@ import {
   UserCircle,
   ShieldCheck,
   Layers,
-  Download,
-  FileArchive,
   ArrowUp,
   ArrowDown,
   ArrowUpDown,
@@ -47,12 +45,12 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Bug Status", key: "bug_status" },
   // { label: "Issue Type", key: "issue_type" },
   // { label: "Issue Description", key: "issue_description" },
-  { label: "Document Type", key: "ocr_document_type" },
-  { label: "Key Environment", key: "key_environment" },
+  { label: "Type", key: "ocr_document_type" },
+  { label: "Environment", key: "key_environment" },
   { label: "Missing Fields", key: "missing_count" },
 ];
 
-const ROW_GRID = "32px 56px 200px 130px 130px 160px 130px 140px 130px minmax(220px, 1fr)";
+const ROW_GRID = "32px 56px 200px 130px 130px 160px 130px 140px 140px minmax(220px, 1fr)";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
@@ -127,7 +125,10 @@ function SearchableDropdown({
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
 
-  const selected = options.find((o) => o.value === value) || null;
+  const selected =
+    options.find((o) => o.value === value) ||
+    options.find((o) => typeof o.value === "string" && typeof value === "string" && o.value.toLowerCase() === value.toLowerCase()) ||
+    null;
   const q = query.trim().toLowerCase();
   const filtered = q
     ? options.filter(
@@ -668,13 +669,14 @@ function KeyEnvBadge({ env }) {
   return (
     <span
       style={{
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "3px 8px",
+        fontSize: 12,
+        fontWeight: 500,
+        padding: "4px 10px",
         borderRadius: 6,
         background: c.bg,
         color: c.color,
         textTransform: "capitalize",
+        textAlign: "center",
         justifySelf: "start",
         maxWidth: "100%",
         overflow: "hidden",
@@ -904,7 +906,7 @@ export default function MissingFieldsPage() {
   const [hitlUserId, setHitlUserId] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [validationFilter, setValidationFilter] = useState("");
-  const [keyEnvironment, setKeyEnvironment] = useState("");
+  const [keyEnvironment, setKeyEnvironment] = useState("production");
   const [bugStatusFilter, setBugStatusFilter] = useState("");
   const [issueTypeFilter, setIssueTypeFilter] = useState("");
   const [showAll, setShowAll] = useState(true);
@@ -1023,6 +1025,13 @@ export default function MissingFieldsPage() {
   ];
   const docTypes = filterOptions?.docTypes || [];
   const keyEnvironments = filterOptions?.keyEnvironments || [];
+  const envList = Array.from(
+    new Set(["production", ...keyEnvironments.map((e) => String(e).toLowerCase())])
+  );
+  const envOptions = envList.map((e) => ({
+    value: e,
+    label: e ? e.charAt(0).toUpperCase() + e.slice(1) : e,
+  }));
 
   const handleView = (docId) => {
     const lock = activeLocks[String(docId)];
@@ -1126,24 +1135,18 @@ export default function MissingFieldsPage() {
       : []),
   ];
 
-  const hasFilters = search || docType || clientId || businessName || hitlUserId || statusFilter || validationFilter || keyEnvironment || bugStatusFilter || issueTypeFilter;
-
-  const exportParams = {
-    showAll: String(showAll),
-    search: debouncedSearch,
-    docType,
-    // Match the table: a search ignores the client filter (global find).
-    clientId: debouncedSearch ? "" : clientId,
-    businessName,
-    status: statusFilter,
-    keyEnvironment,
-    bugStatus: bugStatusFilter,
-    issueType: issueTypeFilter,
-    hitlUserId,
-    validation: validationFilter,
-  };
-  const exportUrl = `/api/missing-fields/export?${new URLSearchParams(exportParams).toString()}`;
-  const downloadDocumentsUrl = `/api/missing-fields/download-documents?${new URLSearchParams(exportParams).toString()}`;
+  const hasFilters = Boolean(
+    search ||
+    docType ||
+    clientId ||
+    businessName ||
+    hitlUserId ||
+    statusFilter ||
+    validationFilter ||
+    (keyEnvironment && keyEnvironment.toLowerCase() !== "production") ||
+    bugStatusFilter ||
+    issueTypeFilter
+  );
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh", background: "var(--background)" }}>
@@ -1158,47 +1161,22 @@ export default function MissingFieldsPage() {
                 width: 40,
                 height: 40,
                 borderRadius: 12,
-                background: showAll
-                  ? "var(--brand-gradient)"
-                  : "linear-gradient(135deg, #ff5778 0%, #d43d6f 100%)",
+                background: "var(--brand-gradient)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
               }}
             >
-              {showAll ? <ListFilter size={20} color="#fff" /> : <AlertCircle size={20} color="#fff" />}
+              <ListFilter size={20} color="#fff" />
             </div>
             <div style={{ flex: 1 }}>
               <h1 style={{ fontSize: 28, fontWeight: 700, color: "var(--foreground)", margin: 0 }}>
-                {showAll ? "All Documents" : "Missing Mandatory Fields"}
+                All Documents
               </h1>
               <p style={{ fontSize: 14, color: "var(--text-muted)", marginTop: 4 }}>
-                {showAll
-                  ? "Complete list of all processed documents"
-                  : "Documents with incomplete or null values in OCR results"}
+                Complete list of all processed documents
               </p>
             </div>
-
-            <button
-              onClick={() => setShowAll(!showAll)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                padding: "10px 18px",
-                borderRadius: 10,
-                fontSize: 13,
-                fontWeight: 600,
-                border: "1px solid var(--panel-border)",
-                background: showAll ? "var(--input-bg)" : "var(--tag-bg)",
-                color: showAll ? "var(--foreground)" : "var(--accent)",
-                cursor: "pointer",
-                transition: "all 0.2s",
-              }}
-            >
-              {showAll ? <AlertCircle size={14} /> : <ListFilter size={14} />}
-              {showAll ? "Show Only Missing Fields" : "Show All Documents"}
-            </button>
           </div>
         </div>
 
@@ -1277,13 +1255,13 @@ export default function MissingFieldsPage() {
             onChange={setValidationFilter}
           />
 
-          {/* Key Environment */}
+          {/* Environment */}
           <SearchableDropdown
             icon={Layers}
-            placeholder="All Key Environments"
+            placeholder="All Environments"
             searchPlaceholder="Search environment..."
             emptyText="No environments"
-            options={keyEnvironments.map((e) => ({ value: e, label: e }))}
+            options={envOptions}
             value={keyEnvironment}
             onChange={setKeyEnvironment}
           />
@@ -1345,7 +1323,7 @@ export default function MissingFieldsPage() {
 
           {hasFilters && (
             <button
-              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); setValidationFilter(""); setKeyEnvironment(""); setBugStatusFilter(""); setIssueTypeFilter(""); }}
+              onClick={() => { setSearch(""); setDocType(""); setClientId(""); setBusinessName(""); setHitlUserId(""); setStatusFilter(""); setValidationFilter(""); setKeyEnvironment("production"); setBugStatusFilter(""); setIssueTypeFilter(""); }}
               style={{
                 display: "flex",
                 alignItems: "center",
@@ -1364,49 +1342,6 @@ export default function MissingFieldsPage() {
               Clear
             </button>
           )}
-
-          <a
-            href={exportUrl}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 14px",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              border: "1px solid var(--panel-border)",
-              background: "var(--brand-gradient)",
-              color: "#fff",
-              cursor: "pointer",
-              textDecoration: "none",
-            }}
-          >
-            <Download size={13} />
-            Export CSV
-          </a>
-
-          <a
-            href={downloadDocumentsUrl}
-            title="Downloads a zip of the source documents for up to the first 100 rows matching the current filters"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "8px 14px",
-              borderRadius: 8,
-              fontSize: 13,
-              fontWeight: 600,
-              border: "1px solid var(--panel-border)",
-              background: "var(--input-bg)",
-              color: "var(--foreground)",
-              cursor: "pointer",
-              textDecoration: "none",
-            }}
-          >
-            <FileArchive size={13} />
-            Download Documents
-          </a>
         </div>
 
         <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} actions={bulkActions} />

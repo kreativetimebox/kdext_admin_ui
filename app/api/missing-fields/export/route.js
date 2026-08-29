@@ -6,7 +6,7 @@ const COLUMNS = [
   { key: "result_id", label: "Result ID" },
   { key: "request_id", label: "Request ID" },
   { key: "transaction_id", label: "Transaction ID" },
-  { key: "ocr_document_type", label: "Document Type" },
+  { key: "ocr_document_type", label: "Type" },
   { key: "key_environment", label: "Key Environment" },
   { key: "hitl_status", label: "HITL Status" },
   { key: "missing_count", label: "Missing Field Count" },

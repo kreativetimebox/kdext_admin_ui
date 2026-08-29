@@ -5,7 +5,7 @@ import { getRequesterClientScope } from "@/lib/clientAccess";
 const COLUMNS = [
   { key: "request_id", label: "Request ID" },
   { key: "result_id", label: "Result ID" },
-  { key: "document_type", label: "Document Type" },
+  { key: "document_type", label: "Type" },
   { key: "key_environment", label: "Key Environment" },
   { key: "status", label: "Status" },
   { key: "issue_type", label: "Issue Type" },

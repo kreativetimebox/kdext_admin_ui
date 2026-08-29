@@ -21,6 +21,10 @@ import {
   Store,
   Bug,
   UserCircle,
+  PieChart,
+  BarChart3,
+  LayoutGrid,
+  Table,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
@@ -264,11 +268,534 @@ function StatusBadge({ status }) {
   );
 }
 
-/* ── Bug tracker stats ────────────────────────────────────── */
+/* ── Bug tracker stats & graphs ────────────────────────────── */
 const BUG_STATS_GRID = "1.4fr 0.8fr 0.8fr";
 const DOC_TYPE_STATS_GRID = "1.5fr 0.6fr 0.7fr 0.6fr 0.8fr 0.9fr 0.8fr 0.8fr 0.6fr";
 
+function getDonutSlices(items, total, cx = 110, cy = 110, rOuter = 92, rInner = 60) {
+  if (total <= 0) return [];
+  const nonZero = items.filter((it) => it.value > 0);
+  if (nonZero.length === 1) {
+    const it = nonZero[0];
+    return [
+      {
+        ...it,
+        path: `M ${cx} ${cy - rOuter} A ${rOuter} ${rOuter} 0 1 1 ${cx - 0.001} ${cy - rOuter} L ${cx - 0.001} ${cy - rInner} A ${rInner} ${rInner} 0 1 0 ${cx} ${cy - rInner} Z`,
+        pct: "100%",
+      },
+    ];
+  }
+
+  let currentAngle = -Math.PI / 2;
+  return nonZero.map((it) => {
+    const fraction = it.value / total;
+    const angleDelta = fraction * 2 * Math.PI;
+    const startAngle = currentAngle;
+    const endAngle = currentAngle + angleDelta;
+    currentAngle = endAngle;
+
+    const x1 = cx + rOuter * Math.cos(startAngle);
+    const y1 = cy + rOuter * Math.sin(startAngle);
+    const x2 = cx + rOuter * Math.cos(endAngle);
+    const y2 = cy + rOuter * Math.sin(endAngle);
+
+    const x3 = cx + rInner * Math.cos(endAngle);
+    const y3 = cy + rInner * Math.sin(endAngle);
+    const x4 = cx + rInner * Math.cos(startAngle);
+    const y4 = cy + rInner * Math.sin(startAngle);
+
+    const largeArc = angleDelta > Math.PI ? 1 : 0;
+    const path = `M ${x1} ${y1} A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${x2} ${y2} L ${x3} ${y3} A ${rInner} ${rInner} 0 ${largeArc} 0 ${x4} ${y4} Z`;
+
+    return {
+      ...it,
+      path,
+      pct: `${Math.round(fraction * 100)}%`,
+    };
+  });
+}
+
+function StatusPieChart({ totalsRows, totalIssues, isLoading }) {
+  const [hoveredSlice, setHoveredSlice] = useState(null);
+
+  const cx = 110;
+  const cy = 110;
+  const rOuter = 92;
+  const rInner = 60;
+
+  const slices = useMemo(
+    () => getDonutSlices(totalsRows, totalIssues, cx, cy, rOuter, rInner),
+    [totalsRows, totalIssues]
+  );
+
+  const activeItem = hoveredSlice || null;
+
+  return (
+    <div
+      style={{
+        background: "var(--panel-bg)",
+        border: "1px solid var(--panel-border)",
+        borderRadius: 14,
+        padding: "20px 22px",
+        boxShadow: "var(--shadow-sm)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <PieChart size={16} style={{ color: "var(--accent)" }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
+            Status Breakdown
+          </span>
+        </div>
+        <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
+          {formatNumber(totalIssues)} total
+        </span>
+      </div>
+
+      {isLoading ? (
+        <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+          Loading chart...
+        </div>
+      ) : totalIssues === 0 ? (
+        <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+          No issue data
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-around",
+            gap: 20,
+            flexWrap: "wrap",
+          }}
+        >
+          {/* SVG Donut */}
+          <div style={{ position: "relative", width: 220, height: 220, flexShrink: 0 }}>
+            <svg width={220} height={220} viewBox="0 0 220 220">
+              {slices.map((slice) => {
+                const isHovered = hoveredSlice?.label === slice.label;
+                return (
+                  <path
+                    key={slice.label}
+                    d={slice.path}
+                    fill={slice.color}
+                    stroke="var(--panel-bg)"
+                    strokeWidth={2}
+                    style={{
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      opacity: hoveredSlice && !isHovered ? 0.45 : 1,
+                      transformOrigin: `${cx}px ${cy}px`,
+                      transform: isHovered ? "scale(1.04)" : "scale(1)",
+                    }}
+                    onMouseEnter={() => setHoveredSlice(slice)}
+                    onMouseLeave={() => setHoveredSlice(null)}
+                  />
+                );
+              })}
+            </svg>
+
+            {/* Donut Center readout */}
+            <div
+              style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                width: 220,
+                height: 220,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                pointerEvents: "none",
+                textAlign: "center",
+                padding: 10,
+              }}
+            >
+              {activeItem ? (
+                <>
+                  <span
+                    style={{
+                      fontSize: 20,
+                      fontWeight: 800,
+                      color: activeItem.color || "var(--foreground)",
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {formatNumber(activeItem.value)}
+                  </span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--foreground)" }}>
+                    {activeItem.pct}
+                  </span>
+                  <span
+                    style={{
+                      fontSize: 10.5,
+                      color: "var(--text-muted)",
+                      maxWidth: 90,
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {activeItem.label}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span
+                    style={{
+                      fontSize: 22,
+                      fontWeight: 800,
+                      color: "var(--foreground)",
+                      lineHeight: 1.1,
+                    }}
+                  >
+                    {formatNumber(totalIssues)}
+                  </span>
+                  <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>
+                    Issues
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 6,
+              flex: "1 1 180px",
+              minWidth: 160,
+            }}
+          >
+            {totalsRows.map((r) => {
+              const isHovered = hoveredSlice?.label === r.label;
+              const fraction = totalIssues > 0 ? r.value / totalIssues : 0;
+              const pctStr = totalIssues > 0 ? `${Math.round(fraction * 100)}%` : "0%";
+              return (
+                <div
+                  key={r.label}
+                  onMouseEnter={() => setHoveredSlice({ ...r, pct: pctStr })}
+                  onMouseLeave={() => setHoveredSlice(null)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    padding: "4px 8px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    background: isHovered ? "var(--input-bg)" : "transparent",
+                    transition: "background 0.15s ease",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span
+                      style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: r.color,
+                        flexShrink: 0,
+                      }}
+                    />
+                    <span
+                      style={{
+                        fontSize: 12,
+                        fontWeight: isHovered ? 700 : 500,
+                        color: "var(--foreground)",
+                      }}
+                    >
+                      {r.label}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground)" }}>
+                      {formatNumber(r.value)}
+                    </span>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", width: 32, textAlign: "right" }}>
+                      {pctStr}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DocTypeBarGraph({ byDocType, isLoading }) {
+  const [hoveredBar, setHoveredBar] = useState(null);
+
+  const series = [
+    { key: "open", label: "Open", color: "#ef4444" },
+    { key: "toBeTested", label: "To Test", color: "#f97316" },
+    { key: "closed", label: "Closed", color: "#22c55e" },
+    { key: "enhancement", label: "Enhance", color: "#3b82f6" },
+    { key: "modelTuning", label: "Model Tune", color: "#a855f7" },
+    { key: "invalidDoc", label: "Invalid", color: "#94a3b8" },
+    { key: "techIssue", label: "Tech Issue", color: "#eab308" },
+  ];
+
+  const items = useMemo(() => {
+    return (byDocType || []).map((d) => {
+      const total =
+        (d.open || 0) +
+        (d.toBeTested || 0) +
+        (d.closed || 0) +
+        (d.enhancement || 0) +
+        (d.modelTuning || 0) +
+        (d.invalidDoc || 0) +
+        (d.techIssue || 0);
+      return { ...d, total };
+    });
+  }, [byDocType]);
+
+  const rawMax = Math.max(1, ...items.map((d) => d.total));
+  const niceMax =
+    rawMax <= 5
+      ? 5
+      : rawMax <= 10
+      ? 10
+      : rawMax <= 25
+      ? 25
+      : rawMax <= 50
+      ? 50
+      : Math.ceil(rawMax / 20) * 20;
+
+  const svgWidth = 600;
+  const svgHeight = 220;
+  const paddingLeft = 40;
+  const paddingRight = 16;
+  const paddingTop = 20;
+  const paddingBottom = 40;
+  const plotWidth = svgWidth - paddingLeft - paddingRight;
+  const plotHeight = svgHeight - paddingTop - paddingBottom;
+
+  const numBars = items.length;
+  const slotWidth = plotWidth / Math.max(1, numBars);
+  const barWidth = Math.min(36, Math.max(16, slotWidth * 0.55));
+
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(f * niceMax));
+
+  return (
+    <div
+      style={{
+        background: "var(--panel-bg)",
+        border: "1px solid var(--panel-border)",
+        borderRadius: 14,
+        padding: "20px 22px",
+        boxShadow: "var(--shadow-sm)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 14,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <BarChart3 size={16} style={{ color: "var(--accent)" }} />
+          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
+            Issues by Type
+          </span>
+        </div>
+
+        {/* Legend */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          {series.map((s) => (
+            <div key={s.key} style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              <span style={{ width: 7, height: 7, borderRadius: "50%", background: s.color }} />
+              <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+          Loading graph...
+        </div>
+      ) : items.length === 0 ? (
+        <div style={{ padding: 40, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>
+          No tracked issues to display
+        </div>
+      ) : (
+        <div style={{ width: "100%", overflowX: "auto", position: "relative" }}>
+          <svg
+            viewBox={`0 0 ${svgWidth} ${svgHeight}`}
+            style={{ width: "100%", minWidth: 460, height: "auto", display: "block" }}
+          >
+            {/* Gridlines & Y-Axis Ticks */}
+            {yTicks.map((val) => {
+              const y = paddingTop + plotHeight - (val / niceMax) * plotHeight;
+              return (
+                <g key={val}>
+                  <line
+                    x1={paddingLeft}
+                    y1={y}
+                    x2={svgWidth - paddingRight}
+                    y2={y}
+                    stroke="var(--panel-border)"
+                    strokeDasharray={val === 0 ? undefined : "3 3"}
+                    strokeWidth={val === 0 ? 1.5 : 1}
+                  />
+                  <text
+                    x={paddingLeft - 8}
+                    y={y + 3.5}
+                    textAnchor="end"
+                    fontSize={10}
+                    fill="var(--text-muted)"
+                    fontFamily="inherit"
+                  >
+                    {val}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Bars */}
+            {items.map((item, idx) => {
+              const xCenter = paddingLeft + idx * slotWidth + slotWidth / 2;
+              const barX = xCenter - barWidth / 2;
+              let currentY = paddingTop + plotHeight;
+              const isHovered = hoveredBar?.document_type === item.document_type;
+
+              // Segments stacked from bottom
+              const renderedSegments = [];
+              series.forEach((s) => {
+                const count = item[s.key] || 0;
+                if (count <= 0) return;
+                const segHeight = (count / niceMax) * plotHeight;
+                const segY = currentY - segHeight;
+                currentY = segY;
+                renderedSegments.push({
+                  key: s.key,
+                  color: s.color,
+                  label: s.label,
+                  count,
+                  y: segY,
+                  height: segHeight,
+                });
+              });
+
+              return (
+                <g
+                  key={item.document_type || idx}
+                  onMouseEnter={() => setHoveredBar(item)}
+                  onMouseLeave={() => setHoveredBar(null)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {/* Background hover highlight column */}
+                  <rect
+                    x={paddingLeft + idx * slotWidth + 2}
+                    y={paddingTop}
+                    width={slotWidth - 4}
+                    height={plotHeight}
+                    fill={isHovered ? "var(--input-bg)" : "transparent"}
+                    rx={6}
+                    opacity={0.6}
+                  />
+
+                  {/* Stacked rects */}
+                  {renderedSegments.map((seg, sIdx) => {
+                    const isTop = sIdx === renderedSegments.length - 1;
+                    return (
+                      <rect
+                        key={seg.key}
+                        x={barX}
+                        y={seg.y}
+                        width={barWidth}
+                        height={seg.height}
+                        fill={seg.color}
+                        rx={isTop ? 3 : 0}
+                        opacity={isHovered ? 1 : 0.9}
+                      />
+                    );
+                  })}
+
+                  {/* Total on top of bar */}
+                  {item.total > 0 && (
+                    <text
+                      x={xCenter}
+                      y={currentY - 5}
+                      textAnchor="middle"
+                      fontSize={10.5}
+                      fontWeight={700}
+                      fill={isHovered ? "var(--foreground)" : "var(--text-muted)"}
+                    >
+                      {item.total}
+                    </text>
+                  )}
+
+                  {/* X-axis Label */}
+                  <text
+                    x={xCenter}
+                    y={paddingTop + plotHeight + 16}
+                    textAnchor="middle"
+                    fontSize={11}
+                    fontWeight={isHovered ? 700 : 500}
+                    fill={isHovered ? "var(--foreground)" : "var(--text-muted)"}
+                  >
+                    {item.document_type?.length > 12
+                      ? `${item.document_type.slice(0, 10)}…`
+                      : item.document_type || "—"}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+
+          {/* Hover Tooltip */}
+          {hoveredBar && (
+            <div
+              style={{
+                position: "absolute",
+                top: 8,
+                right: 12,
+                background: "var(--panel-bg)",
+                border: "1px solid var(--panel-border)",
+                borderRadius: 8,
+                padding: "8px 12px",
+                boxShadow: "var(--shadow-md)",
+                fontSize: 12,
+                pointerEvents: "none",
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+                zIndex: 10,
+              }}
+            >
+              <span style={{ fontWeight: 700, color: "var(--foreground)" }}>
+                {hoveredBar.document_type} ({hoveredBar.total} total)
+              </span>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", fontSize: 11 }}>
+                {series.map(
+                  (s) =>
+                    hoveredBar[s.key] > 0 && (
+                      <span key={s.key} style={{ color: s.color, fontWeight: 600 }}>
+                        {s.label}: {hoveredBar[s.key]}
+                      </span>
+                    )
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClientRole }) {
+  const [viewMode, setViewMode] = useState("combined"); // "combined" | "charts" | "tables"
   const { data, isLoading } = useQuery({
     queryKey: ["bug-tracker-stats", clientIds],
     queryFn: async () => {
@@ -299,7 +826,7 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
     { label: "Enhancement", value: totals.enhancement || 0, color: "#3b82f6" },
     { label: "Model Tuning", value: totals.modelTuning || 0, color: "#a855f7" },
     { label: "Invalid doc", value: totals.invalidDoc || 0, color: "#94a3b8" },
-    { label: "Tech Issue", value: totals.techIssue || 0, color: "#f97316" },
+    { label: "Tech Issue", value: totals.techIssue || 0, color: "#eab308" },
   ];
 
   return (
@@ -316,6 +843,87 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
         >
           Bug Tracker
         </span>
+
+        {/* View Switcher Controls */}
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            padding: 3,
+            borderRadius: 8,
+            background: "var(--input-bg)",
+            border: "1px solid var(--panel-border)",
+            gap: 2,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => setViewMode("combined")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+              background: viewMode === "combined" ? "var(--panel-bg)" : "transparent",
+              color: viewMode === "combined" ? "var(--foreground)" : "var(--text-muted)",
+              boxShadow: viewMode === "combined" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <LayoutGrid size={12} />
+            Both
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("charts")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+              background: viewMode === "charts" ? "var(--panel-bg)" : "transparent",
+              color: viewMode === "charts" ? "var(--foreground)" : "var(--text-muted)",
+              boxShadow: viewMode === "charts" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <PieChart size={12} />
+            Charts
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode("tables")}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 5,
+              padding: "4px 10px",
+              borderRadius: 6,
+              fontSize: 11.5,
+              fontWeight: 600,
+              border: "none",
+              cursor: "pointer",
+              background: viewMode === "tables" ? "var(--panel-bg)" : "transparent",
+              color: viewMode === "tables" ? "var(--foreground)" : "var(--text-muted)",
+              boxShadow: viewMode === "tables" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <Table size={12} />
+            Tables
+          </button>
+        </div>
+
         <div style={{ flex: 1, height: 1, background: "var(--panel-border)" }} />
         {!isClientRole && (
           <MultiSelectDropdown
@@ -330,140 +938,158 @@ function BugStatsSection({ clientIds, onClientIdsChange, clientOptions, isClient
         )}
       </div>
 
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(280px, 1fr) minmax(360px, 2fr)",
-          gap: 16,
-          marginBottom: 36,
-        }}
-      >
-        {/* Totals table */}
-        <div
+      {/* Graphical Charts Section */}
+      {(viewMode === "combined" || viewMode === "charts") && (
+        <section
           style={{
-            background: "var(--panel-bg)",
-            border: "1px solid var(--panel-border)",
-            borderRadius: 14,
-            boxShadow: "var(--shadow-sm)",
-            overflow: "hidden",
+            display: "grid",
+            gridTemplateColumns: "minmax(300px, 1fr) minmax(360px, 1.4fr)",
+            gap: 16,
+            marginBottom: viewMode === "combined" ? 16 : 36,
           }}
         >
+          <StatusPieChart totalsRows={totalsRows} totalIssues={totalIssues} isLoading={isLoading} />
+          <DocTypeBarGraph byDocType={byDocType} isLoading={isLoading} />
+        </section>
+      )}
+
+      {/* Tables Section */}
+      {(viewMode === "combined" || viewMode === "tables") && (
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(280px, 1fr) minmax(360px, 2fr)",
+            gap: 16,
+            marginBottom: 36,
+          }}
+        >
+          {/* Totals table */}
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: BUG_STATS_GRID,
-              gap: 12,
-              padding: "11px 20px",
-              background: "var(--input-bg)",
-              borderBottom: "1px solid var(--panel-border)",
+              background: "var(--panel-bg)",
+              border: "1px solid var(--panel-border)",
+              borderRadius: 14,
+              boxShadow: "var(--shadow-sm)",
+              overflow: "hidden",
             }}
           >
-            {["Status", "Count", "% of Issues"].map((h) => (
-              <span
-                key={h}
-                style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
-              >
-                {h}
-              </span>
-            ))}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: BUG_STATS_GRID,
+                gap: 12,
+                padding: "11px 20px",
+                background: "var(--input-bg)",
+                borderBottom: "1px solid var(--panel-border)",
+              }}
+            >
+              {["Status", "Count", "% of Issues"].map((h) => (
+                <span
+                  key={h}
+                  style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
+                >
+                  {h}
+                </span>
+              ))}
+            </div>
+
+            {isLoading ? (
+              <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
+            ) : (
+              <>
+                {totalsRows.map((r) => (
+                  <div
+                    key={r.label}
+                    style={{ display: "grid", gridTemplateColumns: BUG_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
+                  >
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ width: 8, height: 8, borderRadius: "50%", background: r.color, flexShrink: 0 }} />
+                      {r.label}
+                    </span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{formatNumber(r.value)}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{pct(r.value)}</span>
+                  </div>
+                ))}
+                <div style={{ display: "grid", gridTemplateColumns: BUG_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px" }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>Total</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{formatNumber(totalIssues)}</span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{totalIssues > 0 ? "100%" : "—"}</span>
+                </div>
+              </>
+            )}
           </div>
 
-          {isLoading ? (
-            <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
-          ) : (
-            <>
-              {totalsRows.map((r) => (
+          {/* By type table */}
+          <div
+            style={{
+              background: "var(--panel-bg)",
+              border: "1px solid var(--panel-border)",
+              borderRadius: 14,
+              boxShadow: "var(--shadow-sm)",
+              overflow: "hidden",
+            }}
+          >
+            <div style={{ overflowX: "auto" }}>
+              <div style={{ minWidth: 700 }}>
                 <div
-                  key={r.label}
-                  style={{ display: "grid", gridTemplateColumns: BUG_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: DOC_TYPE_STATS_GRID,
+                    gap: 12,
+                    padding: "11px 20px",
+                    background: "var(--input-bg)",
+                    borderBottom: "1px solid var(--panel-border)",
+                  }}
                 >
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", display: "flex", alignItems: "center", gap: 8 }}>
-                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: r.color, flexShrink: 0 }} />
-                    {r.label}
-                  </span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{formatNumber(r.value)}</span>
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{pct(r.value)}</span>
+                  {["Type", "Open", "To Test", "Closed", "Enhance", "Model Tune", "Invalid Doc", "Tech Issue", "Total"].map((h) => (
+                    <span
+                      key={h}
+                      style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
+                    >
+                      {h}
+                    </span>
+                  ))}
                 </div>
-              ))}
-              <div style={{ display: "grid", gridTemplateColumns: BUG_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>Total</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>{formatNumber(totalIssues)}</span>
-                <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{totalIssues > 0 ? "100%" : "—"}</span>
-              </div>
-            </>
-          )}
-        </div>
 
-        {/* By document type table */}
-        <div
-          style={{
-            background: "var(--panel-bg)",
-            border: "1px solid var(--panel-border)",
-            borderRadius: 14,
-            boxShadow: "var(--shadow-sm)",
-            overflow: "hidden",
-          }}
-        >
-          <div style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: 700 }}>
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: DOC_TYPE_STATS_GRID,
-                  gap: 12,
-                  padding: "11px 20px",
-                  background: "var(--input-bg)",
-                  borderBottom: "1px solid var(--panel-border)",
-                }}
-              >
-                {["Document Type", "Open", "To Test", "Closed", "Enhance", "Model Tune", "Invalid Doc", "Tech Issue", "Total"].map((h) => (
-                  <span
-                    key={h}
-                    style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: "var(--text-muted)" }}
-                  >
-                    {h}
-                  </span>
-                ))}
+                {isLoading ? (
+                  <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
+                ) : byDocType.length === 0 ? (
+                  <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No tracked issues</div>
+                ) : (
+                  byDocType.map((r) => (
+                    <div
+                      key={r.document_type}
+                      style={{ display: "grid", gridTemplateColumns: DOC_TYPE_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
+                    >
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {r.document_type}
+                      </span>
+                      <span style={{ fontSize: 13, color: "#ef4444" }}>{formatNumber(r.open)}</span>
+                      <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.toBeTested)}</span>
+                      <span style={{ fontSize: 13, color: "#22c55e" }}>{formatNumber(r.closed)}</span>
+                      <span style={{ fontSize: 13, color: "#3b82f6" }}>{formatNumber(r.enhancement)}</span>
+                      <span style={{ fontSize: 13, color: "#a855f7" }}>{formatNumber(r.modelTuning)}</span>
+                      <span style={{ fontSize: 13, color: "#94a3b8" }}>{formatNumber(r.invalidDoc)}</span>
+                      <span style={{ fontSize: 13, color: "#eab308" }}>{formatNumber(r.techIssue)}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
+                        {formatNumber(
+                          (r.open || 0) +
+                          (r.toBeTested || 0) +
+                          (r.closed || 0) +
+                          (r.enhancement || 0) +
+                          (r.modelTuning || 0) +
+                          (r.invalidDoc || 0) +
+                          (r.techIssue || 0)
+                        )}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
-
-              {isLoading ? (
-                <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>Loading...</div>
-              ) : byDocType.length === 0 ? (
-                <div style={{ padding: 30, textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No tracked issues</div>
-              ) : (
-                byDocType.map((r) => (
-                  <div
-                    key={r.document_type}
-                    style={{ display: "grid", gridTemplateColumns: DOC_TYPE_STATS_GRID, gap: 12, alignItems: "center", padding: "12px 20px", borderBottom: "1px solid var(--panel-border)" }}
-                  >
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {r.document_type}
-                    </span>
-                    <span style={{ fontSize: 13, color: "#ef4444" }}>{formatNumber(r.open)}</span>
-                    <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.toBeTested)}</span>
-                    <span style={{ fontSize: 13, color: "#22c55e" }}>{formatNumber(r.closed)}</span>
-                    <span style={{ fontSize: 13, color: "#3b82f6" }}>{formatNumber(r.enhancement)}</span>
-                    <span style={{ fontSize: 13, color: "#a855f7" }}>{formatNumber(r.modelTuning)}</span>
-                    <span style={{ fontSize: 13, color: "#94a3b8" }}>{formatNumber(r.invalidDoc)}</span>
-                    <span style={{ fontSize: 13, color: "#f97316" }}>{formatNumber(r.techIssue)}</span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--foreground)" }}>
-                      {formatNumber(
-                        (r.open || 0) +
-                        (r.toBeTested || 0) +
-                        (r.closed || 0) +
-                        (r.enhancement || 0) +
-                        (r.modelTuning || 0) +
-                        (r.invalidDoc || 0) +
-                        (r.techIssue || 0)
-                      )}
-                    </span>
-                  </div>
-                ))
-              )}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
     </>
   );
 }
@@ -867,7 +1493,7 @@ export default function HomePage() {
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Request ID", "User", "Document Type", "Status", "Duration", ""].map(
+            {["Request ID", "User", "Type", "Status", "Duration", ""].map(
               (h, i) => (
                 <span
                   key={i}

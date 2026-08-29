@@ -249,23 +249,21 @@ export default function DocumentMetadataPanel({ doc, documentType }) {
           "—"
         )}
       </MetaRow>
-      {doc.key_environment && (
-        <MetaRow label="Key Environment">
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              padding: "3px 8px",
-              borderRadius: 6,
-              background: "var(--tag-purple-bg)",
-              color: "var(--tag-purple-color)",
-              textTransform: "capitalize",
-            }}
-          >
-            {doc.key_environment}
-          </span>
-        </MetaRow>
-      )}
+      <MetaRow label="Environment">
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "3px 8px",
+            borderRadius: 6,
+            background: "var(--tag-purple-bg)",
+            color: "var(--tag-purple-color)",
+            textTransform: "capitalize",
+          }}
+        >
+          {doc.key_environment || "production"}
+        </span>
+      </MetaRow>
 
       <MetaRow label="HITL Status">
         <HitlStatusBadge status={doc.hitl_status} />
