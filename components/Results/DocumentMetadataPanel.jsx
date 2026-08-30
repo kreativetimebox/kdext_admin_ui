@@ -1,8 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, ScrollText } from "lucide-react";
 import { copyToClipboard } from "@/lib/clipboard";
+import { useAuth } from "@/lib/useAuth";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
 import ValidationDot from "@/components/Results/ValidationDot";
 
 /**
@@ -177,6 +180,10 @@ function FraudRiskBadge({ level }) {
 }
 
 export default function DocumentMetadataPanel({ doc, documentType }) {
+  const { user } = useAuth();
+  const showLogsOption = canViewRequestLogs(user);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
+
   if (!doc) return null;
 
   const userFullName =
@@ -215,6 +222,36 @@ export default function DocumentMetadataPanel({ doc, documentType }) {
         <MetaRow label="Request ID" mono>
           <span>{doc.request_id}</span>
           <CopyButton value={doc.request_id} label="request_id" />
+          {showLogsOption && (
+            <button
+              onClick={() => setIsLogsOpen(true)}
+              title="View request execution logs"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                padding: "2px 8px",
+                borderRadius: 6,
+                border: "1px solid rgba(168, 85, 247, 0.4)",
+                background: "rgba(168, 85, 247, 0.12)",
+                color: "var(--accent)",
+                fontSize: 11,
+                fontWeight: 600,
+                cursor: "pointer",
+                marginLeft: "auto",
+                transition: "all 0.15s",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "rgba(168, 85, 247, 0.22)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "rgba(168, 85, 247, 0.12)";
+              }}
+            >
+              <ScrollText size={11} />
+              Logs
+            </button>
+          )}
         </MetaRow>
       )}
       {doc.transaction_id && (
@@ -293,9 +330,32 @@ export default function DocumentMetadataPanel({ doc, documentType }) {
       <MetaRow label="Completed">{formatDate(doc.completed_at)}</MetaRow>
       <MetaRow label="Duration">{formatDuration(doc.processing_duration_ms)}</MetaRow>
       {doc.error_message && (
-        <MetaRow label="Error">
-          <span style={{ color: "#ef4444" }}>{doc.error_message}</span>
+        <MetaRow label="Error Message">
+          <span
+            style={{
+              color: "#ef4444",
+              fontSize: 12,
+              lineHeight: 1.4,
+              wordBreak: "break-word",
+              background: "rgba(239, 68, 68, 0.08)",
+              padding: "4px 8px",
+              borderRadius: 6,
+              border: "1px solid rgba(239, 68, 68, 0.2)",
+              display: "inline-block",
+            }}
+          >
+            {doc.error_message}
+          </span>
         </MetaRow>
+      )}
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={doc.request_id || doc.result_id}
+          isOpen={isLogsOpen}
+          onClose={() => setIsLogsOpen(false)}
+          initialFilename={doc.original_filename}
+        />
       )}
     </div>
   );

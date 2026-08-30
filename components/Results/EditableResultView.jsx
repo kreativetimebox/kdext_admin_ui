@@ -878,16 +878,27 @@ export default function EditableResultView({ resultId, requestId, data, onSaved 
       {isEmpty && (
         <div
           style={{
-            padding: 24,
+            padding: "36px 24px",
             textAlign: "center",
             color: "var(--text-muted)",
             background: "var(--panel-bg)",
             border: "1px dashed var(--panel-border)",
             borderRadius: 12,
             fontSize: 13,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
           }}
         >
-          No editable fields available
+          <Database size={24} style={{ opacity: 0.4 }} />
+          <p style={{ fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+            No editable fields available
+          </p>
+          <p style={{ fontSize: 12, margin: 0, maxWidth: 420 }}>
+            No structured financial data was extracted from this file. If the file is valid, you can reprocess it using the Reprocess control above.
+          </p>
         </div>
       )}
 

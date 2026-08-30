@@ -29,13 +29,13 @@ export async function POST(req, { params }) {
        SET hitl_assigned_to = $1,
            hitl_status = $2,
            updated_at = CURRENT_TIMESTAMP
-       WHERE result_id = $3
-       RETURNING result_id`,
+       WHERE (result_id = $3 OR request_id = $3)
+       RETURNING COALESCE(result_id, request_id) AS result_id`,
       [assignee, newStatus, id]
     );
 
     if (result.rowCount === 0) {
-      return NextResponse.json({ ok: false, error: `No document found with result_id: ${id}` }, { status: 404 });
+      return NextResponse.json({ ok: false, error: `No document found with ID: ${id}` }, { status: 404 });
     }
 
     return NextResponse.json({ ok: true }, { status: 200 });

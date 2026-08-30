@@ -26,9 +26,12 @@ import {
   ArrowUpDown,
   ShieldCheck,
   Lock,
+  ScrollText,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
@@ -227,7 +230,7 @@ const TABLE_HEADER_COLUMNS = [
 ];
 
 const ROW_GRID =
-  "32px 56px 150px 190px 110px 120px 140px 140px 120px 130px 160px 160px";
+  "32px 76px 150px 190px 110px 120px 140px 140px 120px 130px 160px 160px";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
@@ -554,7 +557,7 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
   );
 }
 
-function Row({ record, onView, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
+function Row({ record, onView, onLogs, showLogs, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -580,28 +583,63 @@ function Row({ record, onView, onBugStatusChanged, lockInfo, selected, onToggleS
         style={{ cursor: record.result_id == null ? "not-allowed" : "pointer" }}
       />
 
-      <button
-        onClick={() => onView(record.result_id ?? record.request_id)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 600,
-          background: "var(--brand-gradient)",
-          color: "#fff",
-          border: "none",
-          cursor: "pointer",
-          boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
-          transform: hovered ? "translateY(-1px)" : "translateY(0)",
-          transition: "all 0.2s",
-        }}
-      >
-        <Eye size={13} />
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button
+          onClick={() => onView(record.result_id ?? record.request_id)}
+          title="View / Edit Document"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            background: "var(--brand-gradient)",
+            color: "#fff",
+            border: "none",
+            cursor: "pointer",
+            boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
+            transform: hovered ? "translateY(-1px)" : "translateY(0)",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+        >
+          <Eye size={13} />
+        </button>
+
+        {showLogs && (
+          <button
+            onClick={() => onLogs(record)}
+            title="View Request Logs"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background: "rgba(168, 85, 247, 0.15)",
+              color: "var(--accent)",
+              border: "1px solid rgba(168, 85, 247, 0.3)",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(168, 85, 247, 0.25)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(168, 85, 247, 0.15)";
+            }}
+          >
+            <ScrollText size={13} />
+          </button>
+        )}
+      </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
         <span
@@ -738,6 +776,8 @@ export default function UserResultsPage({ params }) {
   const { initTheme } = useThemeStore();
   const { setActiveId } = useDocumentStore();
   const { user: authUser } = useAuth();
+  const showLogsOption = canViewRequestLogs(authUser);
+  const [activeLogRecord, setActiveLogRecord] = useState(null);
   const router = useRouter();
   const queryClient = useQueryClient();
   const canAssign = true;
@@ -1225,6 +1265,8 @@ export default function UserResultsPage({ params }) {
                   key={record.result_id ?? record.request_id}
                   record={record}
                   onView={handleView}
+                  onLogs={(r) => setActiveLogRecord(r)}
+                  showLogs={showLogsOption}
                   onBugStatusChanged={handleBugStatusChanged}
                   lockInfo={activeLocks[String(record.result_id)] || activeLocks[String(record.request_id)]}
                   selected={record.result_id ? selectedIds.has(record.result_id) : false}
@@ -1295,6 +1337,15 @@ export default function UserResultsPage({ params }) {
           )}
         </div>
       </main>
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={activeLogRecord?.request_id || activeLogRecord?.result_id}
+          isOpen={!!activeLogRecord}
+          onClose={() => setActiveLogRecord(null)}
+          initialFilename={activeLogRecord?.original_filename || activeLogRecord?.result_id}
+        />
+      )}
     </div>
   );
 }

@@ -21,6 +21,7 @@ import {
   ZoomIn,
   ZoomOut,
   RotateCcw,
+  ScrollText,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
@@ -31,6 +32,9 @@ import JsonPanel from "@/components/Results/JsonPanel";
 import FormattedResultView from "@/components/Results/FormattedResultView";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
 import DocumentMetadataPanel from "@/components/Results/DocumentMetadataPanel";
+import DocumentFailureBanner from "@/components/Results/DocumentFailureBanner";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
 import { useAuth } from "@/lib/useAuth";
 
 function formatDate(value) {
@@ -518,6 +522,8 @@ export default function DexaiResultPage({ params }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user: authUser } = useAuth();
+  const showLogsOption = canViewRequestLogs(authUser);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
   // Client-role accounts don't get Reprocess (or Edit) — read-only view.
   const isClientRole = (authUser?.roles || []).some((r) => ["CLIENT_ADMIN", "CLIENT_USER", "CLIENT"].includes(r));
 
@@ -637,7 +643,37 @@ export default function DexaiResultPage({ params }) {
                 Document file, formatted result, and full processing payload.
               </p>
             </div>
-            {data?.status && <StatusBadge status={data.status} />}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              {showLogsOption && (
+                <button
+                  onClick={() => setIsLogsOpen(true)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    border: "1px solid rgba(168, 85, 247, 0.4)",
+                    background: "rgba(168, 85, 247, 0.12)",
+                    color: "var(--accent)",
+                    cursor: "pointer",
+                    transition: "all 0.15s",
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = "rgba(168, 85, 247, 0.22)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = "rgba(168, 85, 247, 0.12)";
+                  }}
+                >
+                  <ScrollText size={13} />
+                  View Logs
+                </button>
+              )}
+              {data?.status && <StatusBadge status={data.status} />}
+            </div>
           </div>
         </div>
 
@@ -816,6 +852,13 @@ export default function DexaiResultPage({ params }) {
                   minWidth: 0,
                 }}
               >
+                {/* Failure / Invalid Document Explanation Banner */}
+                <DocumentFailureBanner
+                  doc={data}
+                  onOpenLogs={() => setIsLogsOpen(true)}
+                  showLogsButton={showLogsOption}
+                />
+
                 {/* Reprocess: re-run the pipeline and overwrite this result in
                     place (keeps the original request_id). Hidden for client-role
                     accounts — read-only view. */}
@@ -953,6 +996,15 @@ export default function DexaiResultPage({ params }) {
           </>
         )}
       </main>
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={data?.request_id || requestId}
+          isOpen={isLogsOpen}
+          onClose={() => setIsLogsOpen(false)}
+          initialFilename={data?.original_filename}
+        />
+      )}
     </div>
   );
 }

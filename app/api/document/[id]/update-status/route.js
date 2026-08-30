@@ -20,7 +20,7 @@ export async function POST(req, { params }) {
     await dexaiQuery(
       `UPDATE document_processing_requests
        SET hitl_status = $1, updated_at = CURRENT_TIMESTAMP
-       WHERE result_id = $2`,
+       WHERE (result_id = $2 OR request_id = $2)`,
       [status, id]
     );
 

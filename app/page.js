@@ -25,9 +25,12 @@ import {
   BarChart3,
   LayoutGrid,
   Table,
+  ScrollText,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
 
@@ -1099,6 +1102,8 @@ export default function HomePage() {
   const { initTheme } = useThemeStore();
   const router = useRouter();
   const { user } = useAuth();
+  const showLogsOption = canViewRequestLogs(user);
+  const [activeLogRecord, setActiveLogRecord] = useState(null);
   const isClientRole = (user?.roles || []).some((r) => CLIENT_ROLES.includes(r));
 
   useEffect(() => {
@@ -1485,15 +1490,16 @@ export default function HomePage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns:
-                "minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.8fr) 110px 110px 36px",
+              gridTemplateColumns: showLogsOption
+                ? "minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.8fr) 110px 110px 40px 36px"
+                : "minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.8fr) 110px 110px 36px",
               gap: 16,
               padding: "11px 20px",
               background: "var(--input-bg)",
               borderBottom: "1px solid var(--panel-border)",
             }}
           >
-            {["Request ID", "User", "Type", "Status", "Duration", ""].map(
+            {["Request ID", "User", "Type", "Status", "Duration", ...(showLogsOption ? ["Logs"] : []), ""].map(
               (h, i) => (
                 <span
                   key={i}
@@ -1544,8 +1550,9 @@ export default function HomePage() {
                 }
                 style={{
                   display: "grid",
-                  gridTemplateColumns:
-                    "minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.8fr) 110px 110px 36px",
+                  gridTemplateColumns: showLogsOption
+                    ? "minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.8fr) 110px 110px 40px 36px"
+                    : "minmax(200px, 1.4fr) minmax(160px, 1fr) minmax(140px, 0.8fr) 110px 110px 36px",
                   gap: 16,
                   alignItems: "center",
                   padding: "13px 20px",
@@ -1624,6 +1631,38 @@ export default function HomePage() {
                   <Clock size={11} />
                   {formatDuration(r.processing_duration_ms)}
                 </span>
+                {showLogsOption && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setActiveLogRecord(r);
+                    }}
+                    title="View Request Logs"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 30,
+                      height: 30,
+                      borderRadius: 8,
+                      border: "1px solid rgba(168, 85, 247, 0.3)",
+                      background: "rgba(168, 85, 247, 0.15)",
+                      color: "var(--accent)",
+                      cursor: "pointer",
+                      transition: "all 0.15s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = "rgba(168, 85, 247, 0.25)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = "rgba(168, 85, 247, 0.15)";
+                    }}
+                  >
+                    <ScrollText size={13} />
+                  </span>
+                )}
                 <ArrowRight size={14} style={{ color: "var(--text-muted)" }} />
               </button>
             ))
@@ -1668,6 +1707,15 @@ export default function HomePage() {
         {/* Tip for screen reader: Activity icon for accessibility */}
         <Activity size={0} aria-hidden style={{ position: "absolute" }} />
       </main>
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={activeLogRecord?.request_id}
+          isOpen={!!activeLogRecord}
+          onClose={() => setActiveLogRecord(null)}
+          initialFilename={activeLogRecord?.document_path || activeLogRecord?.request_id}
+        />
+      )}
     </div>
   );
 }

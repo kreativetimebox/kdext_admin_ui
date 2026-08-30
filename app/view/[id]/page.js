@@ -5,8 +5,11 @@ import { useParams, useRouter } from "next/navigation";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 import toast from "react-hot-toast";
-import { ArrowLeft, Database, Lock, ShieldAlert, RefreshCw } from "lucide-react";
+import { ArrowLeft, Database, Lock, ShieldAlert, RefreshCw, ScrollText } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { useAuth } from "@/lib/useAuth";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
 import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import CommentsPanel from "@/components/Comments/CommentsPanel";
@@ -17,6 +20,7 @@ import FormattedResultView from "@/components/Results/FormattedResultView";
 import OCRResults from "@/components/Results/OCRResults";
 import RawResults from "@/components/Results/RawResults";
 import ReprocessControl from "@/components/Reprocess/ReprocessControl";
+import DocumentFailureBanner from "@/components/Results/DocumentFailureBanner";
 
 function BugTrackingPanel({ docId, doc, onSaved, onCommentsChanged }) {
   const [issueType, setIssueType] = useState(doc?.issue_type || "");
@@ -149,6 +153,9 @@ export default function ViewDocumentPage() {
   const { id } = useParams();
   const router = useRouter();
   const { initTheme } = useThemeStore();
+  const { user } = useAuth();
+  const showLogsOption = canViewRequestLogs(user);
+  const [isLogsOpen, setIsLogsOpen] = useState(false);
   const queryClient = useQueryClient();
 
   // Result tabs: "hitl" = editable HITL-updated copy, "original" = read-only
@@ -226,7 +233,7 @@ export default function ViewDocumentPage() {
   const { data: doc, isLoading } = useQuery({
     queryKey: ["document", id],
     queryFn: async () => {
-      const res = await axios.get(`/api/document/${id}`);
+      const res = await axios.get(`/api/document/${encodeURIComponent(id)}`);
       return res.data;
     },
     enabled: !!id && lockState.status !== "blocked",
@@ -293,6 +300,36 @@ export default function ViewDocumentPage() {
             >
               {doc?.key_environment || "production"}
             </span>
+
+            {showLogsOption && (
+              <button
+                onClick={() => setIsLogsOpen(true)}
+                style={{
+                  marginLeft: "auto",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "5px 12px",
+                  borderRadius: 8,
+                  fontSize: 12.5,
+                  fontWeight: 600,
+                  border: "1px solid rgba(168, 85, 247, 0.4)",
+                  background: "rgba(168, 85, 247, 0.12)",
+                  color: "var(--accent)",
+                  cursor: "pointer",
+                  transition: "all 0.15s",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = "rgba(168, 85, 247, 0.22)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = "rgba(168, 85, 247, 0.12)";
+                }}
+              >
+                <ScrollText size={13} />
+                View Logs
+              </button>
+            )}
           </div>
 
           {lockState.status === "blocked" ? (
@@ -448,7 +485,14 @@ export default function ViewDocumentPage() {
                 </div>
 
                 {/* Data panel — its own scroll container, independent of the File Viewer column */}
-                <div className="flex-1 min-w-0 min-h-0 overflow-y-auto p-8 flex flex-col gap-8">
+                <div className="flex-1 min-w-0 min-h-0 overflow-y-auto p-8 flex flex-col gap-6">
+                  {/* Failure / Invalid Document Explanation Banner */}
+                  <DocumentFailureBanner
+                    doc={doc}
+                    onOpenLogs={() => setIsLogsOpen(true)}
+                    showLogsButton={showLogsOption}
+                  />
+
                   {/* Reprocess: re-run the pipeline and overwrite this result in
                       place (keeps the original request_id). */}
                   <ReprocessControl
@@ -549,6 +593,15 @@ export default function ViewDocumentPage() {
           )}
         </main>
       </div>
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={doc?.request_id || id}
+          isOpen={isLogsOpen}
+          onClose={() => setIsLogsOpen(false)}
+          initialFilename={doc?.original_filename}
+        />
+      )}
     </div>
   );
 }

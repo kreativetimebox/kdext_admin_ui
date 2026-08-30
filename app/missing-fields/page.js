@@ -23,9 +23,12 @@ import {
   ArrowDown,
   ArrowUpDown,
   Lock,
+  ScrollText,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { useAuth } from "@/lib/useAuth";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
 import { ISSUE_TYPES, BUG_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import ValidationDot from "@/components/Results/ValidationDot";
@@ -50,7 +53,7 @@ const TABLE_HEADER_COLUMNS = [
   { label: "Missing Fields", key: "missing_count" },
 ];
 
-const ROW_GRID = "32px 56px 200px 130px 130px 160px 130px 140px 140px minmax(220px, 1fr)";
+const ROW_GRID = "32px 76px 200px 130px 130px 160px 130px 140px 140px minmax(220px, 1fr)";
 
 function SortableHeaderCell({ label, sortKey, sortBy, sortOrder, onSort, align = "left" }) {
   const active = sortKey && sortBy === sortKey;
@@ -659,24 +662,16 @@ function BugStatusDropCell({ docId, currentStatus, onBugStatusChanged }) {
 
 function KeyEnvBadge({ env }) {
   if (!env) return <span style={{ fontSize: 12, color: "var(--text-muted)" }}>—</span>;
-  const colors = {
-    production: { bg: "var(--tag-green-bg)", color: "var(--tag-green-color)" },
-    sandbox: { bg: "var(--tag-amber-bg)", color: "var(--tag-amber-color)" },
-    test: { bg: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" },
-    testing: { bg: "var(--tag-purple-bg)", color: "var(--tag-purple-color)" },
-  };
-  const c = colors[String(env).toLowerCase()] || { bg: "var(--tag-bg)", color: "var(--tag-color)" };
   return (
     <span
       style={{
-        fontSize: 12,
-        fontWeight: 500,
-        padding: "4px 10px",
+        fontSize: 11,
+        fontWeight: 600,
+        padding: "3px 8px",
         borderRadius: 6,
-        background: c.bg,
-        color: c.color,
+        background: "var(--tag-purple-bg)",
+        color: "var(--tag-purple-color)",
         textTransform: "capitalize",
-        textAlign: "center",
         justifySelf: "start",
         maxWidth: "100%",
         overflow: "hidden",
@@ -690,7 +685,7 @@ function KeyEnvBadge({ env }) {
 }
 
 /* ── Missing fields row ───────────────────────────────────── */
-function MissingFieldRow({ doc, onView, onStatusChanged, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
+function MissingFieldRow({ doc, onView, onLogs, showLogs, onStatusChanged, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   const nullFields = doc.missing_fields || [];
 
@@ -716,28 +711,63 @@ function MissingFieldRow({ doc, onView, onStatusChanged, onBugStatusChanged, loc
         style={{ cursor: "pointer" }}
       />
 
-      <button
-        onClick={() => onView(doc.id)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: 32,
-          height: 32,
-          borderRadius: 8,
-          fontSize: 13,
-          fontWeight: 600,
-          background: "var(--brand-gradient)",
-          color: "#fff",
-          border: "none",
-          cursor: "pointer",
-          boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
-          transform: hovered ? "translateY(-1px)" : "translateY(0)",
-          transition: "all 0.2s",
-        }}
-      >
-        <Eye size={13} />
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button
+          onClick={() => onView(doc.id)}
+          title="View / Edit Document"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            background: "var(--brand-gradient)",
+            color: "#fff",
+            border: "none",
+            cursor: "pointer",
+            boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
+            transform: hovered ? "translateY(-1px)" : "translateY(0)",
+            transition: "all 0.2s",
+            flexShrink: 0,
+          }}
+        >
+          <Eye size={13} />
+        </button>
+
+        {showLogs && (
+          <button
+            onClick={() => onLogs(doc)}
+            title="View Request Logs"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background: "rgba(168, 85, 247, 0.15)",
+              color: "var(--accent)",
+              border: "1px solid rgba(168, 85, 247, 0.3)",
+              cursor: "pointer",
+              transition: "all 0.2s",
+              flexShrink: 0,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "rgba(168, 85, 247, 0.25)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "rgba(168, 85, 247, 0.15)";
+            }}
+          >
+            <ScrollText size={13} />
+          </button>
+        )}
+      </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -892,6 +922,8 @@ export default function MissingFieldsPage() {
   const { initTheme } = useThemeStore();
   const { setActiveId } = useDocumentStore();
   const { user } = useAuth();
+  const showLogsOption = canViewRequestLogs(user);
+  const [activeLogDoc, setActiveLogDoc] = useState(null);
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -1420,6 +1452,8 @@ export default function MissingFieldsPage() {
                   key={doc.id}
                   doc={doc}
                   onView={handleView}
+                  onLogs={(d) => setActiveLogDoc(d)}
+                  showLogs={showLogsOption}
                   onStatusChanged={handleStatusChanged}
                   onBugStatusChanged={handleBugStatusChanged}
                   lockInfo={activeLocks[String(doc.id)] || activeLocks[String(doc.result_id)]}
@@ -1494,6 +1528,15 @@ export default function MissingFieldsPage() {
           )}
         </div>
       </main>
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={activeLogDoc?.request_id || activeLogDoc?.result_id || activeLogDoc?.id}
+          isOpen={!!activeLogDoc}
+          onClose={() => setActiveLogDoc(null)}
+          initialFilename={activeLogDoc?.original_filename || activeLogDoc?.result_id}
+        />
+      )}
     </div>
   );
 }

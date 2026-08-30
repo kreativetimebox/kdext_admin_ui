@@ -27,8 +27,11 @@ import {
   ArrowUpDown,
   MessageSquare,
   Lock,
+  ScrollText,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
 import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
@@ -47,11 +50,19 @@ function formatDate(value) {
   }
 }
 
+const menuItemBaseStyle = (active) => ({
+  padding: "8px 10px",
+  borderRadius: 6,
+  cursor: "pointer",
+  background: active ? "var(--input-bg)" : "transparent",
+});
+
 /* ── Sortable column header — click toggles asc/desc; sorts the full
    server-paginated result set, not just the rows on screen. ── */
-const TABLE_HEADER_COLUMNS = [
+const getHeaderColumns = (showLogs) => [
   { label: "Edit", key: null },
   { label: "View", key: null },
+  ...(showLogs ? [{ label: "Logs", key: null }] : []),
   { label: "Bug ID", key: "bug_tracker_id" },
   { label: "Result ID", key: "result_id" },
   { label: "Bug Status", key: "bug_status" },
@@ -98,10 +109,10 @@ function SearchableDropdown({
   icon: Icon,
   placeholder,
   searchPlaceholder = "Search...",
-  emptyText = "No results",
-  options,
   value,
+  options,
   onChange,
+  emptyText = "No options found",
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -123,18 +134,20 @@ function SearchableDropdown({
     if (open && inputRef.current) inputRef.current.focus();
   }, [open]);
 
-  const selected = options.find((o) => o.value === value) || null;
+  const selected = options.find((o) => o.value === value);
   const q = query.trim().toLowerCase();
-  const filtered = q ? options.filter((o) => o.label.toLowerCase().includes(q)) : options;
+  const filtered = q
+    ? options.filter((o) => o.label.toLowerCase().includes(q))
+    : options;
 
-  const choose = (val) => {
+  function choose(val) {
     onChange(val);
     setOpen(false);
     setQuery("");
-  };
+  }
 
   return (
-    <div ref={ref} style={{ position: "relative", minWidth: 200 }}>
+    <div ref={ref} style={{ position: "relative", minWidth: 160 }}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -159,7 +172,12 @@ function SearchableDropdown({
         </span>
         <ChevronDown
           size={14}
-          style={{ color: "var(--text-muted)", flexShrink: 0, transform: open ? "rotate(180deg)" : "none", transition: "transform 0.12s ease" }}
+          style={{
+            color: "var(--text-muted)",
+            flexShrink: 0,
+            transform: open ? "rotate(180deg)" : "none",
+            transition: "transform 0.12s ease",
+          }}
         />
       </button>
 
@@ -186,7 +204,16 @@ function SearchableDropdown({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={searchPlaceholder}
-              style={{ width: "100%", padding: "8px 10px 8px 30px", fontSize: 13, border: "1px solid var(--input-border)", borderRadius: 6, background: "var(--input-bg)", color: "var(--foreground)", outline: "none" }}
+              style={{
+                width: "100%",
+                padding: "8px 10px 8px 30px",
+                fontSize: 13,
+                border: "1px solid var(--input-border)",
+                borderRadius: 6,
+                background: "var(--input-bg)",
+                color: "var(--foreground)",
+                outline: "none",
+              }}
             />
           </div>
 
@@ -194,10 +221,13 @@ function SearchableDropdown({
             <div
               role="button"
               onClick={() => choose("")}
-              style={{ padding: "8px 10px", borderRadius: 6, fontSize: 13, cursor: "pointer", color: "var(--text-muted)", background: value === "" ? "var(--input-bg)" : "transparent" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = value === "" ? "var(--input-bg)" : "transparent"; }}
+              style={menuItemBaseStyle(value === "")}
             >
               {placeholder}
             </div>
+
             {filtered.length === 0 ? (
               <div style={{ padding: "10px", fontSize: 12, color: "var(--text-muted)" }}>{emptyText}</div>
             ) : (
@@ -208,9 +238,11 @@ function SearchableDropdown({
                   onClick={() => choose(o.value)}
                   onMouseEnter={(e) => { e.currentTarget.style.background = "var(--input-bg)"; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = o.value === value ? "var(--input-bg)" : "transparent"; }}
-                  style={{ padding: "8px 10px", borderRadius: 6, fontSize: 13, fontWeight: o.value === value ? 700 : 500, cursor: "pointer", color: "var(--foreground)", background: o.value === value ? "var(--input-bg)" : "transparent" }}
+                  style={menuItemBaseStyle(o.value === value)}
                 >
-                  {o.label}
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {o.label}
+                  </span>
                 </div>
               ))
             )}
@@ -607,16 +639,19 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
   );
 }
 
-/* ── Table row (11 columns: select, edit, view, bug_id, result_id, bug_status, action_status, client_email, doc_type, flagged_at, comments) ── */
-const ROW_GRID = "32px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px";
+/* ── Table row (11 or 12 columns: select, edit, view, [logs], bug_id, result_id, bug_status, action_status, client_email, doc_type, flagged_at, comments) ── */
+const getRowGrid = (showLogs) =>
+  showLogs
+    ? "32px 36px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px"
+    : "32px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px";
 
-function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged, onActionStatusChanged, lockInfo, selected, onToggleSelect }) {
+function BugTrackerRow({ doc, onView, onEdit, onLogs, showLogs, onViewComments, onBugStatusChanged, onActionStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
-      style={{ display: "grid", gridTemplateColumns: ROW_GRID, gap: 16, alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--panel-border)", background: hovered ? "var(--input-bg)" : "transparent", transition: "background 0.15s" }}
+      style={{ display: "grid", gridTemplateColumns: getRowGrid(showLogs), gap: 16, alignItems: "center", padding: "14px 20px", borderBottom: "1px solid var(--panel-border)", background: hovered ? "var(--input-bg)" : "transparent", transition: "background 0.15s" }}
     >
       <input
         type="checkbox"
@@ -635,12 +670,40 @@ function BugTrackerRow({ doc, onView, onEdit, onViewComments, onBugStatusChanged
 
       <button
         onClick={() => onView(doc.result_id)}
-        // title="View"
         disabled={doc.result_id == null}
+        title="View Document"
         style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "none", background: doc.result_id == null ? "var(--input-bg)" : "var(--brand-gradient)", color: doc.result_id == null ? "var(--text-muted)" : "#fff", cursor: doc.result_id == null ? "not-allowed" : "pointer" }}
       >
         <Eye size={13} />
       </button>
+
+      {showLogs && (
+        <button
+          onClick={() => onLogs(doc)}
+          title="View Request Logs"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            border: "1px solid rgba(168, 85, 247, 0.3)",
+            background: "rgba(168, 85, 247, 0.15)",
+            color: "var(--accent)",
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(168, 85, 247, 0.25)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(168, 85, 247, 0.15)";
+          }}
+        >
+          <ScrollText size={13} />
+        </button>
+      )}
 
       <span
         style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -733,6 +796,8 @@ function BugTrackerContent() {
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const showLogsOption = canViewRequestLogs(user);
+  const [activeLogDoc, setActiveLogDoc] = useState(null);
 
 
   const [search, setSearch] = useState(() => searchParams.get("search") || "");
@@ -1068,14 +1133,14 @@ function BugTrackerContent() {
         <div style={{ background: "var(--panel-bg)", border: "1px solid var(--panel-border)", borderRadius: 12, boxShadow: "var(--shadow-sm)", overflow: "hidden" }}>
           <div style={{ overflowX: "auto" }}>
           <div style={{ minWidth: "max-content" }}>
-          <div style={{ display: "grid", gridTemplateColumns: ROW_GRID, gap: 16, padding: "12px 20px", background: "var(--input-bg)", borderBottom: "1px solid var(--panel-border)" }}>
+          <div style={{ display: "grid", gridTemplateColumns: getRowGrid(showLogsOption), gap: 16, padding: "12px 20px", background: "var(--input-bg)", borderBottom: "1px solid var(--panel-border)" }}>
             <input
               type="checkbox"
               checked={documents.length > 0 && selectedIds.size === documents.length}
               onChange={toggleSelectAll}
               style={{ cursor: "pointer" }}
             />
-            {TABLE_HEADER_COLUMNS.map((col) => (
+            {getHeaderColumns(showLogsOption).map((col) => (
               <SortableHeaderCell
                 key={col.label}
                 label={col.label}
@@ -1110,6 +1175,8 @@ function BugTrackerContent() {
                   doc={doc}
                   onView={handleView}
                   onEdit={setEditingRow}
+                  onLogs={(d) => setActiveLogDoc(d)}
+                  showLogs={showLogsOption}
                   onViewComments={setViewingCommentsRow}
                   onBugStatusChanged={handleBugStatusChanged}
                   onActionStatusChanged={handleActionStatusChanged}
@@ -1150,6 +1217,15 @@ function BugTrackerContent() {
           row={viewingCommentsRow}
           onClose={() => setViewingCommentsRow(null)}
           onCommentsChanged={handleCommentsChanged}
+        />
+      )}
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={activeLogDoc?.request_id || activeLogDoc?.result_id || activeLogDoc?.id}
+          isOpen={!!activeLogDoc}
+          onClose={() => setActiveLogDoc(null)}
+          initialFilename={activeLogDoc?.original_filename || activeLogDoc?.result_id}
         />
       )}
     </div>

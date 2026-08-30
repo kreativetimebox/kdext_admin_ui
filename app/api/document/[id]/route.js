@@ -31,7 +31,7 @@ export async function GET(request, { params }) {
     return NextResponse.json(
       {
         id: doc.id,
-        result_id: doc.id,
+        result_id: doc.result_id ?? null,
         request_id: doc.request_id,
         transaction_id: doc.transaction_id,
         ocr_document_type: doc.ocr_document_type,

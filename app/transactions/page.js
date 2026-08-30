@@ -14,8 +14,12 @@ import {
   ChevronRight,
   Filter,
   X,
+  ScrollText,
 } from "lucide-react";
 import { useThemeStore } from "@/lib/store";
+import { useAuth } from "@/lib/useAuth";
+import { canViewRequestLogs } from "@/lib/requestLogsAccess";
+import RequestLogsModal from "@/components/Logs/RequestLogsModal";
 import Navbar from "@/components/Navbar/Navbar";
 
 function formatDate(value) {
@@ -150,7 +154,7 @@ function FilterDropdown({ label, value, options, onChange }) {
   );
 }
 
-function TransactionRow({ record, onOpen }) {
+function TransactionRow({ record, onOpen, onLogs, showLogs }) {
   const [hovered, setHovered] = useState(false);
   return (
     <div
@@ -167,7 +171,7 @@ function TransactionRow({ record, onOpen }) {
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 36px",
+        gridTemplateColumns: showLogs ? "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 40px 36px" : "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 36px",
         gap: 16,
         alignItems: "center",
         padding: "14px 20px",
@@ -231,6 +235,37 @@ function TransactionRow({ record, onOpen }) {
         {formatDate(record.submitted_at)}
       </span>
 
+      {showLogs && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onLogs(record);
+          }}
+          title="View Request Logs"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            border: "1px solid rgba(168, 85, 247, 0.3)",
+            background: "rgba(168, 85, 247, 0.15)",
+            color: "var(--accent)",
+            cursor: "pointer",
+            transition: "all 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "rgba(168, 85, 247, 0.25)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "rgba(168, 85, 247, 0.15)";
+          }}
+        >
+          <ScrollText size={13} />
+        </button>
+      )}
+
       <ChevronRight size={16} style={{ color: hovered ? "var(--accent)" : "var(--text-muted)" }} />
     </div>
   );
@@ -241,6 +276,9 @@ const SEARCH_DEBOUNCE_MS = 350;
 
 export default function TransactionsPage() {
   const { initTheme } = useThemeStore();
+  const { user } = useAuth();
+  const showLogsOption = canViewRequestLogs(user);
+  const [activeLogRecord, setActiveLogRecord] = useState(null);
   const router = useRouter();
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -429,7 +467,7 @@ export default function TransactionsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 36px",
+              gridTemplateColumns: showLogsOption ? "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 40px 36px" : "140px minmax(180px, 1.1fr) minmax(140px, 0.9fr) 110px 180px 36px",
               gap: 16,
               padding: "12px 20px",
               background: "var(--input-bg)",
@@ -450,6 +488,19 @@ export default function TransactionsPage() {
                 {h}
               </span>
             ))}
+            {showLogsOption && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.05em",
+                  color: "var(--text-muted)",
+                }}
+              >
+                Logs
+              </span>
+            )}
             <span />
           </div>
 
@@ -478,7 +529,13 @@ export default function TransactionsPage() {
               </div>
             ) : (
               records.map((record) => (
-                <TransactionRow key={record.result_id} record={record} onOpen={handleOpen} />
+                <TransactionRow
+                  key={record.result_id}
+                  record={record}
+                  onOpen={handleOpen}
+                  onLogs={(r) => setActiveLogRecord(r)}
+                  showLogs={showLogsOption}
+                />
               ))
             )}
           </div>
@@ -543,6 +600,15 @@ export default function TransactionsPage() {
           )}
         </div>
       </main>
+
+      {showLogsOption && (
+        <RequestLogsModal
+          requestId={activeLogRecord?.request_id || activeLogRecord?.result_id}
+          isOpen={!!activeLogRecord}
+          onClose={() => setActiveLogRecord(null)}
+          initialFilename={activeLogRecord?.original_filename || activeLogRecord?.result_id}
+        />
+      )}
     </div>
   );
 }

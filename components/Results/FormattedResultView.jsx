@@ -299,16 +299,27 @@ function FormattedResultView({ data, title = "Formatted Result", requestId }) {
     return (
       <div
         style={{
-          padding: 28,
+          padding: "36px 24px",
           textAlign: "center",
           color: "var(--text-muted)",
           background: "var(--panel-bg)",
           border: "1px dashed var(--panel-border)",
           borderRadius: 12,
           fontSize: 13,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: 8,
         }}
       >
-        No formatted result available
+        <Database size={24} style={{ opacity: 0.4 }} />
+        <p style={{ fontWeight: 600, color: "var(--foreground)", margin: 0 }}>
+          No structured data extracted
+        </p>
+        <p style={{ fontSize: 12, margin: 0, maxWidth: 420 }}>
+          This document does not contain extracted financial fields (e.g. invalid document, processing failed, or non-financial file).
+        </p>
       </div>
     );
   }
