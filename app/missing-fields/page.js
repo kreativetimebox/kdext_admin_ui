@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
@@ -688,6 +689,8 @@ function KeyEnvBadge({ env }) {
 function MissingFieldRow({ doc, onView, onLogs, showLogs, onStatusChanged, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
   const nullFields = doc.missing_fields || [];
+  const targetId = doc.id || doc.result_id;
+  const viewHref = targetId ? `/view/${encodeURIComponent(targetId)}` : null;
 
   return (
     <div
@@ -712,30 +715,62 @@ function MissingFieldRow({ doc, onView, onLogs, showLogs, onStatusChanged, onBug
       />
 
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <button
-          onClick={() => onView(doc.id)}
-          title="View / Edit Document"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            background: "var(--brand-gradient)",
-            color: "#fff",
-            border: "none",
-            cursor: "pointer",
-            boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
-            transform: hovered ? "translateY(-1px)" : "translateY(0)",
-            transition: "all 0.2s",
-            flexShrink: 0,
-          }}
-        >
-          <Eye size={13} />
-        </button>
+        {viewHref ? (
+          <Link
+            href={viewHref}
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              e.preventDefault();
+              onView(doc.id);
+            }}
+            title="View / Edit Document"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background: "var(--brand-gradient)",
+              color: "#fff",
+              border: "none",
+              textDecoration: "none",
+              cursor: "pointer",
+              boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
+              transform: hovered ? "translateY(-1px)" : "translateY(0)",
+              transition: "all 0.2s",
+              flexShrink: 0,
+            }}
+          >
+            <Eye size={13} />
+          </Link>
+        ) : (
+          <button
+            disabled
+            title="View / Edit Document"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background: "var(--input-bg)",
+              color: "var(--text-muted)",
+              border: "none",
+              cursor: "not-allowed",
+              boxShadow: "none",
+              transform: "none",
+              flexShrink: 0,
+            }}
+          >
+            <Eye size={13} />
+          </button>
+        )}
 
         {showLogs && (
           <button
@@ -771,20 +806,51 @@ function MissingFieldRow({ doc, onView, onLogs, showLogs, onStatusChanged, onBug
 
       <div style={{ display: "flex", flexDirection: "column", gap: 3, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <span
-            style={{
-              fontSize: 12,
-              fontWeight: 600,
-              color: "var(--accent)",
-              fontFamily: "ui-monospace, SFMono-Regular, monospace",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
-            }}
-            title={doc.result_id ?? doc.id}
-          >
-            {doc.result_id ?? doc.id}
-          </span>
+          {viewHref ? (
+            <Link
+              href={viewHref}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                e.preventDefault();
+                onView(doc.id);
+              }}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--accent)",
+                fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textDecoration: "none",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
+              }}
+              title={doc.result_id ?? doc.id}
+            >
+              {doc.result_id ?? doc.id}
+            </Link>
+          ) : (
+            <span
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--accent)",
+                fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+              title={doc.result_id ?? doc.id}
+            >
+              {doc.result_id ?? doc.id}
+            </span>
+          )}
           {lockInfo && (
             <span
               title={`In use by ${lockInfo.userEmail || lockInfo.userName}`}

@@ -653,9 +653,10 @@ function BugTrackerRow({ doc, onView, onEdit, onLogs, showLogs, onViewComments, 
   const [hovered, setHovered] = useState(false);
   const [isMuted, setIsMuted] = useState(Boolean(doc.is_muted));
   const [togglingMute, setTogglingMute] = useState(false);
+  const viewHref = doc.result_id ? `/view/${encodeURIComponent(doc.result_id)}` : null;
 
   async function handleToggleMute() {
-    if (!doc.bug_tracker_id) return;
+    if (!doc.bug_tracker_id || togglingMute) return;
     setTogglingMute(true);
     try {
       const nextMuted = !isMuted;
@@ -695,14 +696,53 @@ function BugTrackerRow({ doc, onView, onEdit, onLogs, showLogs, onViewComments, 
         <Pencil size={13} />
       </button>
 
-      <button
-        onClick={() => onView(doc.result_id)}
-        disabled={doc.result_id == null}
-        title="View Document"
-        style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "none", background: doc.result_id == null ? "var(--input-bg)" : "var(--brand-gradient)", color: doc.result_id == null ? "var(--text-muted)" : "#fff", cursor: doc.result_id == null ? "not-allowed" : "pointer" }}
-      >
-        <Eye size={13} />
-      </button>
+      {viewHref ? (
+        <Link
+          href={viewHref}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+            e.preventDefault();
+            onView(doc.result_id);
+          }}
+          title="View Document"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            border: "none",
+            background: "var(--brand-gradient)",
+            color: "#fff",
+            textDecoration: "none",
+            cursor: "pointer",
+            flexShrink: 0,
+          }}
+        >
+          <Eye size={13} />
+        </Link>
+      ) : (
+        <button
+          disabled
+          title="View Document"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 32,
+            height: 32,
+            borderRadius: 8,
+            border: "none",
+            background: "var(--input-bg)",
+            color: "var(--text-muted)",
+            cursor: "not-allowed",
+            flexShrink: 0,
+          }}
+        >
+          <Eye size={13} />
+        </button>
+      )}
 
       {showLogs && (
         <button
@@ -771,12 +811,34 @@ function BugTrackerRow({ doc, onView, onEdit, onLogs, showLogs, onViewComments, 
       <div style={{ display: "flex", flexDirection: "column", gap: 2, overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           {doc.result_id ? (
-            <span
-              style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+            <Link
+              href={viewHref}
+              onClick={(e) => {
+                if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                e.preventDefault();
+                onView(doc.result_id);
+              }}
+              style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: "var(--accent)",
+                fontFamily: "ui-monospace, SFMono-Regular, monospace",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                textDecoration: "none",
+                cursor: "pointer",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.textDecoration = "underline";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.textDecoration = "none";
+              }}
               title={doc.result_id}
             >
               {doc.result_id}
-            </span>
+            </Link>
           ) : (
             <span
               style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}

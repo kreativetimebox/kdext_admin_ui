@@ -1,6 +1,7 @@
 "use client";
 
 import { use, useEffect, useState, useRef } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import axios from "axios";
@@ -559,6 +560,9 @@ function FilterDropdown({ label, value, options, onChange, icon: Icon = Filter }
 
 function Row({ record, onView, onLogs, showLogs, onBugStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
+  const targetId = record.result_id ?? record.request_id;
+  const viewHref = targetId ? `/view/${encodeURIComponent(targetId)}` : null;
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -584,30 +588,62 @@ function Row({ record, onView, onLogs, showLogs, onBugStatusChanged, lockInfo, s
       />
 
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-        <button
-          onClick={() => onView(record.result_id ?? record.request_id)}
-          title="View / Edit Document"
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            width: 32,
-            height: 32,
-            borderRadius: 8,
-            fontSize: 13,
-            fontWeight: 600,
-            background: "var(--brand-gradient)",
-            color: "#fff",
-            border: "none",
-            cursor: "pointer",
-            boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
-            transform: hovered ? "translateY(-1px)" : "translateY(0)",
-            transition: "all 0.2s",
-            flexShrink: 0,
-          }}
-        >
-          <Eye size={13} />
-        </button>
+        {viewHref ? (
+          <Link
+            href={viewHref}
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              e.preventDefault();
+              onView(targetId);
+            }}
+            title="View / Edit Document"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background: "var(--brand-gradient)",
+              color: "#fff",
+              border: "none",
+              textDecoration: "none",
+              cursor: "pointer",
+              boxShadow: hovered ? "0 4px 12px rgba(20,14,53,0.26)" : "none",
+              transform: hovered ? "translateY(-1px)" : "translateY(0)",
+              transition: "all 0.2s",
+              flexShrink: 0,
+            }}
+          >
+            <Eye size={13} />
+          </Link>
+        ) : (
+          <button
+            disabled
+            title="View / Edit Document"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              background: "var(--input-bg)",
+              color: "var(--text-muted)",
+              border: "none",
+              cursor: "not-allowed",
+              boxShadow: "none",
+              transform: "none",
+              flexShrink: 0,
+            }}
+          >
+            <Eye size={13} />
+          </button>
+        )}
 
         {showLogs && (
           <button
@@ -642,20 +678,51 @@ function Row({ record, onView, onLogs, showLogs, onBugStatusChanged, lockInfo, s
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 6, overflow: "hidden" }}>
-        <span
-          style={{
-            fontSize: 12.5,
-            fontWeight: 600,
-            color: "var(--accent)",
-            fontFamily: "ui-monospace, SFMono-Regular, monospace",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap",
-          }}
-          title={record.result_id ? String(record.result_id) : "—"}
-        >
-          {record.result_id ?? "—"}
-        </span>
+        {viewHref && record.result_id ? (
+          <Link
+            href={viewHref}
+            onClick={(e) => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+              e.preventDefault();
+              onView(targetId);
+            }}
+            style={{
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: "var(--accent)",
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+              textDecoration: "none",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.textDecoration = "underline";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.textDecoration = "none";
+            }}
+            title={record.result_id ? String(record.result_id) : "—"}
+          >
+            {record.result_id ?? "—"}
+          </Link>
+        ) : (
+          <span
+            style={{
+              fontSize: 12.5,
+              fontWeight: 600,
+              color: "var(--accent)",
+              fontFamily: "ui-monospace, SFMono-Regular, monospace",
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+            }}
+            title={record.result_id ? String(record.result_id) : "—"}
+          >
+            {record.result_id ?? "—"}
+          </span>
+        )}
         {lockInfo && (
           <span
             title={`In use by ${lockInfo.userEmail || lockInfo.userName}`}
