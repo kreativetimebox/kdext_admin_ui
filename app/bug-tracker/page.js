@@ -28,10 +28,13 @@ import {
   MessageSquare,
   Lock,
   ScrollText,
+  Bell,
+  BellOff,
 } from "lucide-react";
 import { useThemeStore, useDocumentStore } from "@/lib/store";
 import { canViewRequestLogs } from "@/lib/requestLogsAccess";
 import RequestLogsModal from "@/components/Logs/RequestLogsModal";
+import BugNotificationSettingsModal from "@/components/BugTracker/BugNotificationSettingsModal";
 import { ISSUE_TYPES, BUG_STATUSES, ACTION_STATUSES } from "@/lib/constants";
 import Navbar from "@/components/Navbar/Navbar";
 import MultiSelectDropdown from "@/components/Filters/MultiSelectDropdown";
@@ -63,6 +66,7 @@ const getHeaderColumns = (showLogs) => [
   { label: "Edit", key: null },
   { label: "View", key: null },
   ...(showLogs ? [{ label: "Logs", key: null }] : []),
+  { label: "Alert", key: null },
   { label: "Bug ID", key: "bug_tracker_id" },
   { label: "Result ID", key: "result_id" },
   { label: "Bug Status", key: "bug_status" },
@@ -639,14 +643,37 @@ function CommentsModal({ row, onClose, onCommentsChanged }) {
   );
 }
 
-/* ── Table row (11 or 12 columns: select, edit, view, [logs], bug_id, result_id, bug_status, action_status, client_email, doc_type, flagged_at, comments) ── */
+/* ── Table row (12 or 13 columns: select, edit, view, [logs], alert, bug_id, result_id, bug_status, action_status, client_email, doc_type, flagged_at, comments) ── */
 const getRowGrid = (showLogs) =>
   showLogs
-    ? "32px 36px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px"
-    : "32px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px";
+    ? "32px 36px 36px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px"
+    : "32px 36px 36px 36px 110px 150px 130px 150px 220px 140px 170px 80px";
 
 function BugTrackerRow({ doc, onView, onEdit, onLogs, showLogs, onViewComments, onBugStatusChanged, onActionStatusChanged, lockInfo, selected, onToggleSelect }) {
   const [hovered, setHovered] = useState(false);
+  const [isMuted, setIsMuted] = useState(Boolean(doc.is_muted));
+  const [togglingMute, setTogglingMute] = useState(false);
+
+  async function handleToggleMute() {
+    if (!doc.bug_tracker_id) return;
+    setTogglingMute(true);
+    try {
+      const nextMuted = !isMuted;
+      const res = await axios.post("/api/bug-tracker/notifications/toggle-bug", {
+        bugTrackerId: doc.bug_tracker_id,
+        isMuted: nextMuted,
+      });
+      if (res.data?.ok) {
+        setIsMuted(res.data.isMuted);
+        toast.success(res.data.isMuted ? "Bug notifications muted" : "Bug notifications enabled");
+      }
+    } catch {
+      toast.error("Failed to toggle bug notifications");
+    } finally {
+      setTogglingMute(false);
+    }
+  }
+
   return (
     <div
       onMouseEnter={() => setHovered(true)}
@@ -704,6 +731,35 @@ function BugTrackerRow({ doc, onView, onEdit, onLogs, showLogs, onViewComments, 
           <ScrollText size={13} />
         </button>
       )}
+
+      <button
+        type="button"
+        onClick={handleToggleMute}
+        disabled={togglingMute || !doc.bug_tracker_id}
+        title={
+          !doc.bug_tracker_id
+            ? "No bug ID assigned yet"
+            : isMuted
+            ? "Notifications Muted for this ticket (Click to enable)"
+            : "Notifications Active for this ticket (Click to mute)"
+        }
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          width: 32,
+          height: 32,
+          borderRadius: 8,
+          border: isMuted ? "1px solid var(--panel-border)" : "1px solid rgba(99, 102, 241, 0.3)",
+          background: isMuted ? "var(--input-bg)" : "rgba(99, 102, 241, 0.12)",
+          color: isMuted ? "var(--text-muted)" : "#6366f1",
+          cursor: !doc.bug_tracker_id ? "not-allowed" : "pointer",
+          transition: "all 0.15s",
+          opacity: togglingMute ? 0.6 : 1,
+        }}
+      >
+        {isMuted ? <BellOff size={13} /> : <Bell size={13} />}
+      </button>
 
       <span
         style={{ fontSize: 12, fontWeight: 700, color: "var(--foreground)", fontFamily: "ui-monospace, SFMono-Regular, monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
@@ -817,6 +873,7 @@ function BugTrackerContent() {
   const [sortBy, setSortBy] = useState(() => searchParams.get("sortBy") || "");
   const [sortOrder, setSortOrder] = useState(() => searchParams.get("sortOrder") || "desc");
   const [selectedIds, setSelectedIds] = useState(new Set());
+  const [showNotificationModal, setShowNotificationModal] = useState(false);
 
   const { data: locksData } = useQuery({
     queryKey: ["document-locks"],
@@ -1125,6 +1182,27 @@ function BugTrackerContent() {
             <FileArchive size={13} />
             Download Documents
           </a>
+
+          <button
+            type="button"
+            onClick={() => setShowNotificationModal(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              fontSize: 13,
+              fontWeight: 600,
+              border: "1px solid var(--panel-border)",
+              background: "var(--input-bg)",
+              color: "var(--foreground)",
+              cursor: "pointer",
+            }}
+          >
+            <Bell size={13} color="#6366f1" />
+            Notification Settings
+          </button>
         </div>
 
         <BulkActionBar selectedCount={selectedIds.size} onClear={() => setSelectedIds(new Set())} actions={bulkActions} />
@@ -1228,6 +1306,11 @@ function BugTrackerContent() {
           initialFilename={activeLogDoc?.original_filename || activeLogDoc?.result_id}
         />
       )}
+
+      <BugNotificationSettingsModal
+        isOpen={showNotificationModal}
+        onClose={() => setShowNotificationModal(false)}
+      />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { dexaiQuery } from "@/lib/dexaidb";
 import { assertOwnsDocument } from "@/lib/clientAccess";
+import { triggerBugNotificationSafe } from "@/lib/bugNotificationService";
 
 const ALLOWED_EMAILS = ["financeai@financeai.com", "rashika@financeai.com"];
 
@@ -37,6 +38,25 @@ export async function POST(req, { params }) {
     if (result.rowCount === 0) {
       return NextResponse.json({ ok: false, error: `No document found with ID: ${id}` }, { status: 404 });
     }
+
+    // Look up assignee display name/email for notification
+    let assigneeLabel = "Unassigned";
+    if (assignee) {
+      const userRes = await dexaiQuery(
+        `SELECT email, COALESCE(NULLIF(BTRIM(CONCAT(first_name, ' ', last_name)), ''), email) AS name
+         FROM internal_users WHERE internal_user_id::text = $1 LIMIT 1`,
+        [String(assignee)]
+      );
+      assigneeLabel = userRes.rows[0]?.name || userRes.rows[0]?.email || String(assignee);
+    }
+
+    triggerBugNotificationSafe({
+      resultId: id,
+      eventType: "ASSIGNED",
+      fieldName: "Assignment",
+      newValue: assigneeLabel,
+      changedBy: callerEmail,
+    });
 
     return NextResponse.json({ ok: true }, { status: 200 });
   } catch (error) {

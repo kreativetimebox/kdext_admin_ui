@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { updateHitlResult } from "@/lib/queries";
 import { sendDocumentCorrectedNotification } from "@/lib/webhooks";
 import { assertOwnsDocument } from "@/lib/clientAccess";
+import { dexaiQuery } from "@/lib/dexaidb";
+import { triggerBugNotificationSafe } from "@/lib/bugNotificationService";
 
 const AUDIT_LIMIT = 50;
 
@@ -85,6 +87,36 @@ export async function POST(request, { params }) {
           pubErr?.message || pubErr
         );
       }
+    }
+
+    // Trigger bug notifications if this document is a tracked bug
+    try {
+      const docCheck = await dexaiQuery(
+        `SELECT bug_tracker_id, bug_status, action_status, issue_type
+         FROM document_processing_requests
+         WHERE (result_id = $1 OR request_id = $1)
+         LIMIT 1`,
+        [id]
+      );
+      const row = docCheck.rows[0];
+      if (row?.bug_tracker_id) {
+        // If changes array is present, summarize changed fields
+        const fieldSummary = changes.length > 0
+          ? changes.map((c) => c.field || c.key || JSON.stringify(c)).join(", ")
+          : "Document fields updated";
+
+        triggerBugNotificationSafe({
+          bugTrackerId: row.bug_tracker_id,
+          resultId: updated.id,
+          requestId: updated.request_id,
+          eventType: "DOCUMENT_UPDATED",
+          fieldName: "Document Result",
+          newValue: fieldSummary,
+          changedBy: email || "HITL Reviewer",
+        });
+      }
+    } catch (notifErr) {
+      console.error("[bugNotifications] Error triggering document update notification:", notifErr);
     }
 
     return NextResponse.json(

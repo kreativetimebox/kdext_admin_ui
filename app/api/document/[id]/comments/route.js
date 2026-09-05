@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { addComment } from "@/lib/queries";
 import { assertOwnsDocument } from "@/lib/clientAccess";
+import { triggerBugNotificationSafe } from "@/lib/bugNotificationService";
 
 export async function POST(req, { params }) {
   try {
@@ -25,6 +26,16 @@ export async function POST(req, { params }) {
     if (comments === null) {
       return NextResponse.json({ ok: false, error: "Document not found" }, { status: 404 });
     }
+
+    // Trigger comment notification asynchronously
+    triggerBugNotificationSafe({
+      resultId: id,
+      eventType: "COMMENT_ADDED",
+      fieldName: "Comments",
+      newValue: message,
+      comments: message,
+      changedBy: username,
+    });
 
     return NextResponse.json({ ok: true, comments }, { status: 200 });
   } catch (error) {
